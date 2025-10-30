@@ -111,11 +111,21 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await update.message.reply_text("❌ Баркоды не найдены на отправленных фото.")
         return
 
+    # New flow: 1) PLACE4174 text, 2) photo, 3) card, 4) GGPLACE
+    await update.message.reply_text("PLACE4174")
+    
+    # Re-send photo
+    await update.message.reply_photo(largest.file_id)
+    
+    # Card with barcodes
     html = renderer.render_barcodes_html(results, photo_count=1)
     if is_debug:
         lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in timeline]
         html += "\n\n<code>" + " | ".join(lines) + "</code>"
     await update.message.reply_html(html)
+    
+    # Final GGPLACE
+    await update.message.reply_text("GGPLACE")
 
 
 def build_app() -> Application:
