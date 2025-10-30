@@ -9,27 +9,23 @@ try:
 except Exception:
     HAS_ZBAR = False
 
-SUPPORTED_SYMBOLS = (
-    [] if not HAS_ZBAR else [
-        ZBarSymbol.QRCODE,
-        ZBarSymbol.EAN13,
-        ZBarSymbol.EAN8,
-        ZBarSymbol.UPCA,
-        ZBarSymbol.UPCE,
-        ZBarSymbol.CODE39,
-        ZBarSymbol.CODE93,
-        ZBarSymbol.CODE128,
-        ZBarSymbol.ITF,
-    ]
-)
-
 class ZBarDecoder(Decoder):
     name = "zbar"
 
     def decode(self, image: Image.Image, image_bytes: bytes) -> List[Barcode]:
         if not HAS_ZBAR:
             return []
-        results = zbar_decode(image, symbols=SUPPORTED_SYMBOLS)
+        symbols = [
+            ZBarSymbol.QRCODE,
+            ZBarSymbol.EAN13,
+            ZBarSymbol.EAN8,
+            ZBarSymbol.UPCA,
+            ZBarSymbol.UPCE,
+            ZBarSymbol.CODE39,
+            ZBarSymbol.CODE93,
+            ZBarSymbol.CODE128,
+        ]
+        results = zbar_decode(image, symbols=symbols)
         out: List[Barcode] = []
         for r in results:
             try:
