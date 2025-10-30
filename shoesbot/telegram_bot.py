@@ -21,6 +21,7 @@ from shoesbot.pipeline import DecoderPipeline
 from shoesbot.decoders.zbar_decoder import ZBarDecoder
 from shoesbot.decoders.cv_qr_decoder import OpenCvQrDecoder
 from shoesbot.decoders.vision_decoder import VisionDecoder
+from shoesbot.decoders.gg_label_decoder import GGLabelDecoder
 from shoesbot.renderers.card_renderer import CardRenderer
 from shoesbot.logging_setup import logger
 from shoesbot.diagnostics import system_info
@@ -30,7 +31,7 @@ from shoesbot.admin import get_admin_id, set_admin_id
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
 
-pipeline = DecoderPipeline([ZBarDecoder(), OpenCvQrDecoder(), VisionDecoder()])
+pipeline = DecoderPipeline([ZBarDecoder(), OpenCvQrDecoder(), VisionDecoder(), GGLabelDecoder()])
 renderer = CardRenderer(templates_dir=os.path.join(os.path.dirname(__file__), "..", "templates"))
 
 DEBUG_DEFAULT = os.getenv("DEBUG", "0") in ("1", "true", "True")
@@ -107,22 +108,29 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         except Exception:
             pass
 
-    if not results:
-        await update.message.reply_text("❌ Баркоды не найдены на отправленных фото.")
-        return
-
-    # New flow: 1) PLACE4174 text, 2) photo, 3) card, 4) GGPLACE
+    # Split results: GG labels vs regular barcodes
+    gg_results = [r for r in results if r.source == "gg-label"]
+    barcode_results = [r for r in results if r.source != "gg-label"]
+    
+    # New flow: 1) PLACE4174 text, 2) photo, 3) card, 4) GG label, 5) PLACE4174
     await update.message.reply_text("PLACE4174")
     
     # Re-send photo
     await update.message.reply_photo(largest.file_id)
     
-    # Card with barcodes
-    html = renderer.render_barcodes_html(results, photo_count=1)
+    # Card with barcodes (always show, even if empty)
+    html = renderer.render_barcodes_html(barcode_results, photo_count=1)
     if is_debug:
         lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in timeline]
         html += "\n\n<code>" + " | ".join(lines) + "</code>"
     await update.message.reply_html(html)
+    
+    # GG label section
+    if gg_results:
+        gg_lines = ["Наша лейба GG и ее номер:"]
+        for gg in gg_results:
+            gg_lines.append(gg.data)
+        await update.message.reply_text("\n".join(gg_lines))
     
     # Final PLACE4174
     await update.message.reply_text("PLACE4174")
