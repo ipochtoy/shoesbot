@@ -146,18 +146,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     largest = update.message.photo[-1]
     tg_file = await context.bot.get_file(largest.file_id)
     
-    # Try to add to buffer
-    photo_batch = photo_buffer.add(chat_id, tg_file)
+    # Add to buffer
+    is_first, photo_batch = photo_buffer.add(chat_id, tg_file)
     
-    if photo_batch:
-        # We have a batch, process it
-        await process_photo_batch(chat_id, photo_batch, context)
-    else:
-        # First photo, wait and check for timeout
-        await asyncio.sleep(3.0)
-        delayed_batch = photo_buffer.flush(chat_id)
-        if delayed_batch:
-            await process_photo_batch(chat_id, delayed_batch, context)
+    if is_first:
+        # First photo, schedule delayed processing
+        async def delayed_process():
+            await asyncio.sleep(3.0)
+            flushed = photo_buffer.flush(chat_id)
+            if flushed:
+                await process_photo_batch(chat_id, flushed, context)
+        
+        # Schedule background task
+        context.application.create_task(delayed_process())
 
 
 def build_app() -> Application:

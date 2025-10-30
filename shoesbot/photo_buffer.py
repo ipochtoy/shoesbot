@@ -11,8 +11,9 @@ class PhotoBuffer:
     def __init__(self):
         self.buffers: Dict[int, List[Tuple[float, File]]] = {}
 
-    def add(self, chat_id: int, photo_file: File) -> Optional[List[File]]:
-        """Add photo to buffer. Returns list of photos if buffer is ready, None otherwise."""
+    def add(self, chat_id: int, photo_file: File) -> Tuple[bool, Optional[List[File]]]:
+        """Add photo to buffer. Returns (should_wait, Optional[batch]).
+        should_wait=True means this is first photo and we should start timer."""
         now = time()
         
         if chat_id not in self.buffers:
@@ -23,13 +24,10 @@ class PhotoBuffer:
         # Clean old buffers
         self._cleanup(now)
         
-        # If this is the first photo, return None (wait for more)
-        if len(self.buffers[chat_id]) == 1:
-            return None
-        
-        # Return all photos in buffer
+        # Always return the buffer after adding
         files = [p for _, p in self.buffers[chat_id]]
-        return files
+        is_first = len(files) == 1
+        return (is_first, files)
 
     def flush(self, chat_id: int, timeout: float = BUFFER_TIMEOUT) -> Optional[List[File]]:
         """Check if buffer should be flushed due to timeout."""
