@@ -1,0 +1,7 @@
+<b>Найденные коды</b>
+{% if barcodes and barcodes|length > 0 %}
+{% for b in barcodes %}• <b>{{ b.symbology }}</b>: <code>{{ b.data }}</code>
+{% endfor %}
+{% else %}
+Нет данных
+{% endif %}
