@@ -5,7 +5,9 @@ import sys
 if sys.platform == "darwin":
     zbar_lib = "/opt/homebrew/lib"
     if os.path.exists(zbar_lib):
-        os.environ.setdefault("DYLD_LIBRARY_PATH", zbar_lib)
+        # Force override (not setdefault) to ensure pyzbar loads correctly
+        current_dyld = os.environ.get("DYLD_LIBRARY_PATH", "")
+        os.environ["DYLD_LIBRARY_PATH"] = f"{zbar_lib}:{current_dyld}".rstrip(":")
 
 from shoesbot.telegram_bot import build_app
 

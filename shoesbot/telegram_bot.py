@@ -1,4 +1,14 @@
 import os
+import sys
+
+# Fix for pyzbar on macOS - must be before any imports
+if sys.platform == "darwin":
+    zbar_lib = "/opt/homebrew/lib"
+    if os.path.exists(zbar_lib):
+        current_dyld = os.environ.get("DYLD_LIBRARY_PATH", "")
+        if zbar_lib not in current_dyld:
+            os.environ["DYLD_LIBRARY_PATH"] = f"{zbar_lib}:{current_dyld}".rstrip(":")
+
 import uuid
 from io import BytesIO
 from dotenv import load_dotenv

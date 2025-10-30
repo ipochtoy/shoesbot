@@ -1,0 +1,12 @@
+# Настройка GitHub для shoesbot
+
+1. Открой в браузере:
+   https://github.com/login/device
+
+2. Введи код: E2E9-5701
+
+3. После авторизации выполни:
+   cd ~/Projects/shoesbot
+   gh auth status  # проверить
+   gh repo create shoesbot --public --source=. --remote=origin --push
+   git push origin v1.0.0

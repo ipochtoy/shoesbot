@@ -1,3 +1,5 @@
+import shoesbot.env_setup  # Must import first to setup DYLD_LIBRARY_PATH
+
 from typing import List
 from PIL import Image
 from shoesbot.models import Barcode
