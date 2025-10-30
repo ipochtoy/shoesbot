@@ -124,8 +124,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         html += "\n\n<code>" + " | ".join(lines) + "</code>"
     await update.message.reply_html(html)
     
-    # Final GGPLACE
-    await update.message.reply_text("GGPLACE")
+    # Final PLACE4174
+    await update.message.reply_text("PLACE4174")
 
 
 def build_app() -> Application:
