@@ -1,0 +1,20 @@
+# Быстрый старт
+
+## Установка (один раз)
+brew install zbar
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+echo "BOT_TOKEN=YOUR_TOKEN" > .env
+
+## Запуск
+./START.sh
+
+## Или вручную
+DYLD_LIBRARY_PATH=/opt/homebrew/lib .venv/bin/python -u bot.py
+
+## Остановка
+pkill -9 -f "bot.py"
+
+## Проверка
+pgrep -f "bot.py" && echo "RUNNING" || echo "STOPPED"
+
