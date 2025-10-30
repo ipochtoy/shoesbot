@@ -1,4 +1,12 @@
 import os
+import sys
+
+# Fix for pyzbar on macOS - must be before any pyzbar imports
+if sys.platform == "darwin":
+    zbar_lib = "/opt/homebrew/lib"
+    if os.path.exists(zbar_lib):
+        os.environ.setdefault("DYLD_LIBRARY_PATH", zbar_lib)
+
 from shoesbot.telegram_bot import build_app
 
 if __name__ == "__main__":
