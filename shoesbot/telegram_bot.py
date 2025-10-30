@@ -66,99 +66,140 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = f"total={s['total']}, ok={s['ok']}, empty={s['empty']}, per_decoder={s['per_decoder_hits']}"
     await update.message.reply_text(text)
 
-async def process_photo_batch(chat_id: int, photo_files: list, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def process_photo_batch(chat_id: int, photo_items: list, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Process a batch of photos."""
-    is_debug = DEBUG_DEFAULT or (chat_id in DEBUG_CHATS)
-    corr = uuid.uuid4().hex[:8]
-    
-    all_results = []
-    all_timelines = []
-    
-    # Process each photo
-    for tg_file in photo_files:
-        t0 = perf_counter()
-        buf = BytesIO()
-        await tg_file.download_to_memory(out=buf)
-        download_ms = int((perf_counter() - t0) * 1000)
+    try:
+        logger.info(f"process_photo_batch: starting, chat={chat_id}, items={len(photo_items)}")
+        is_debug = DEBUG_DEFAULT or (chat_id in DEBUG_CHATS)
+        corr = uuid.uuid4().hex[:8]
         
-        raw = buf.getvalue()
-        buf.seek(0)
-        img = Image.open(buf).convert("RGB")
+        all_results = []
+        all_timelines = []
         
-        results, timeline = pipeline.run_debug(img, raw)
-        all_results.extend(results)
-        all_timelines.extend(timeline)
+        # Process each photo
+        for idx, item in enumerate(photo_items):
+            logger.info(f"process_photo_batch: processing item {idx+1}/{len(photo_items)}")
+            t0 = perf_counter()
+            buf = BytesIO()
+            await item.file_obj.download_to_memory(out=buf)
+            download_ms = int((perf_counter() - t0) * 1000)
+            
+            raw = buf.getvalue()
+            buf.seek(0)
+            img = Image.open(buf).convert("RGB")
+            
+            results, timeline = pipeline.run_debug(img, raw)
+            all_results.extend(results)
+            all_timelines.extend(timeline)
+            
+            append_event({
+                'corr': corr,
+                'chat_id': chat_id,
+                'result_count': len(results),
+                'download_ms': download_ms,
+                'timeline': timeline,
+                'size_bytes': len(raw),
+            })
         
-        append_event({
-            'corr': corr,
-            'chat_id': chat_id,
-            'result_count': len(results),
-            'download_ms': download_ms,
-            'timeline': timeline,
-            'size_bytes': len(raw),
-        })
-    
-    # Notify admin if needed
-    admin_id = get_admin_id()
-    had_error = any(t.get('error') for t in all_timelines)
-    if admin_id and (len(all_results) == 0 or had_error):
-        lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" + (f" (err={t['error']})" if t['error'] else "") for t in all_timelines]
-        summary = "\n".join(lines)
-        try:
-            await context.bot.send_message(admin_id, f"[{corr}] chat={chat_id} results={len(all_results)} photos={len(photo_files)}\n" + summary)
-        except Exception:
-            pass
-    
-    # Split results
-    gg_results = [r for r in all_results if r.source == "gg-label"]
-    barcode_results = [r for r in all_results if r.source != "gg-label"]
-    
-    # Send: PLACE4174 + photo album + card + GG label + PLACE4174
-    await context.bot.send_message(chat_id, "PLACE4174")
-    
-    # Send photo album
-    media_group = [InputMediaPhoto(photo.file_id) for photo in photo_files]
-    await context.bot.send_media_group(chat_id, media_group)
-    
-    # Card
-    html = renderer.render_barcodes_html(barcode_results, photo_count=len(photo_files))
-    if is_debug and all_timelines:
-        lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in all_timelines]
-        html += "\n\n<code>" + " | ".join(lines) + "</code>"
-    await context.bot.send_message(chat_id, html, parse_mode='HTML')
-    
-    # GG label
-    if gg_results:
-        gg_lines = ["Наша лейба GG и ее номер:"]
-        for gg in gg_results:
-            gg_lines.append(gg.data)
-        await context.bot.send_message(chat_id, "\n".join(gg_lines))
-    
-    # Final PLACE4174
-    await context.bot.send_message(chat_id, "PLACE4174")
+        # Notify admin if needed
+        admin_id = get_admin_id()
+        had_error = any(t.get('error') for t in all_timelines)
+        if admin_id and (len(all_results) == 0 or had_error):
+            lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" + (f" (err={t['error']})" if t['error'] else "") for t in all_timelines]
+            summary = "\n".join(lines)
+            try:
+                await context.bot.send_message(admin_id, f"[{corr}] chat={chat_id} results={len(all_results)} photos={len(photo_items)}\n" + summary)
+            except Exception:
+                pass
+        
+        # Split results
+        gg_results = [r for r in all_results if r.source == "gg-label"]
+        barcode_results = [r for r in all_results if r.source != "gg-label"]
+        
+        # Send: PLACE4174 + photo album + card + GG label + PLACE4174
+        logger.info("process_photo_batch: sending PLACE4174")
+        await context.bot.send_message(chat_id, "PLACE4174")
+        
+        # Send photo album
+        logger.info(f"process_photo_batch: sending media group with {len(photo_items)} photos")
+        media_group = [InputMediaPhoto(item.file_id) for item in photo_items]
+        await context.bot.send_media_group(chat_id, media_group)
+        
+        # Card
+        logger.info("process_photo_batch: rendering and sending card")
+        html = renderer.render_barcodes_html(barcode_results, photo_count=len(photo_items))
+        if is_debug and all_timelines:
+            lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in all_timelines]
+            html += "\n\n<code>" + " | ".join(lines) + "</code>"
+        await context.bot.send_message(chat_id, html, parse_mode='HTML')
+        
+        # GG label
+        if gg_results:
+            logger.info(f"process_photo_batch: sending GG labels: {len(gg_results)}")
+            gg_lines = ["Наша лейба GG и ее номер:"]
+            for gg in gg_results:
+                gg_lines.append(gg.data)
+            await context.bot.send_message(chat_id, "\n".join(gg_lines))
+        
+        # Final PLACE4174
+        logger.info("process_photo_batch: sending final PLACE4174")
+        await context.bot.send_message(chat_id, "PLACE4174")
+        logger.info("process_photo_batch: done")
+    except Exception as e:
+        logger.error(f"process_photo_batch: error: {e}", exc_info=True)
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.message.photo:
-        return
-    
-    chat_id = update.effective_chat.id
-    largest = update.message.photo[-1]
-    tg_file = await context.bot.get_file(largest.file_id)
-    
-    # Add to buffer
-    is_first, photo_batch = photo_buffer.add(chat_id, tg_file)
-    
-    if is_first:
-        # First photo, schedule delayed processing
-        async def delayed_process():
-            await asyncio.sleep(3.0)
-            flushed = photo_buffer.flush(chat_id)
-            if flushed:
-                await process_photo_batch(chat_id, flushed, context)
+    try:
+        logger.info("handle_photo: received photo")
+        if not update.message or not update.message.photo:
+            logger.warning("handle_photo: no message or photo")
+            return
         
-        # Schedule background task
-        context.application.create_task(delayed_process())
+        chat_id = update.effective_chat.id
+        largest = update.message.photo[-1]
+        file_id = largest.file_id
+        logger.info(f"handle_photo: chat={chat_id}, file_id={file_id[:20]}...")
+        tg_file = await context.bot.get_file(file_id)
+        logger.info(f"handle_photo: got tg_file")
+        
+        # Add to buffer
+        is_first, photo_batch = photo_buffer.add(chat_id, file_id, tg_file)
+        logger.info(f"handle_photo: added to buffer, is_first={is_first}, batch_size={len(photo_batch) if photo_batch else 0}")
+        
+        if is_first:
+            # First photo: show "Началась обработка..." and schedule delayed processing
+            status_msg = await context.bot.send_message(chat_id, "🔍 Началась обработка...")
+            logger.info("handle_photo: sent status message, scheduling delayed_process")
+            
+            async def delayed_process():
+                logger.info(f"delayed_process: sleeping 3s for chat={chat_id}")
+                await asyncio.sleep(3.0)
+                logger.info(f"delayed_process: flushing buffer for chat={chat_id}")
+                
+                # Debug: check buffer state
+                import shoesbot.photo_buffer as pb_mod
+                logger.info(f"delayed_process: buffer state: {list(pb_mod.buffer.buffers.keys())}")
+                if chat_id in pb_mod.buffer.buffers:
+                    logger.info(f"delayed_process: buffer[{chat_id}] size: {len(pb_mod.buffer.buffers[chat_id])}")
+                
+                flushed = photo_buffer.flush(chat_id)
+                logger.info(f"delayed_process: flushed={flushed is not None}, size={len(flushed) if flushed else 0}")
+                if flushed:
+                    try:
+                        await status_msg.delete()
+                        logger.info("delayed_process: deleted status message")
+                    except Exception as e:
+                        logger.error(f"delayed_process: failed to delete status: {e}")
+                    logger.info("delayed_process: calling process_photo_batch")
+                    await process_photo_batch(chat_id, flushed, context)
+                    logger.info("delayed_process: done")
+            
+            # Schedule background task
+            context.application.create_task(delayed_process())
+            logger.info("handle_photo: task scheduled")
+    except Exception as e:
+        logger.error(f"handle_photo: error: {e}", exc_info=True)
 
 
 def build_app() -> Application:
