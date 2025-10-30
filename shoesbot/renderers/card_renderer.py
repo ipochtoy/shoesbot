@@ -13,5 +13,5 @@ class CardRenderer:
         )
         self.tpl = self.env.get_template("barcode_card.html.j2")
 
-    def render_barcodes_html(self, barcodes: List[Barcode]) -> str:
-        return self.tpl.render(barcodes=barcodes)
+    def render_barcodes_html(self, barcodes: List[Barcode], photo_count: int = 1) -> str:
+        return self.tpl.render(barcodes=barcodes, photo_count=photo_count)

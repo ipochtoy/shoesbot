@@ -1,7 +1,12 @@
-<b>Найденные коды</b>
+PLACE4174
+
+🛍️ КАРТОЧКА ТОВАРА
+==============
+Фото: {{ photo_count }} шт.
+Найдено кодов: {{ barcodes|length }}
 {% if barcodes and barcodes|length > 0 %}
-{% for b in barcodes %}• <b>{{ b.symbology }}</b>: <code>{{ b.data }}</code>
+📊 НАЙДЕННЫЕ КОДЫ:
+{% for b in barcodes %}{{ loop.index }}. {% if b.data.startswith('GG') or 'GG' in b.data %}Наша лейба GG: {% endif %}{{ b.data }}
 {% endfor %}
-{% else %}
-Нет данных
+==============
 {% endif %}
