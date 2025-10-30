@@ -5,7 +5,7 @@ from time import time
 from telegram import File
 import logging
 
-BUFFER_TIMEOUT = 3.0  # seconds to wait for more photos
+BUFFER_TIMEOUT = 1.5  # seconds to wait for more photos
 
 logger = logging.getLogger("shoesbot.photo_buffer")
 
@@ -14,13 +14,14 @@ class PhotoItem(NamedTuple):
     """Photo with file_id for media group and File for processing."""
     file_id: str
     file_obj: File
+    message_id: int  # For deleting original message
 
 
 class PhotoBuffer:
     def __init__(self):
         self.buffers: Dict[int, List[Tuple[float, PhotoItem]]] = {}
 
-    def add(self, chat_id: int, file_id: str, photo_file: File) -> Tuple[bool, Optional[List[PhotoItem]]]:
+    def add(self, chat_id: int, file_id: str, photo_file: File, message_id: int) -> Tuple[bool, Optional[List[PhotoItem]]]:
         """Add photo to buffer. Returns (should_wait, Optional[batch]).
         should_wait=True means this is first photo and we should start timer."""
         now = time()
@@ -28,7 +29,7 @@ class PhotoBuffer:
         if chat_id not in self.buffers:
             self.buffers[chat_id] = []
         
-        self.buffers[chat_id].append((now, PhotoItem(file_id, photo_file)))
+        self.buffers[chat_id].append((now, PhotoItem(file_id, photo_file, message_id)))
         
         # Clean old buffers
         self._cleanup(now)

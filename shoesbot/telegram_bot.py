@@ -112,6 +112,14 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             except Exception:
                 pass
         
+        # Delete original messages
+        logger.info(f"process_photo_batch: deleting {len(photo_items)} original messages")
+        for item in photo_items:
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=item.message_id)
+            except Exception as e:
+                logger.warning(f"process_photo_batch: failed to delete message {item.message_id}: {e}")
+        
         # Split results
         gg_results = [r for r in all_results if r.source == "gg-label"]
         barcode_results = [r for r in all_results if r.source != "gg-label"]
@@ -159,12 +167,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         chat_id = update.effective_chat.id
         largest = update.message.photo[-1]
         file_id = largest.file_id
-        logger.info(f"handle_photo: chat={chat_id}, file_id={file_id[:20]}...")
+        message_id = update.message.message_id
+        logger.info(f"handle_photo: chat={chat_id}, file_id={file_id[:20]}..., message_id={message_id}")
         tg_file = await context.bot.get_file(file_id)
         logger.info(f"handle_photo: got tg_file")
         
         # Add to buffer
-        is_first, photo_batch = photo_buffer.add(chat_id, file_id, tg_file)
+        is_first, photo_batch = photo_buffer.add(chat_id, file_id, tg_file, message_id)
         logger.info(f"handle_photo: added to buffer, is_first={is_first}, batch_size={len(photo_batch) if photo_batch else 0}")
         
         if is_first:
@@ -173,8 +182,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             logger.info("handle_photo: sent status message, scheduling delayed_process")
             
             async def delayed_process():
-                logger.info(f"delayed_process: sleeping 3s for chat={chat_id}")
-                await asyncio.sleep(3.0)
+                logger.info(f"delayed_process: sleeping 1.5s for chat={chat_id}")
+                await asyncio.sleep(1.5)
                 logger.info(f"delayed_process: flushing buffer for chat={chat_id}")
                 
                 # Debug: check buffer state
