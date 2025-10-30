@@ -10,11 +10,12 @@ if sys.platform == "darwin":
             os.environ["DYLD_LIBRARY_PATH"] = f"{zbar_lib}:{current_dyld}".rstrip(":")
 
 import uuid
+import asyncio
 from io import BytesIO
 from dotenv import load_dotenv
 from time import perf_counter
 from PIL import Image
-from telegram import Update
+from telegram import Update, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 from shoesbot.pipeline import DecoderPipeline
@@ -27,6 +28,7 @@ from shoesbot.logging_setup import logger
 from shoesbot.diagnostics import system_info
 from shoesbot.metrics import append_event, summarize
 from shoesbot.admin import get_admin_id, set_admin_id
+from shoesbot.photo_buffer import buffer as photo_buffer
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -64,76 +66,98 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = f"total={s['total']}, ok={s['ok']}, empty={s['empty']}, per_decoder={s['per_decoder_hits']}"
     await update.message.reply_text(text)
 
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.message.photo:
-        return
-    chat_id = update.effective_chat.id
+async def process_photo_batch(chat_id: int, photo_files: list, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Process a batch of photos."""
     is_debug = DEBUG_DEFAULT or (chat_id in DEBUG_CHATS)
     corr = uuid.uuid4().hex[:8]
-
-    largest = update.message.photo[-1]
-    t0 = perf_counter()
-    tg_file = await context.bot.get_file(largest.file_id)
-
-    buf = BytesIO()
-    await tg_file.download_to_memory(out=buf)
-    download_ms = int((perf_counter() - t0) * 1000)
-
-    raw = buf.getvalue()
-    buf.seek(0)
-    img = Image.open(buf).convert("RGB")
-
-    # Run with timeline always (so we can track in background)
-    results, timeline = pipeline.run_debug(img, raw)
-
-    # Save metrics
-    event = {
-        'corr': corr,
-        'chat_id': chat_id,
-        'result_count': len(results),
-        'download_ms': download_ms,
-        'timeline': timeline,
-        'size_bytes': len(raw),
-    }
-    append_event(event)
-
-    # Notify admin on failure or decoder error
+    
+    all_results = []
+    all_timelines = []
+    
+    # Process each photo
+    for tg_file in photo_files:
+        t0 = perf_counter()
+        buf = BytesIO()
+        await tg_file.download_to_memory(out=buf)
+        download_ms = int((perf_counter() - t0) * 1000)
+        
+        raw = buf.getvalue()
+        buf.seek(0)
+        img = Image.open(buf).convert("RGB")
+        
+        results, timeline = pipeline.run_debug(img, raw)
+        all_results.extend(results)
+        all_timelines.extend(timeline)
+        
+        append_event({
+            'corr': corr,
+            'chat_id': chat_id,
+            'result_count': len(results),
+            'download_ms': download_ms,
+            'timeline': timeline,
+            'size_bytes': len(raw),
+        })
+    
+    # Notify admin if needed
     admin_id = get_admin_id()
-    had_error = any(t.get('error') for t in timeline)
-    if admin_id and (len(results) == 0 or had_error):
-        lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" + (f" (err={t['error']})" if t['error'] else "") for t in timeline]
+    had_error = any(t.get('error') for t in all_timelines)
+    if admin_id and (len(all_results) == 0 or had_error):
+        lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" + (f" (err={t['error']})" if t['error'] else "") for t in all_timelines]
         summary = "\n".join(lines)
         try:
-            await context.bot.send_message(admin_id, f"[{corr}] chat={chat_id} results={len(results)} size={len(raw)}B\n" + summary)
+            await context.bot.send_message(admin_id, f"[{corr}] chat={chat_id} results={len(all_results)} photos={len(photo_files)}\n" + summary)
         except Exception:
             pass
-
-    # Split results: GG labels vs regular barcodes
-    gg_results = [r for r in results if r.source == "gg-label"]
-    barcode_results = [r for r in results if r.source != "gg-label"]
     
-    # New flow: 1) PLACE4174 text, 2) photo, 3) card, 4) GG label, 5) PLACE4174
-    await update.message.reply_text("PLACE4174")
+    # Split results
+    gg_results = [r for r in all_results if r.source == "gg-label"]
+    barcode_results = [r for r in all_results if r.source != "gg-label"]
     
-    # Re-send photo
-    await update.message.reply_photo(largest.file_id)
+    # Send: PLACE4174 + photo album + card + GG label + PLACE4174
+    await context.bot.send_message(chat_id, "PLACE4174")
     
-    # Card with barcodes (always show, even if empty)
-    html = renderer.render_barcodes_html(barcode_results, photo_count=1)
-    if is_debug:
-        lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in timeline]
+    # Send photo album
+    media_group = [InputMediaPhoto(photo.file_id) for photo in photo_files]
+    await context.bot.send_media_group(chat_id, media_group)
+    
+    # Card
+    html = renderer.render_barcodes_html(barcode_results, photo_count=len(photo_files))
+    if is_debug and all_timelines:
+        lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in all_timelines]
         html += "\n\n<code>" + " | ".join(lines) + "</code>"
-    await update.message.reply_html(html)
+    await context.bot.send_message(chat_id, html, parse_mode='HTML')
     
-    # GG label section
+    # GG label
     if gg_results:
         gg_lines = ["Наша лейба GG и ее номер:"]
         for gg in gg_results:
             gg_lines.append(gg.data)
-        await update.message.reply_text("\n".join(gg_lines))
+        await context.bot.send_message(chat_id, "\n".join(gg_lines))
     
     # Final PLACE4174
-    await update.message.reply_text("PLACE4174")
+    await context.bot.send_message(chat_id, "PLACE4174")
+
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message or not update.message.photo:
+        return
+    
+    chat_id = update.effective_chat.id
+    largest = update.message.photo[-1]
+    tg_file = await context.bot.get_file(largest.file_id)
+    
+    # Try to add to buffer
+    photo_batch = photo_buffer.add(chat_id, tg_file)
+    
+    if photo_batch:
+        # We have a batch, process it
+        await process_photo_batch(chat_id, photo_batch, context)
+    else:
+        # First photo, wait and check for timeout
+        await asyncio.sleep(3.0)
+        delayed_batch = photo_buffer.flush(chat_id)
+        if delayed_batch:
+            await process_photo_batch(chat_id, delayed_batch, context)
 
 
 def build_app() -> Application:
