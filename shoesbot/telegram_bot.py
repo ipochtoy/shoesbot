@@ -1,6 +1,7 @@
 import os
 import uuid
 from io import BytesIO
+from dotenv import load_dotenv
 from time import perf_counter
 from PIL import Image
 from telegram import Update
@@ -16,6 +17,7 @@ from shoesbot.diagnostics import system_info
 from shoesbot.metrics import append_event, summarize
 from shoesbot.admin import get_admin_id, set_admin_id
 
+load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
 
 pipeline = DecoderPipeline([ZBarDecoder(), OpenCvQrDecoder(), VisionDecoder()])
