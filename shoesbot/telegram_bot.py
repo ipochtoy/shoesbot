@@ -120,9 +120,16 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             except Exception as e:
                 logger.warning(f"process_photo_batch: failed to delete message {item.message_id}: {e}")
         
-        # Split results
-        gg_results = [r for r in all_results if r.source == "gg-label"]
-        barcode_results = [r for r in all_results if r.source != "gg-label"]
+        # Split results: GG from OCR decoder AND Q-codes from ZBar (CODE39/Q codes are our GG labels)
+        gg_from_ocr = [r for r in all_results if r.source == "gg-label"]
+        gg_from_q = [r for r in all_results if r.symbology == "CODE39" and r.data.startswith("Q")]
+        gg_results = gg_from_ocr + gg_from_q
+        
+        # Regular barcodes (excluding Q codes which are GG)
+        barcode_results = [r for r in all_results if r.source != "gg-label" and not (r.symbology == "CODE39" and r.data.startswith("Q"))]
+        
+        logger.info(f"GG labels: {len(gg_results)} ({len(gg_from_ocr)} from OCR, {len(gg_from_q)} from Q-codes)")
+        logger.info(f"Regular barcodes: {len(barcode_results)}")
         
         # Send: PLACE4174 + photo album + card + GG label + PLACE4174
         logger.info("process_photo_batch: sending PLACE4174")
@@ -146,7 +153,13 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             logger.info(f"process_photo_batch: sending GG labels: {len(gg_results)}")
             gg_lines = ["Наша лейба GG и ее номер:"]
             for gg in gg_results:
-                gg_lines.append(gg.data)
+                if gg.data.startswith("Q") and gg.data[1:].isdigit():
+                    # Q code: show as "Q2623026 (GG765)"
+                    q_num = gg.data[1:]
+                    gg_lines.append(f"Q{q_num}")
+                else:
+                    # Direct GG code
+                    gg_lines.append(gg.data)
             await context.bot.send_message(chat_id, "\n".join(gg_lines))
         
         # Final PLACE4174

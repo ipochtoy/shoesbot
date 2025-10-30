@@ -11,6 +11,9 @@ os.makedirs(LOG_DIR, exist_ok=True)
 _logger = logging.getLogger("shoesbot")
 if not _logger.handlers:
     _logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
+    # Enable DEBUG for decoders to see what they're finding
+    logging.getLogger("shoesbot.gg_label_decoder").setLevel(logging.DEBUG)
+    logging.getLogger("shoesbot.vision_decoder").setLevel(logging.DEBUG)
     fmt = logging.Formatter(
         fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S%z",
