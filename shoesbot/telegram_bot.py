@@ -39,6 +39,7 @@ renderer = CardRenderer(templates_dir=os.path.join(os.path.dirname(__file__), ".
 DEBUG_DEFAULT = os.getenv("DEBUG", "0") in ("1", "true", "True")
 DEBUG_CHATS: set[int] = set()
 USE_PARALLEL_DECODERS = os.getenv("PARALLEL_DECODERS", "1") == "1"
+USE_SMART_SKIP = os.getenv("SMART_SKIP_VISION", "0") == "1"  # Disabled by default
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_html("Пришли фото, извлеку штрихкоды/QR. /ping — проверка.")
@@ -97,9 +98,12 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             buf.seek(0)
             img = Image.open(buf).convert("RGB")
             
-            # Use parallel decoders if enabled
+            # Use smart parallel or regular parallel decoders
             if USE_PARALLEL_DECODERS:
-                results, timeline = await pipeline.run_parallel_debug(img, raw)
+                if USE_SMART_SKIP:
+                    results, timeline = await pipeline.run_smart_parallel_debug(img, raw)
+                else:
+                    results, timeline = await pipeline.run_parallel_debug(img, raw)
             else:
                 results, timeline = pipeline.run_debug(img, raw)
             all_results.extend(results)

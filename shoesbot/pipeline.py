@@ -9,6 +9,10 @@ from shoesbot.decoders.base import Decoder
 class DecoderPipeline:
     def __init__(self, decoders: Sequence[Decoder]):
         self.decoders = list(decoders)
+        # Quick decoders that are fast (ZBar, OpenCV)
+        self.quick_decoders = [d for d in decoders if d.name in ("zbar", "opencv-qr")]
+        # Slow decoders that can be skipped (Vision, GG)
+        self.slow_decoders = [d for d in decoders if d.name in ("vision-ocr", "gg-label")]
 
     def run(self, image: Image.Image, image_bytes: bytes) -> List[Barcode]:
         results: List[Barcode] = []
@@ -53,6 +57,88 @@ class DecoderPipeline:
                 'error': error,
             })
         return results, timeline
+    
+    async def run_smart_parallel_debug(self, image: Image.Image, image_bytes: bytes) -> tuple[List[Barcode], list[Dict[str, Any]]]:
+        """Run quick decoders first, skip slow ones if quick decoders found barcodes."""
+        # Run quick decoders first
+        async def decode_one(decoder):
+            t0 = perf_counter()
+            try:
+                out = await asyncio.to_thread(decoder.decode, image, image_bytes)
+                error = None
+            except Exception as e:
+                out = []
+                error = repr(e)
+            elapsed = perf_counter() - t0
+            return out, error, elapsed
+        
+        # Run quick decoders in parallel
+        quick_tasks = [decode_one(d) for d in self.quick_decoders]
+        quick_results = await asyncio.gather(*quick_tasks)
+        
+        # Check if quick decoders found anything (excluding Q-codes which are GG labels)
+        found_barcodes = False
+        all_results: List[Barcode] = []
+        seen: set[Tuple[str, str]] = set()
+        
+        for out, _, _ in quick_results:
+            for b in out:
+                key = (b.symbology, b.data)
+                if key not in seen:
+                    seen.add(key)
+                    all_results.append(b)
+                    # Check if it's a real barcode (not a Q code)
+                    if not (b.symbology == "CODE39" and b.data.startswith("Q")):
+                        found_barcodes = True
+        
+        timeline: list[Dict[str, Any]] = []
+        decoder_idx = 0
+        
+        # Add quick decoder results to timeline
+        for idx, decoder in enumerate(self.quick_decoders):
+            out, error, elapsed = quick_results[idx]
+            count = 0
+            for b in out:
+                if (b.symbology, b.data) in seen:
+                    count += 1
+            timeline.append({
+                'decoder': getattr(decoder, 'name', decoder.__class__.__name__),
+                'count': count,
+                'ms': int(elapsed * 1000),
+                'error': error,
+            })
+            decoder_idx += 1
+        
+        # Skip slow decoders if we found barcodes
+        if found_barcodes:
+            for decoder in self.slow_decoders:
+                timeline.append({
+                    'decoder': getattr(decoder, 'name', decoder.__class__.__name__),
+                    'count': 0,
+                    'ms': 0,
+                    'error': None,
+                })
+        else:
+            # Run slow decoders in parallel
+            slow_tasks = [decode_one(d) for d in self.slow_decoders]
+            slow_results = await asyncio.gather(*slow_tasks)
+            
+            for idx, (out, error, elapsed) in enumerate(slow_results):
+                count = 0
+                for b in out:
+                    key = (b.symbology, b.data)
+                    if key not in seen:
+                        seen.add(key)
+                        all_results.append(b)
+                        count += 1
+                timeline.append({
+                    'decoder': getattr(self.slow_decoders[idx], 'name', '?'),
+                    'count': count,
+                    'ms': int(elapsed * 1000),
+                    'error': error,
+                })
+        
+        return all_results, timeline
     
     async def run_parallel_debug(self, image: Image.Image, image_bytes: bytes) -> tuple[List[Barcode], list[Dict[str, Any]]]:
         """Run decoders in parallel using asyncio.gather()."""
