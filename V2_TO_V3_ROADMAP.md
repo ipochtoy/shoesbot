@@ -164,3 +164,23 @@ Before 3.0, we could also add:
 - Bulk scan mode (100 photos at once)
 - PDF report generation
 
+---
+
+## 🎯 Alternative: Product Photo Lookup (Community Request)
+
+**Idea:** Find stock photos of products by barcode
+
+**Implementation:**
+1. After scanning barcode, query external API for product images
+2. Suggested APIs: OpenBarcode API, UPCitemdb, Google Product Search
+3. Attach 1-2 best matches to product card (optional, can be toggled)
+4. No 5-photo spam - just enhancement
+
+**Considerations:**
+- Cost per API call (need free tier)
+- Speed impact (add 1-2s delay)
+- Users might not need this feature
+- Better suited for consumer bots, not warehouse inventory
+
+**Recommendation:** Low priority - focus on core warehouse features first
+
