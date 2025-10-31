@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Sequence, Tuple, Dict, Any
 from time import perf_counter
+import asyncio
 from PIL import Image
 from shoesbot.models import Barcode
 from shoesbot.decoders.base import Decoder
@@ -49,6 +50,44 @@ class DecoderPipeline:
                 'decoder': getattr(d, 'name', d.__class__.__name__),
                 'count': count,
                 'ms': dt,
+                'error': error,
+            })
+        return results, timeline
+    
+    async def run_parallel_debug(self, image: Image.Image, image_bytes: bytes) -> tuple[List[Barcode], list[Dict[str, Any]]]:
+        """Run decoders in parallel using asyncio.gather()."""
+        async def decode_one(decoder):
+            t0 = perf_counter()
+            try:
+                out = await asyncio.to_thread(decoder.decode, image, image_bytes)
+                error = None
+            except Exception as e:
+                out = []
+                error = repr(e)
+            elapsed = perf_counter() - t0
+            return out, error, elapsed
+        
+        # Run all decoders in parallel
+        tasks = [decode_one(d) for d in self.decoders]
+        decoder_results = await asyncio.gather(*tasks)
+        
+        # Deduplicate and build timeline
+        results: List[Barcode] = []
+        timeline: list[Dict[str, Any]] = []
+        seen: set[Tuple[str, str]] = set()
+        
+        for idx, (out, error, elapsed) in enumerate(decoder_results):
+            count = 0
+            for b in out:
+                key = (b.symbology, b.data)
+                if key not in seen:
+                    seen.add(key)
+                    results.append(b)
+                    count += 1
+            timeline.append({
+                'decoder': getattr(self.decoders[idx], 'name', self.decoders[idx].__class__.__name__),
+                'count': count,
+                'ms': int(elapsed * 1000),
                 'error': error,
             })
         return results, timeline

@@ -38,6 +38,7 @@ renderer = CardRenderer(templates_dir=os.path.join(os.path.dirname(__file__), ".
 
 DEBUG_DEFAULT = os.getenv("DEBUG", "0") in ("1", "true", "True")
 DEBUG_CHATS: set[int] = set()
+USE_PARALLEL_DECODERS = os.getenv("PARALLEL_DECODERS", "1") == "1"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_html("Пришли фото, извлеку штрихкоды/QR. /ping — проверка.")
@@ -66,7 +67,7 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = f"total={s['total']}, ok={s['ok']}, empty={s['empty']}, per_decoder={s['per_decoder_hits']}"
     await update.message.reply_text(text)
 
-async def process_photo_batch(chat_id: int, photo_items: list, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def process_photo_batch(chat_id: int, photo_items: list, context: ContextTypes.DEFAULT_TYPE, status_msg=None) -> None:
     """Process a batch of photos."""
     try:
         logger.info(f"process_photo_batch: starting, chat={chat_id}, items={len(photo_items)}")
@@ -79,6 +80,14 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         # Process each photo
         for idx, item in enumerate(photo_items):
             logger.info(f"process_photo_batch: processing item {idx+1}/{len(photo_items)}")
+            
+            # Update progress bar
+            if status_msg:
+                try:
+                    await status_msg.edit_text(f"🔍 Обработка фото {idx+1}/{len(photo_items)}...")
+                except Exception as e:
+                    logger.debug(f"Failed to update progress: {e}")
+            
             t0 = perf_counter()
             buf = BytesIO()
             await item.file_obj.download_to_memory(out=buf)
@@ -88,7 +97,11 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             buf.seek(0)
             img = Image.open(buf).convert("RGB")
             
-            results, timeline = pipeline.run_debug(img, raw)
+            # Use parallel decoders if enabled
+            if USE_PARALLEL_DECODERS:
+                results, timeline = await pipeline.run_parallel_debug(img, raw)
+            else:
+                results, timeline = pipeline.run_debug(img, raw)
             all_results.extend(results)
             all_timelines.extend(timeline)
             
@@ -208,13 +221,14 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 flushed = photo_buffer.flush(chat_id)
                 logger.info(f"delayed_process: flushed={flushed is not None}, size={len(flushed) if flushed else 0}")
                 if flushed:
+                    logger.info("delayed_process: calling process_photo_batch")
+                    await process_photo_batch(chat_id, flushed, context, status_msg)
+                    # Delete status message after processing completes
                     try:
                         await status_msg.delete()
                         logger.info("delayed_process: deleted status message")
                     except Exception as e:
                         logger.error(f"delayed_process: failed to delete status: {e}")
-                    logger.info("delayed_process: calling process_photo_batch")
-                    await process_photo_batch(chat_id, flushed, context)
                     logger.info("delayed_process: done")
             
             # Schedule background task
