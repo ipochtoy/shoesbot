@@ -14,26 +14,32 @@
 
 ---
 
-## 🎯 Recommended Next: Airtable Integration
+## 🎯 Recommended Next: Integration with External Data Hub
 
-**Best Architecture:** Bot → Airtable → Everything else
+**Best Architecture:** Bot → Data Hub → Everything else
+
+**Options:**
+- Google Sheets (simple, free, Excel-like)
+- Notion (flexible integrations)
+- Supabase (PostgreSQL, free tier)
+- Custom webhook server
 
 **Why:**
 - Keeps bot fast and simple
-- Airtable becomes central hub
-- Easy integrations with eBay, PhotoRama, APIs
-- Team collaboration without code
+- Central hub for all integrations
+- Easy eBay, PhotoRama automation
+- Team collaboration
 - Clean separation of concerns
 
 **Bot minimal change:**
 ```python
-def send_to_airtable(barcodes, photos):
-    # Send scan results to Airtable
+def send_to_hub(barcodes, photos):
+    # Send scan results to chosen platform
     # One API call, async
     pass
 ```
 
-**Airtable handles:**
+**Data hub handles:**
 - Stock photo lookup
 - eBay template automation
 - PhotoRama workflows
