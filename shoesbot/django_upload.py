@@ -1,0 +1,79 @@
+"""Helper to upload photo batches to Django."""
+import os
+import json
+import base64
+import aiohttp
+from io import BytesIO
+from PIL import Image
+from shoesbot.logging_setup import logger
+
+
+DJANGO_API_URL = os.getenv("DJANGO_API_URL", "http://127.0.0.1:8000/photos/api/upload-batch/")
+
+
+async def upload_batch_to_django(
+    correlation_id: str,
+    chat_id: int,
+    message_ids: list,
+    photo_items: list,
+    all_results: list,
+) -> bool:
+    """Upload photo batch to Django API."""
+    if not DJANGO_API_URL:
+        return False
+    
+    try:
+        photos_data = []
+        for idx, item in enumerate(photo_items):
+            # Download photo
+            buf = BytesIO()
+            await item.file_obj.download_to_memory(out=buf)
+            raw = buf.getvalue()
+            
+            # Convert to base64
+            img_b64 = base64.b64encode(raw).decode('utf-8')
+            
+            photos_data.append({
+                'file_id': item.file_id,
+                'message_id': item.message_id,
+                'image': img_b64,
+            })
+        
+        # Prepare barcodes
+        barcodes_data = []
+        for result in all_results:
+            # Find which photo this barcode came from (simplified - assume first photo for now)
+            barcodes_data.append({
+                'photo_index': 0,  # TODO: track which photo each barcode came from
+                'symbology': result.symbology,
+                'data': result.data,
+                'source': result.source,
+            })
+        
+        payload = {
+            'correlation_id': correlation_id,
+            'chat_id': chat_id,
+            'message_ids': message_ids,
+            'photos': photos_data,
+            'barcodes': barcodes_data,
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                DJANGO_API_URL,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
+                if resp.status == 200:
+                    result = await resp.json()
+                    logger.info(f"django_upload: uploaded batch {correlation_id}: {result}")
+                    return True
+                else:
+                    text = await resp.text()
+                    logger.warning(f"django_upload: failed {resp.status}: {text}")
+                    return False
+                    
+    except Exception as e:
+        logger.error(f"django_upload: error: {e}", exc_info=True)
+        return False
+
