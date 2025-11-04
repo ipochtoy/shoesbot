@@ -5,7 +5,7 @@ from time import time
 from telegram import File
 import logging
 
-BUFFER_TIMEOUT = 1.5  # seconds to wait for more photos
+BUFFER_TIMEOUT = 3.0  # seconds to wait for more photos (до 10 фото)
 
 logger = logging.getLogger("shoesbot.photo_buffer")
 

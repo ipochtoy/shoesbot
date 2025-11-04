@@ -550,12 +550,34 @@ def search_product_with_vision_api(image_path):
                         elif len(page_title) < 150:
                             results['title'] = page_title
                 
-                # Извлекаем изображения похожих товаров
-                visually_similar_images = web_detection.get('visuallySimilarImages', [])
-                if visually_similar_images:
-                    images = [img.get('url', '') for img in visually_similar_images[:6] if img.get('url')]
-                    if images:
-                        results['images'] = images
+                # КРИТИЧНО: Берём fullMatchingImages (точные совпадения товара), а не visuallySimilar (упаковка)
+                full_matching = web_detection.get('fullMatchingImages', [])
+                pages_with_matching = web_detection.get('pagesWithMatchingImages', [])
+                visually_similar = web_detection.get('visuallySimilarImages', [])
+                
+                image_urls = []
+                
+                # 1. Полные совпадения (приоритет) - это стоковые фото товара
+                for img in full_matching[:15]:
+                    url = img.get('url')
+                    if url:
+                        image_urls.append(url)
+                
+                # 2. Страницы с подходящими изображениями товара
+                for page in pages_with_matching[:10]:
+                    url = page.get('url')
+                    if url:
+                        image_urls.append(url)
+                
+                # 3. Визуально похожие (fallback, ограничено)
+                for img in visually_similar[:5]:
+                    url = img.get('url')
+                    if url:
+                        image_urls.append(url)
+                
+                if image_urls:
+                    results['images'] = image_urls[:20]
+                    print(f"Vision API found {len(image_urls)} images: full={len(full_matching)}, pages={len(pages_with_matching)}, similar={len(visually_similar)}")
                 
                 # Извлекаем метки
                 labels = response.get('labelAnnotations', [])
@@ -1448,123 +1470,215 @@ def search_stock_photos(query, photo_paths=None):
 @require_http_methods(["GET"])
 def search_stock_photos_api(request, card_id):
     """API для поиска стоковых фото товара."""
+    print(f"\n{'='*70}")
+    print(f"🚀 STOCK PHOTOS SEARCH STARTED for card_id={card_id}")
+    print(f"{'='*70}\n")
+    
     try:
         card = get_object_or_404(PhotoBatch, id=card_id)
-        
-        # Формируем запрос из названия, бренда и баркодов
-        query_parts = []
-        if card.title:
-            query_parts.append(card.title)
-        if card.brand:
-            query_parts.append(card.brand)
-        
-        # Добавляем первый баркод если есть
+        search_barcode = request.GET.get('barcode', None)
         barcodes = card.get_all_barcodes()
-        if barcodes:
-            query_parts.append(barcodes[0].data)
         
-        query = ' '.join(query_parts) if query_parts else 'product'
+        print(f"📋 Card: title={card.title}, brand={card.brand}, barcodes={len(barcodes)}")
         
-        # Используем OpenAI для улучшения поискового запроса
-        try:
-            api_key = os.getenv('OPENAI_API_KEY')
-            if api_key:
-                enhanced_query_prompt = f'''Ты эксперт по товарам. На основе этой информации о товаре создай оптимальный поисковый запрос для поиска стоковых фото товара в Google Images.
-
-Название: {card.title or 'не указано'}
-Бренд: {card.brand or 'не указан'}
-Баркод: {barcodes[0].data if barcodes else 'нет'}
-
-Верни ТОЛЬКО поисковый запрос на английском языке (2-5 слов), без дополнительных слов или объяснений. Например: "XGO Heavyweight Tech Face Fleece" или "Nike Air Max 270".'''
-                
-                url = 'https://api.openai.com/v1/chat/completions'
-                headers = {
-                    'Authorization': f'Bearer {api_key}',
-                    'Content-Type': 'application/json',
-                }
-                payload = {
-                    'model': 'gpt-4o-mini',
-                    'messages': [{
-                        'role': 'user',
-                        'content': enhanced_query_prompt
-                    }],
-                    'max_tokens': 50,
-                    'temperature': 0.3,
-                }
-                
-                resp = requests.post(url, json=payload, headers=headers, timeout=10)
-                if resp.ok:
-                    data = resp.json()
-                    enhanced_query = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-                    # Убираем кавычки если есть
-                    enhanced_query = enhanced_query.strip('"').strip("'")
-                    if enhanced_query and len(enhanced_query) > 3 and len(enhanced_query) < 100:
-                        query = enhanced_query
-                        print(f"OpenAI enhanced query: '{query}'")
-        except Exception as e:
-            print(f"Error enhancing query with OpenAI: {e}")
-        
-        # Получаем пути к фото товара для поиска через Google Lens
+        # Шаг 1: Определяем товар через OpenAI Vision (анализ фото)
+        product_description = None
         photo_paths = []
-        for photo in card.photos.all()[:2]:  # Берем первые 2 фото
+        
+        for photo in card.photos.all()[:2]:
             if photo.image:
                 try:
                     photo_path = photo.image.path
                     if os.path.exists(photo_path):
                         photo_paths.append(photo_path)
-                except Exception as e:
-                    print(f"Error getting photo path: {e}")
-                    # Если path недоступен, пробуем через URL
-                    try:
-                        request_scheme = request.scheme
-                        request_host = request.get_host()
-                        photo_url = f"{request_scheme}://{request_host}{photo.image.url}"
-                        # Сохраняем URL как fallback
-                        pass
-                    except:
-                        pass
+                except:
+                    pass
         
-        print(f"Searching stock photos for query: '{query}', photos: {len(photo_paths)}")
+        if photo_paths:
+            try:
+                import base64
+                api_key = os.getenv('OPENAI_API_KEY')
+                if api_key:
+                    print(f"🔍 Analyzing {len(photo_paths)} photos with OpenAI Vision...")
+                    
+                    with open(photo_paths[0], 'rb') as f:
+                        img_bytes = f.read()
+                        b64_img = base64.b64encode(img_bytes).decode('utf-8')
+                    
+                    vision_prompt = '''Определи товар на фото максимально точно для поиска стоковых фото.
+
+Верни: "Бренд тип_товара цвет особенности"
+Пример: "Stone Island crew neck sweater black logo patch"
+
+КРИТИЧНО:
+- Если Stone Island (компас) - ОБЯЗАТЕЛЬНО включи бренд
+- НЕ упоминай упаковку/пакет/barcode - опиши САМ ТОВАР
+- Фокус на продукте, а не на том, как он упакован'''
+                    
+                    resp = requests.post('https://api.openai.com/v1/chat/completions', 
+                        json={
+                            'model': 'gpt-4o',
+                            'messages': [{
+                                'role': 'user',
+                                'content': [
+                                    {'type': 'text', 'text': vision_prompt},
+                                    {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{b64_img}'}}
+                                ]
+                            }],
+                            'max_tokens': 80,
+                            'temperature': 0.2
+                        },
+                        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+                        timeout=15
+                    )
+                    
+                    if resp.ok:
+                        product_description = resp.json().get('choices', [{}])[0].get('message', {}).get('content', '').strip().strip('"').strip("'")
+                        print(f"✅ OpenAI Vision identified: '{product_description}'")
+            except Exception as e:
+                print(f"❌ Error in OpenAI Vision: {e}")
         
-        # Сначала пробуем найти фото на eBay
-        ebay_images = []
+        # Шаг 2: Формируем поисковый запрос (убираем баркоды/цифры)
+        query = product_description or card.title or (card.brand + ' product' if card.brand else 'product')
+        
+        # Очищаем от баркодов и упаковочных слов
+        import re
+        query = re.sub(r'\b\d{8,}\b', '', query)  # Убираем длинные числа
+        query = re.sub(r'\b(packaged|packaging|package|plastic|bag|box|boxed|wrapped)\b', '', query, flags=re.IGNORECASE)
+        query = ' '.join(query.split())  # Убираем лишние пробелы
+        
+        print(f"📝 Search query (cleaned): '{query}'")
+        
+        # Шаг 3: Ищем фото из разных источников
+        all_images = []
+        
+        # 3.1. eBay (передаём результат Vision или card.title)
+        print(f"\n🛒 Searching eBay...")
         try:
             from .ai_helpers import search_products_on_ebay
             ebay_result = search_products_on_ebay(
                 brand=card.brand,
-                title=card.title,
-                barcode=barcodes[0].data if barcodes else None
+                title=query,  # Используем результат Vision
+                barcode=search_barcode or (barcodes[0].data if barcodes else None)
             )
             if ebay_result and ebay_result.get('images'):
-                ebay_images = [{
-                    'url': img_url,
-                    'thumbnail': img_url,
-                    'title': f'eBay ({ebay_result.get("price", "N/A")} USD)',
-                    'source': 'ebay'
-                } for img_url in ebay_result['images']]
-                print(f"Found {len(ebay_images)} eBay images")
+                for img_url in ebay_result['images']:
+                    all_images.append({
+                        'url': img_url,
+                        'thumbnail': img_url,
+                        'title': f"eBay ({ebay_result.get('price', 'N/A')} USD)",
+                        'source': 'ebay'
+                    })
+                print(f"✅ eBay: {len(ebay_result['images'])} images")
+            else:
+                print(f"⚠️ eBay: no results")
         except Exception as e:
-            print(f"Error searching eBay: {e}")
+            print(f"❌ eBay error: {e}")
         
-        # Затем ищем через Google/Bing
-        images = search_stock_photos(query, photo_paths=photo_paths if photo_paths else None)
+        # 3.2. Google Lens (Vision Web Detection) - ТОЛЬКО fullMatchingImages
+        print(f"\n🔍 Searching Google Lens...")
+        if photo_paths:
+            try:
+                vision_results = search_product_with_vision_api(photo_paths[0])
+                if vision_results.get('images'):
+                    for img_url in vision_results['images'][:10]:
+                        all_images.append({
+                            'url': img_url,
+                            'thumbnail': img_url,
+                            'title': vision_results.get('title', ''),
+                            'source': 'google_lens'
+                        })
+                    print(f"✅ Google Lens: {len(vision_results['images'])} images")
+                else:
+                    print(f"⚠️ Google Lens: no results")
+            except Exception as e:
+                print(f"❌ Google Lens error: {e}")
         
-        # Объединяем результаты: сначала eBay, потом остальные
-        all_images = ebay_images + images
-        # Убираем дубликаты по URL
+        # 3.3. Google Custom Search
+        print(f"\n🔎 Searching Google Custom Search...")
+        api_key = os.getenv('GOOGLE_CUSTOM_SEARCH_API_KEY')
+        cx = os.getenv('GOOGLE_CUSTOM_SEARCH_ENGINE_ID')
+        
+        if api_key and cx:
+            try:
+                resp = requests.get('https://www.googleapis.com/customsearch/v1', params={
+                    'key': api_key,
+                    'cx': cx,
+                    'q': query,
+                    'searchType': 'image',
+                    'num': 10,
+                    'safe': 'active',
+                    'imgSize': 'large'
+                }, timeout=10)
+                
+                print(f"📡 CSE response: {resp.status_code}")
+                
+                if resp.ok:
+                    data = resp.json()
+                    items = data.get('items', [])
+                    print(f"✅ CSE: {len(items)} items")
+                    for item in items:
+                        all_images.append({
+                            'url': item.get('link'),
+                            'thumbnail': item.get('image', {}).get('thumbnailLink', item.get('link')),
+                            'title': item.get('title', ''),
+                            'source': 'google'
+                        })
+                else:
+                    error_text = resp.text[:200]
+                    print(f"❌ CSE error {resp.status_code}: {error_text}")
+            except Exception as e:
+                print(f"❌ CSE exception: {e}")
+        else:
+            print(f"⚠️ CSE: API key or CX missing")
+        
+        # Шаг 4: Фильтрация и дедупликация
+        print(f"\n🧹 Filtering {len(all_images)} total images...")
+        
+        excluded_domains = [
+            'instagram.com', 'facebook.com', 'fbsbx.com', 'linkedin.com',
+            'media.licdn.com', 'tiktok.com', 'twitter.com', 'pinterest.com',
+            'lookaside.instagram.com', 'lookaside.fbsbx.com'
+        ]
+        
         seen_urls = set()
         unique_images = []
-        for img in all_images:
-            if img['url'] not in seen_urls:
-                seen_urls.add(img['url'])
-                unique_images.append(img)
+        filtered_count = 0
         
-        print(f"Found {len(unique_images)} total stock photos ({len(ebay_images)} from eBay)")
+        for img in all_images:
+            url = img.get('url', '')
+            if not url or url in seen_urls:
+                continue
+            
+            # Фильтруем соцсети
+            is_social = any(domain in url.lower() for domain in excluded_domains)
+            if is_social:
+                filtered_count += 1
+                continue
+            
+            seen_urls.add(url)
+            unique_images.append(img)
+        
+        # Подсчёт источников
+        sources = {}
+        for img in unique_images:
+            src = img.get('source', 'unknown')
+            sources[src] = sources.get(src, 0) + 1
+        
+        print(f"✅ Final: {len(unique_images)} images (filtered {filtered_count})")
+        print(f"📊 Sources: {sources}")
         
         return JsonResponse({
             'success': True,
-            'images': unique_images,
-            'query': query
+            'images': unique_images[:12],
+            'query': query,
+            'debug': {
+                'total_found': len(all_images),
+                'filtered_out': filtered_count,
+                'final_count': len(unique_images),
+                'sources': sources,
+                'version': 'v4.0_simplified'
+            }
         })
         
     except Exception as e:

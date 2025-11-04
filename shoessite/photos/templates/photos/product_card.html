@@ -8,164 +8,338 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f5f5;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        .header {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-        }
-        .header-top {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
             display: flex;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
+            min-height: 100vh;
         }
-        .back-button {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: background 0.3s;
-            white-space: nowrap;
+        
+        /* Sidebar */
+        .sidebar {
+            width: 220px;
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            padding: 12px 0;
+            overflow-y: auto;
             flex-shrink: 0;
         }
-        .back-button:hover {
-            background: rgba(255, 255, 255, 0.3);
+        .sidebar-logo {
+            padding: 0 16px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 12px;
         }
-        .header h1 {
-            font-size: 24px;
-            flex-grow: 1;
-            margin: 0;
-            word-break: break-word;
-            min-width: 0;
+        .sidebar-logo h1 {
+            font-size: 18px;
+            color: #2563eb;
+            font-weight: 600;
         }
-        .header .meta {
+        .sidebar-menu {
+            list-style: none;
+        }
+        .sidebar-menu li {
+            margin-bottom: 4px;
+        }
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 16px;
+            color: #374151;
+            text-decoration: none;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        .sidebar-menu a:hover {
+            background: #f3f4f6;
+        }
+        .sidebar-menu a.active {
+            background: #eff6ff;
+            color: #2563eb;
+            font-weight: 500;
+        }
+        .sidebar-badge {
+            background: #2563eb;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Top Header */
+        .top-header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .top-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .back-link {
+            color: #6b7280;
+            text-decoration: none;
             font-size: 14px;
-            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
-        .content {
-            padding: 30px;
+        .back-link:hover {
+            color: #2563eb;
         }
-        .photos-section {
-            margin-bottom: 30px;
+        .top-header-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #111827;
         }
+        .top-header-meta {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .user-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+        }
+        
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 20px;
+        }
+        
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        .card-header {
+            background: #eff6ff;
+            padding: 10px 15px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .card-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+        }
+        .card-body {
+            padding: 12px 15px;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 6px 12px;
+            border-radius: 5px;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        
+        /* Photos Grid */
         .photos-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
         }
         .photo-item {
-            border: 2px solid #e0e0e0;
+            position: relative;
             border-radius: 8px;
             overflow: hidden;
-            position: relative;
+            background: white;
+            border: 2px solid #e5e7eb;
+            transition: all 0.2s;
+        }
+        .photo-item:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        }
+        .photo-item.main-photo {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
         }
         .photo-item img {
             width: 100%;
-            height: 200px;
+            height: 140px;
             object-fit: cover;
             display: block;
         }
-        .photo-barcodes {
-            padding: 10px;
-            background: #f9f9f9;
-            font-size: 12px;
-        }
-        .barcodes-section {
-            margin-bottom: 30px;
-        }
-        .barcodes-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .barcode-item {
-            padding: 12px;
-            background: #f0f0f0;
-            border-radius: 6px;
-            border-left: 4px solid #3498db;
-        }
-        .barcode-item.gg-label {
-            border-left-color: #e74c3c;
-            background: #ffe6e6;
-        }
-        .barcode-item .symbology {
-            font-weight: bold;
-            color: #555;
-            font-size: 14px;
-        }
-        .barcode-item .data {
-            font-size: 18px;
-            font-family: monospace;
-            margin: 5px 0;
-        }
-        .barcode-item .source {
-            font-size: 12px;
-            color: #888;
-        }
-        .gg-labels-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #fff3cd;
-            border-radius: 8px;
-            border-left: 4px solid #ffc107;
-        }
-        .gg-labels-section h3 {
-            margin-bottom: 10px;
-            color: #856404;
-        }
-        .gg-labels-list {
+        .photo-controls {
+            position: absolute;
+            top: 8px;
+            right: 8px;
             display: flex;
+            gap: 4px;
             flex-wrap: wrap;
-            gap: 10px;
+            max-width: 100px;
         }
-        .gg-label {
-            padding: 8px 15px;
-            background: white;
+        .photo-controls .btn {
+            padding: 3px 5px;
+            font-size: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 3px;
+        }
+        .photo-controls .btn-star {
+            background: rgba(245, 158, 11, 0.9);
+        }
+        .photo-controls .btn-delete {
+            background: rgba(239, 68, 68, 0.9);
+        }
+        .photo-main-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #f59e0b;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            z-index: 10;
+        }
+        .photo-info {
+            padding: 4px 6px;
+            background: #f9fafb;
+            font-size: 10px;
+            color: #6b7280;
+        }
+        
+        /* Barcodes Section */
+        .barcodes-compact {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            padding: 8px 10px;
+            background: #f9fafb;
             border-radius: 6px;
-            font-weight: bold;
-            font-size: 16px;
-            border: 2px solid #ffc107;
         }
-        .product-form {
-            background: #f9f9f9;
-            padding: 25px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+        .barcode-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #e5e7eb;
+            font-size: 12px;
         }
+        .barcode-tag.gg {
+            background: #fef3c7;
+            border-color: #f59e0b;
+            color: #92400e;
+        }
+        .barcode-search-btn {
+            background: #10b981;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        /* AI Summary Section */
+        .ai-summary-section {
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+        }
+        .ai-summary-section .card-header {
+            background: #d1fae5;
+        }
+        .summary-textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: vertical;
+        }
+        
+        /* Form */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
         .form-group label {
             display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: #333;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #374151;
+            font-size: 12px;
         }
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
+            padding: 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 5px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         .form-group textarea {
             min-height: 100px;
@@ -174,30 +348,10 @@
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 12px;
         }
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        .btn-primary {
-            background: #3498db;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #2980b9;
-        }
-        .section-title {
-            font-size: 20px;
-            margin-bottom: 15px;
-            color: #2c3e50;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-        }
+        
+        /* Lightbox */
         .lightbox {
             display: none;
             position: fixed;
@@ -206,7 +360,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             cursor: pointer;
         }
         .lightbox-content {
@@ -231,258 +385,210 @@
             font-weight: bold;
             cursor: pointer;
         }
-        .btn-reprocess:hover {
-            background: #c0392b !important;
+        
+        /* Stock Photos */
+        .stock-photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
         }
-        .processing {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-        .ai-suggestions-box {
-            background: #e8f5e9;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 20px;
-            border-left: 4px solid #4caf50;
-        }
-        .ai-suggestions-box h3 {
-            margin-bottom: 15px;
-            color: #2c3e50;
-        }
-        .ai-field {
-            margin-bottom: 15px;
-            padding: 10px;
-            background: white;
-            border-radius: 4px;
-        }
-        .ai-field label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-        }
-        .ai-field input,
-        .ai-field textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .ai-field textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-        .voice-btn {
-            background: #9b59b6;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-left: 5px;
-        }
-        .voice-btn:hover {
-            background: #8e44ad;
-        }
-        .voice-btn.recording {
-            background: #e74c3c;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        .apply-all-btn {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 12px 24px;
+        .stock-photo-item {
+            position: relative;
             border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            width: 100%;
-            margin-top: 15px;
+            transition: transform 0.2s;
         }
-        .apply-all-btn:hover {
-            background: #229954;
+        .stock-photo-item:hover {
+            transform: scale(1.05);
+            border-color: #2563eb;
+        }
+        .stock-photo-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+        .stock-photo-add {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            padding: 6px;
+            text-align: center;
+        }
+        .stock-photo-add .btn {
+            width: 100%;
+            justify-content: center;
+            padding: 4px 6px;
+            font-size: 11px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="header-top">
-                <a href="/admin/photos/photobatch/" class="back-button">← Вернуться к списку товаров</a>
-            <h1>{{ card.title|default:card.correlation_id }}</h1>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <h1>SHOESBOT</h1>
             </div>
-            <div class="meta">
-                ID: {{ card.correlation_id }} | 
-                Статус: {{ card.get_status_display }} | 
-                Загружено: {{ card.uploaded_at|date:"d.m.Y H:i" }}
+        <ul class="sidebar-menu">
+            <li><a href="/admin/photos/photobatch/" class="active">📦 Карточки товаров</a></li>
+            <li><a href="/admin/photos/photobatch/">📸 Фото <span class="sidebar-badge">{{ photos|length }}</span></a></li>
+            <li><a href="/admin/photos/barcoderesult/">📊 Баркоды</a></li>
+        </ul>
+        </div>
+        
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <div class="top-header">
+            <div class="top-header-left">
+                <a href="/admin/photos/photobatch/" class="back-link">← Назад</a>
+                <div>
+                    <div class="top-header-title">{{ card.title|default:card.correlation_id }}</div>
+                    <div class="top-header-meta">ID: {{ card.correlation_id }} | Статус: {{ card.get_status_display }} | Загружено: {{ card.uploaded_at|date:"d.m.Y H:i" }}</div>
+                </div>
+            </div>
+            <div class="user-menu">
+                <div class="user-icon">👤</div>
             </div>
         </div>
         
-        <div class="content" data-card-id="{{ card.id }}">
-            <div class="photos-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                <h2 class="section-title">📸 Фото ({{ photos|length }})</h2>
+        <!-- Content Area -->
+        <div class="content-area" data-card-id="{{ card.id }}">
+            <!-- Photos Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📸 Фото ({{ photos|length }})</h2>
                     <div style="display: flex; gap: 10px;">
-                        <button type="button" onclick="document.getElementById('file-input').click()" 
-                                style="padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 5px;">
+                        <button type="button" onclick="document.getElementById('file-input').click()" class="btn btn-success btn-sm">
                             ➕ Добавить фото
                         </button>
                         <input type="file" id="file-input" multiple accept="image/*" style="display: none;" onchange="uploadPhotosFromComputer()">
-                        <button type="button" onclick="searchStockPhotos()" 
-                                style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                        <button type="button" onclick="searchStockPhotos()" class="btn btn-primary btn-sm">
                             🔍 Найти стоковые фото
                         </button>
                     </div>
                 </div>
+                <div class="card-body">
                 <div class="photos-grid">
                     {% for photo in photos %}
-                    <div class="photo-item" id="photo-{{ photo.id }}" style="position: relative; {% if photo.is_main %}border: 3px solid #f39c12; box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);{% endif %}">
-                        {% if photo.is_main %}
-                        <div style="position: absolute; top: 5px; left: 5px; background: #f39c12; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; z-index: 11;">
-                            ⭐ Главное
-                        </div>
-                        {% endif %}
-                        <div style="position: absolute; top: 5px; right: 5px; display: flex; gap: 5px; z-index: 10; flex-wrap: wrap; max-width: 100px;">
-                            <button type="button" onclick="setMainPhoto({{ photo.id }})" 
-                                    title="Сделать главной"
-                                    style="padding: 4px 8px; background: rgba(243,156,18,0.9); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                ⭐
-                            </button>
-                            <button type="button" onclick="rotatePhoto({{ photo.id }}, 'left')" 
-                                    title="Повернуть влево (90°)"
-                                    style="padding: 4px 8px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                ↶
-                            </button>
-                            <button type="button" onclick="rotatePhoto({{ photo.id }}, 'right')" 
-                                    title="Повернуть вправо (90°)"
-                                    style="padding: 4px 8px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                ↷
-                            </button>
-                            <button type="button" onclick="deletePhoto({{ photo.id }})" 
-                                    title="Удалить"
-                                    style="padding: 4px 8px; background: rgba(231,76,60,0.9); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                                ✕
-                            </button>
-                        </div>
-                        <img src="{{ photo.image.url }}" alt="Фото {{ photo.id }}" 
-                             onclick="openLightbox('{{ photo.image.url }}')" 
-                             style="cursor: pointer; width: 100%; height: auto;">
-                        <div class="photo-barcodes">
+                        <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" id="photo-{{ photo.id }}">
+                            {% if photo.is_main %}
+                            <div class="photo-main-badge">⭐ Главное</div>
+                            {% endif %}
+                            <div class="photo-controls">
+                                <button type="button" onclick="setMainPhoto({{ photo.id }})" class="btn btn-star" title="Сделать главной">⭐</button>
+                                <button type="button" onclick="rotatePhoto({{ photo.id }}, 'left')" class="btn" title="Повернуть влево">↶</button>
+                                <button type="button" onclick="rotatePhoto({{ photo.id }}, 'right')" class="btn" title="Повернуть вправо">↷</button>
+                                <button type="button" onclick="deletePhoto({{ photo.id }})" class="btn btn-delete" title="Удалить">✕</button>
+                            </div>
+                            <img src="{{ photo.image.url }}" alt="Фото {{ photo.id }}" onclick="openLightbox('{{ photo.image.url }}')" style="cursor: pointer;">
+                            <div class="photo-info">
                             Кодов: {{ photo.barcodes.count }}
-                            <button type="button" onclick="reprocessPhoto({{ photo.id }})" 
-                                    class="btn-reprocess" 
-                                    style="margin-top: 8px; padding: 6px 12px; background: #e74c3c; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">
-                                🔍 Прочесть коды еще раз
+                                <button type="button" onclick="reprocessPhoto({{ photo.id }})" class="btn btn-sm" style="margin-top: 4px; width: 100%; background: #ef4444; color: white; padding: 3px 6px; font-size: 10px;">
+                                    🔍 Коды
                             </button>
                         </div>
                     </div>
                     {% endfor %}
+            </div>
+            
+                    <!-- Stock Photos Section -->
+                    <div id="stock-photos-section" style="display: none; margin-top: 12px;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2>📷 Найденные стоковые фото</h2>
+                                <button type="button" onclick="closeStockPhotos()" class="btn btn-sm" style="background: #6b7280;">
+                                    ✕ Закрыть
+                    </button>
                 </div>
-                
-                <!-- Блок для отображения найденных стоковых фото -->
-                <div id="stock-photos-section" style="display: none; margin-top: 30px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="margin: 0; font-size: 18px;">📷 Найденные стоковые фото</h3>
-                        <button type="button" onclick="closeStockPhotos()" 
-                                style="padding: 6px 12px; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            ✕ Закрыть
-                        </button>
-                    </div>
-                    <div id="stock-photos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-                        <!-- Здесь будут загружаться найденные фото -->
+                            <div class="card-body" style="padding: 8px 12px;">
+                                <div id="stock-photos-grid" class="stock-photos-grid"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Компактный блок баркодов и GG лейб -->
-            <div style="background: #f9f9f9; padding: 10px 15px; border-radius: 8px; margin-top: 20px; margin-bottom: 20px; border-left: 4px solid #3498db;">
-                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                    <span style="font-size: 14px; color: #2c3e50; font-weight: bold;">📊 Баркоды ({{ all_barcodes|length }}):</span>
-                    
-                    {% if all_barcodes %}
-                    {% for barcode in all_barcodes %}
-                    <div style="display: inline-flex; align-items: center; gap: 6px;">
-                        <button type="button" onclick="searchByBarcode('{{ barcode.data }}')" 
-                                style="background: #27ae60; padding: 4px 10px; font-size: 11px; color: white; border: none; border-radius: 4px; cursor: pointer; white-space: nowrap;">
-                            🔍 {{ barcode.data }}
-                    </button>
-                        <span style="padding: 4px 8px; background: {% if barcode.source == 'gg-label' or barcode.data|slice:':1' == 'Q' %}#ffe6e6{% else %}#e8f4f8{% endif %}; border-radius: 4px; font-size: 11px; border-left: 2px solid {% if barcode.source == 'gg-label' or barcode.data|slice:':1' == 'Q' %}#e74c3c{% else %}#3498db{% endif %}; white-space: nowrap;">
-                            <span style="font-weight: bold; color: #555;">{{ barcode.data }}</span>
-                            <span style="color: #888; margin-left: 4px;">• {{ barcode.symbology }}</span>
-                        </span>
-                </div>
-                    {% endfor %}
-                {% endif %}
-                
-                    {% if gg_labels %}
-                    <span style="margin-left: auto; font-size: 12px; color: #856404; font-weight: bold;">🏷️ GG:</span>
-                    {% for gg in gg_labels %}
-                    <span style="padding: 3px 8px; background: #fff3cd; border-radius: 4px; font-size: 11px; font-weight: bold; border: 1px solid #ffc107; white-space: nowrap;">{{ gg }}</span>
+            <!-- Barcodes Section -->
+            <div class="card" style="margin-top: 12px;">
+                <div class="card-body" style="padding: 8px 12px;">
+                    <div class="barcodes-compact">
+                {% if all_barcodes %}
+                        {% for barcode in all_barcodes %}
+                        <div class="barcode-tag" style="cursor: pointer;" onclick="searchByBarcode('{{ barcode.data }}')" title="Поиск товара и стоковых фото по баркоду">
+                            <button type="button" onclick="event.stopPropagation(); searchByBarcode('{{ barcode.data }}')" class="barcode-search-btn">🔍</button>
+                            <span style="font-weight: 500;">{{ barcode.data }}</span>
+                            <span style="color: #9ca3af; font-size: 11px;">{{ barcode.symbology }}</span>
+                        </div>
                         {% endfor %}
-                    {% endif %}
+                        {% endif %}
+                        {% if gg_labels %}
+                        <span style="color: #92400e; font-weight: 600; font-size: 12px;">🏷️ GG:</span>
+                        {% for gg in gg_labels %}
+                        <span class="barcode-tag gg" style="cursor: pointer;" onclick="searchByBarcode('{{ gg }}')" title="Поиск товара и стоковых фото по GG лейбе">{{ gg }}</span>
+                        {% endfor %}
+                        {% endif %}
                     </div>
-                
-                <div id="search-results" style="display: none; margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 6px;">
-                        <div id="search-loading" style="display: none;">Поиск...</div>
+                    <div id="search-results" style="display: none; margin-top: 12px;">
+                        <div id="search-loading" style="display: none; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px;">Поиск...</div>
                         <div id="search-content"></div>
+                    </div>
                 </div>
             </div>
             
-            <div class="ai-summary-section" style="background: #e8f5e9; padding: 25px; border-radius: 8px; margin-top: 30px; margin-bottom: 30px; border-left: 4px solid #4caf50;">
-                <h2 class="section-title" style="color: #2c3e50; margin-bottom: 15px;">
-                    🤖 Сводка от OpenAI
-                </h2>
-                
-                {% if ai_summary %}
-                <div style="background: white; padding: 20px; border-radius: 6px; margin-bottom: 15px;">
-                    <label style="display: block; font-weight: bold; margin-bottom: 10px; color: #333;">📝 Сводка (можно редактировать):</label>
-                    <textarea id="ai-summary-content" 
-                              style="width: 100%; min-height: 300px; padding: 15px; border: 2px solid #ddd; border-radius: 6px; line-height: 1.8; color: #333; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; resize: vertical;"
-                              placeholder="Сводка от OpenAI...">{{ ai_summary }}</textarea>
-                    <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
-                        <button type="button" class="voice-btn" onclick="startVoiceInput('ai-summary-content', event)" 
-                                style="background: #9b59b6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;">
-                            🎤 Диктовать
-                        </button>
-                        <span style="color: #666; font-size: 12px;">Нажми 🎤 чтобы редактировать сводку голосом</span>
-                    </div>
+            <!-- AI Summary Section -->
+            <div class="card ai-summary-section">
+                <div class="card-header">
+                    <h2>🤖 Сводка от OpenAI</h2>
                 </div>
-                <button type="button" onclick="applyAISummaryToCard()" 
-                        style="margin-top: 15px; padding: 12px 24px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
-                    ✅ Применить сводку к карточке
-                </button>
-                {% else %}
-                <div style="background: white; padding: 20px; border-radius: 6px; text-align: center; color: #666;">
-                    <p style="margin-bottom: 15px;">Сводка еще не сгенерирована. Нажми кнопку ниже чтобы создать её.</p>
-                    <button type="button" onclick="generateSummary()" id="generate-summary-btn"
-                            style="padding: 12px 24px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
-                        ✨ Сгенерировать сводку
+                <div class="card-body">
+                    {% if ai_summary %}
+                    <div class="form-group" style="margin-bottom: 8px;">
+                        <label style="font-size: 12px; margin-bottom: 4px;">📝 Сводка (можно редактировать):</label>
+                        <textarea id="ai-summary-content" class="summary-textarea" placeholder="Сводка от OpenAI...">{{ ai_summary }}</textarea>
+                        <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
+                            <button type="button" class="btn btn-sm" onclick="startVoiceInput('ai-summary-content', event)" style="background: #9333ea; color: white;">
+                                🎤 Диктовать
+                            </button>
+                            <span style="color: #6b7280; font-size: 11px;">Нажми 🎤 чтобы редактировать сводку голосом</span>
+                        </div>
+                    </div>
+                    <button type="button" onclick="applyAISummaryToCard()" class="btn btn-success" style="width: 100%;">
+                        ✅ Применить сводку к карточке
                     </button>
-                    <div id="summary-loading" style="display: none; margin-top: 15px; padding: 15px; background: #f0f0f0; border-radius: 6px;">
-                        <p>⏳ Генерирую сводку... Это может занять 10-30 секунд.</p>
+                    {% else %}
+                    <div style="text-align: center; padding: 12px; color: #6b7280;">
+                        <p style="margin-bottom: 10px; font-size: 13px;">Сводка еще не сгенерирована. Нажми кнопку ниже чтобы создать её.</p>
+                        <button type="button" onclick="generateSummary()" id="generate-summary-btn" class="btn btn-success">
+                            ✨ Сгенерировать сводку
+                        </button>
+                        <div id="summary-loading" style="display: none; margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px;">
+                            <p>⏳ Генерирую сводку... Это может занять 10-30 секунд.</p>
                     </div>
                 </div>
                 {% endif %}
+                </div>
             </div>
             
-            
-            <form method="post" class="product-form">
-                {% csrf_token %}
-                <h2 class="section-title">Описание товара</h2>
+            <!-- Product Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>📝 Описание товара</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="product-form">
+                        {% csrf_token %}
                 <div class="form-group">
                     <label>Название товара</label>
                     <input type="text" name="title" value="{{ card.title }}" placeholder="Введите название товара">
                 </div>
-                <div class="form-group" style="width: 100%;">
+                <div class="form-group">
                     <label>Описание</label>
-                    <textarea name="description" placeholder="Подробное описание товара" style="width: 100%; min-height: 200px;">{{ card.description }}</textarea>
+                            <textarea name="description" placeholder="Подробное описание товара" style="width: 100%; min-height: 200px;">{{ card.description }}</textarea>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -501,12 +607,12 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Категория</label>
-                        <input type="text" name="category" value="{{ card.category }}" placeholder="Например: Обувь, Одежда">
+                                <label>Бренд</label>
+                                <input type="text" name="brand" value="{{ card.brand }}" placeholder="Бренд">
                     </div>
                     <div class="form-group">
-                        <label>Бренд</label>
-                        <input type="text" name="brand" value="{{ card.brand }}" placeholder="Название бренда">
+                                <label>Категория</label>
+                                <input type="text" name="category" value="{{ card.category }}" placeholder="Категория">
                     </div>
                 </div>
                 <div class="form-row">
@@ -521,19 +627,53 @@
                 </div>
                 <div class="form-group">
                     <label>SKU/Артикул</label>
-                    <input type="text" name="sku" value="{{ card.sku }}" placeholder="Артикул товара">
+                            <input type="text" name="sku" value="{{ card.sku }}" placeholder="SKU/Артикул">
                 </div>
-                <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                            💾 Сохранить изменения
+                        </button>
             </form>
+                </div>
+            </div>
+                    </div>
+            </div>
             
+    <!-- Lightbox -->
+    <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+        <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+        <div class="lightbox-content" onclick="event.stopPropagation()">
+            <img id="lightbox-img" src="" alt="Увеличенное фото">
         </div>
     </div>
     
-    <!-- Lightbox для просмотра фото -->
-    <div id="lightbox" class="lightbox" onclick="closeLightbox(event)">
-        <span class="lightbox-close" onclick="closeLightbox(event)">&times;</span>
-        <div class="lightbox-content" onclick="event.stopPropagation()">
-            <img id="lightbox-img" src="" alt="Фото">
+    <!-- Lightbox для стоковых фото с навигацией -->
+    <div id="stock-lightbox" class="lightbox" onclick="closeStockLightbox()">
+        <span class="lightbox-close" onclick="closeStockLightbox()">&times;</span>
+        
+        <!-- Стрелки навигации -->
+        <div style="position: absolute; top: 50%; left: 20px; transform: translateY(-50%); z-index: 10001;">
+            <button onclick="event.stopPropagation(); prevStockPhoto()" 
+                    style="background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                ←
+            </button>
+        </div>
+        <div style="position: absolute; top: 50%; right: 20px; transform: translateY(-50%); z-index: 10001;">
+            <button onclick="event.stopPropagation(); nextStockPhoto()" 
+                    style="background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; width: 50px; height: 50px; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                →
+            </button>
+        </div>
+        
+        <div class="lightbox-content" onclick="event.stopPropagation()" style="text-align: center;">
+            <img id="stock-lightbox-img" src="" alt="Стоковое фото" style="max-width: 90vw; max-height: 80vh; object-fit: contain;">
+            <div style="margin-top: 16px;">
+                <button onclick="event.stopPropagation(); addCurrentStockPhoto()" 
+                        class="btn btn-success" 
+                        style="padding: 12px 24px; font-size: 14px;">
+                    ➕ Добавить это фото
+                </button>
+                <div id="stock-photo-counter" style="margin-top: 8px; color: white; font-size: 14px;"></div>
+            </div>
         </div>
     </div>
     
@@ -545,17 +685,70 @@
             lightbox.style.display = 'block';
         }
         
-        function closeLightbox(event) {
-            if (event) {
-                event.stopPropagation();
-            }
+        function closeLightbox() {
             document.getElementById('lightbox').style.display = 'none';
         }
         
-        // Закрытие по Escape
+        // Lightbox для стоковых фото
+        let stockPhotosArray = [];
+        let currentStockPhotoIndex = 0;
+        
+        function openStockPhotoLightbox(index) {
+            if (!stockPhotosArray || stockPhotosArray.length === 0) return;
+            
+            currentStockPhotoIndex = index;
+            const lightbox = document.getElementById('stock-lightbox');
+            const img = document.getElementById('stock-lightbox-img');
+            const counter = document.getElementById('stock-photo-counter');
+            
+            const photo = stockPhotosArray[currentStockPhotoIndex];
+            img.src = photo.url || photo.thumbnail;
+            counter.textContent = `${currentStockPhotoIndex + 1} / ${stockPhotosArray.length}`;
+            
+            lightbox.style.display = 'block';
+        }
+        
+        function closeStockLightbox() {
+            document.getElementById('stock-lightbox').style.display = 'none';
+        }
+        
+        function nextStockPhoto() {
+            if (currentStockPhotoIndex < stockPhotosArray.length - 1) {
+                openStockPhotoLightbox(currentStockPhotoIndex + 1);
+            } else {
+                openStockPhotoLightbox(0); // Зацикливаем
+            }
+        }
+        
+        function prevStockPhoto() {
+            if (currentStockPhotoIndex > 0) {
+                openStockPhotoLightbox(currentStockPhotoIndex - 1);
+            } else {
+                openStockPhotoLightbox(stockPhotosArray.length - 1); // Зацикливаем
+            }
+        }
+        
+        function addCurrentStockPhoto() {
+            const photo = stockPhotosArray[currentStockPhotoIndex];
+            if (photo) {
+                addPhotoFromUrl(photo.url);
+                closeStockLightbox();
+            }
+        }
+        
+        // Обработка клавиш для навигации
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeLightbox();
+            const stockLightbox = document.getElementById('stock-lightbox');
+            if (stockLightbox.style.display === 'block') {
+                if (e.key === 'ArrowRight') {
+                    nextStockPhoto();
+                } else if (e.key === 'ArrowLeft') {
+                    prevStockPhoto();
+                } else if (e.key === 'Escape') {
+                    closeStockLightbox();
+                } else if (e.key === 'Enter') {
+                    addCurrentStockPhoto();
+                }
             }
         });
         
@@ -587,7 +780,6 @@
                             message = `ℹ️ Новых кодов не найдено.\nВсего обработано результатов: ${data.total_results || 0}`;
                         }
                         
-                        // Добавляем информацию об API
                         if (data.api_info) {
                             message += `\n\n📡 Статус API:\n${data.api_info.join('\n')}`;
                         }
@@ -600,7 +792,6 @@
                         }
                         
                         alert(message);
-                        // Перезагружаем страницу для обновления данных
                         window.location.reload();
                     } else {
                         let errorMsg = 'Ошибка: ' + (data.error || 'Неизвестная ошибка');
@@ -615,7 +806,7 @@
                 } finally {
                     photoItem.classList.remove('processing');
                     btn.disabled = false;
-                    btn.textContent = '🔍 Прочесть коды еще раз';
+                    btn.textContent = '🔍 Прочесть коды';
                 }
             }
         }
@@ -636,12 +827,12 @@
         }
         
         async function searchStockPhotos() {
-            const cardId = document.querySelector('.content').dataset.cardId;
+            const cardId = document.querySelector('.content-area').dataset.cardId;
             const stockSection = document.getElementById('stock-photos-section');
             const stockGrid = document.getElementById('stock-photos-grid');
             
             stockSection.style.display = 'block';
-            stockGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;">🔍 Ищу стоковые фото...</div>';
+            stockGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #6b7280;">🔍 Ищу стоковые фото...</div>';
             
             try {
                 const response = await fetch(`/photos/api/search-stock-photos/${cardId}/`, {
@@ -654,41 +845,47 @@
                 const data = await response.json();
                 
                 if (data.success && data.images && data.images.length > 0) {
+                    // Сохраняем массив фото для lightbox
+                    stockPhotosArray = data.images;
+                    
                     stockGrid.innerHTML = '';
                     data.images.forEach((img, index) => {
                         const imgDiv = document.createElement('div');
-                        imgDiv.style.cssText = 'position: relative; border: 2px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s;';
-                        imgDiv.onmouseover = () => imgDiv.style.transform = 'scale(1.05)';
-                        imgDiv.onmouseout = () => imgDiv.style.transform = 'scale(1)';
+                        imgDiv.className = 'stock-photo-item';
+                        imgDiv.style.cursor = 'pointer';
                         
                         const imgEl = document.createElement('img');
                         imgEl.src = img.thumbnail || img.url;
-                        imgEl.style.cssText = 'width: 100%; height: 150px; object-fit: cover; display: block;';
                         imgEl.onerror = function() {
                             this.src = img.url;
                         };
                         
-                        const btnDiv = document.createElement('div');
-                        btnDiv.style.cssText = 'position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); padding: 8px; text-align: center;';
+                        // Клик по фото открывает lightbox
+                        imgDiv.onclick = () => {
+                            openStockPhotoLightbox(index);
+                        };
+                        
+                        const addDiv = document.createElement('div');
+                        addDiv.className = 'stock-photo-add';
                         
                         const addBtn = document.createElement('button');
+                        addBtn.className = 'btn btn-success btn-sm';
                         addBtn.textContent = '+ Добавить';
-                        addBtn.style.cssText = 'padding: 6px 12px; background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;';
                         addBtn.onclick = (e) => {
                             e.stopPropagation();
                             addPhotoFromUrl(img.url);
                         };
                         
-                        btnDiv.appendChild(addBtn);
+                        addDiv.appendChild(addBtn);
                         imgDiv.appendChild(imgEl);
-                        imgDiv.appendChild(btnDiv);
+                        imgDiv.appendChild(addDiv);
                         stockGrid.appendChild(imgDiv);
                     });
                 } else {
-                    stockGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #e74c3c;">❌ Стоковые фото не найдены</div>';
+                    stockGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #ef4444;">❌ Стоковые фото не найдены</div>';
                 }
             } catch (error) {
-                stockGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #e74c3c;">❌ Ошибка: ${error.message}</div>`;
+                stockGrid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #ef4444;">❌ Ошибка: ${error.message}</div>`;
             }
         }
         
@@ -704,9 +901,8 @@
                 return;
             }
             
-            const cardId = document.querySelector('.content').dataset.cardId;
+            const cardId = document.querySelector('.content-area').dataset.cardId;
             
-            // Показываем индикатор загрузки
             const button = fileInput.previousElementSibling;
             const originalText = button.textContent;
             button.disabled = true;
@@ -715,7 +911,6 @@
             let successCount = 0;
             let errorCount = 0;
             
-            // Загружаем все выбранные файлы
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 
@@ -745,19 +940,14 @@
                 }
             }
             
-            // Восстанавливаем кнопку
             button.disabled = false;
             button.textContent = originalText;
-            
-            // Очищаем input
             fileInput.value = '';
             
-            // Показываем результат и перезагружаем страницу
             if (successCount > 0) {
                 if (errorCount > 0) {
                     alert(`Загружено: ${successCount}, ошибок: ${errorCount}`);
                 }
-                // Перезагружаем страницу для обновления фото
                 window.location.reload();
             } else {
                 alert('Ошибка при загрузке фото. Проверь формат и размер файлов.');
@@ -765,7 +955,7 @@
         }
         
         async function addPhotoFromUrl(imageUrl) {
-            const cardId = document.querySelector('.content').dataset.cardId;
+            const cardId = document.querySelector('.content-area').dataset.cardId;
             
             try {
                 const response = await fetch(`/photos/api/add-photo-from-url/${cardId}/`, {
@@ -780,7 +970,6 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Перезагружаем страницу для обновления фото
                     window.location.reload();
                 } else {
                     alert('Ошибка при добавлении фото: ' + (data.error || 'Неизвестная ошибка'));
@@ -807,15 +996,13 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Удаляем элемент из DOM
                     const photoElement = document.getElementById(`photo-${photoId}`);
                     if (photoElement) {
                         photoElement.remove();
                     }
-                    // Обновляем счетчик фото
                     const photosGrid = document.querySelector('.photos-grid');
                     const photoCount = photosGrid.querySelectorAll('.photo-item').length;
-                    const title = document.querySelector('.photos-section .section-title');
+                    const title = document.querySelector('.card-header h2');
                     if (title) {
                         title.textContent = `📸 Фото (${photoCount})`;
                     }
@@ -840,37 +1027,12 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Перезагружаем страницу для обновления порядка
                     window.location.reload();
                 } else {
                     alert('Ошибка при установке главной фото: ' + (data.error || 'Неизвестная ошибка'));
                 }
             } catch (error) {
                 alert('Ошибка при установке главной фото: ' + error.message);
-            }
-        }
-        
-        async function movePhoto(photoId, direction) {
-            try {
-                const response = await fetch(`/photos/api/move-photo/${photoId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': getCookie('csrftoken'),
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ direction: direction }),
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Перезагружаем страницу для обновления порядка
-                    window.location.reload();
-                } else {
-                    alert('Ошибка при перемещении фото: ' + (data.error || 'Неизвестная ошибка'));
-                }
-            } catch (error) {
-                alert('Ошибка при перемещении фото: ' + error.message);
             }
         }
         
@@ -895,7 +1057,6 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Обновляем src изображения с timestamp для обновления кэша
                     if (img) {
                         img.src = data.photo_url + '?t=' + Date.now();
                         img.style.opacity = '1';
@@ -924,473 +1085,242 @@
             contentDiv.innerHTML = '';
             
             try {
-                // Получаем card_id для поиска фото с этим баркодом
-                const contentDiv = document.querySelector('.content');
-                const cardId = contentDiv ? contentDiv.getAttribute('data-card-id') : '';
-                const url = `/photos/api/search-barcode/?barcode=${encodeURIComponent(barcode)}${cardId ? '&card_id=' + cardId : ''}`;
-                
-                console.log('Searching with Google Lens for barcode:', barcode);
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                loadingDiv.style.display = 'none';
-                
-                if (data.error) {
-                    contentDiv.innerHTML = `<p style="color: red;">Ошибка: ${data.error}</p>`;
-                    return;
-                }
-                
-                let html = `<h4>Результаты поиска для: <code>${barcode}</code></h4>`;
-                
-                if (data.title) {
-                    html += `<div style="margin: 10px 0;">
-                        <strong>Название:</strong> 
-                        <input type="text" value="${data.title}" id="found-title" 
-                               style="width: 100%; padding: 8px; margin-top: 5px;">
-                    </div>`;
-                }
-                
-                if (data.description) {
-                    html += `<div style="margin: 10px 0;">
-                        <strong>Описание:</strong>
-                        <textarea id="found-description" style="width: 100%; padding: 8px; margin-top: 5px; min-height: 100px;">${data.description}</textarea>
-                    </div>`;
-                }
-                
-                if (data.images && data.images.length > 0) {
-                    html += `<div style="margin: 10px 0;">
-                        <strong>Найденные фото (${data.images.length}):</strong>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px;">`;
-                    data.images.slice(0, 6).forEach((img, idx) => {
-                        html += `<img src="${img}" style="width: 100%; height: 150px; object-fit: cover; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;" 
-                                     onclick="window.open('${img}', '_blank')" 
-                                     title="Клик для просмотра">`;
-                    });
-                    html += `</div></div>`;
-                }
-                
-                if (data.category) {
-                    html += `<div style="margin: 10px 0;">
-                        <strong>Категория:</strong> 
-                        <input type="text" value="${data.category}" id="found-category" 
-                               style="width: 100%; padding: 8px; margin-top: 5px;">
-                    </div>`;
-                }
-                
-                if (data.brand) {
-                    html += `<div style="margin: 10px 0;">
-                        <strong>Бренд:</strong> 
-                        <input type="text" value="${data.brand}" id="found-brand" 
-                               style="width: 100%; padding: 8px; margin-top: 5px;">
-                    </div>`;
-                }
-                
-                if (data.price) {
-                    html += `<div style="margin: 10px 0;">
-                        <strong>Цена ($):</strong> 
-                        <input type="number" step="0.01" value="${data.price}" id="found-price" 
-                               style="width: 100%; padding: 8px; margin-top: 5px;">
-                    </div>`;
-                }
-                
-                if (data.title || data.description || data.category || data.brand || (data.images && data.images.length > 0)) {
-                    html += `<button type="button" onclick="applySearchResults()" 
-                                     style="margin-top: 15px; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        Применить все найденные данные
-                    </button>`;
-                } else {
-                    html += `<p style="color: #999; padding: 20px; text-align: center;">По этому баркоду ничего не найдено. Попробуй другой баркод или заполни карточку вручную.</p>`;
-                }
-                
-                contentDiv.innerHTML = html;
-                
-            } catch (error) {
-                loadingDiv.style.display = 'none';
-                contentDiv.innerHTML = `<p style="color: red;">Ошибка: ${error.message}</p>`;
-            }
-        }
-        
-        function applySearchResults() {
-            const titleInput = document.getElementById('found-title');
-            const descInput = document.getElementById('found-description');
-            const categoryInput = document.getElementById('found-category');
-            const brandInput = document.getElementById('found-brand');
-            const priceInput = document.getElementById('found-price');
-            
-            let applied = [];
-            
-            if (titleInput && titleInput.value) {
-                document.querySelector('input[name="title"]').value = titleInput.value;
-                applied.push('название');
-            }
-            if (descInput && descInput.value) {
-                document.querySelector('textarea[name="description"]').value = descInput.value;
-                applied.push('описание');
-            }
-            if (categoryInput && categoryInput.value) {
-                document.querySelector('input[name="category"]').value = categoryInput.value;
-                applied.push('категория');
-            }
-            if (brandInput && brandInput.value) {
-                document.querySelector('input[name="brand"]').value = brandInput.value;
-                applied.push('бренд');
-            }
-            if (priceInput && priceInput.value) {
-                document.querySelector('input[name="price"]').value = priceInput.value;
-                applied.push('цена');
-            }
-            
-            if (applied.length > 0) {
-                alert(`✅ Заполнены поля: ${applied.join(', ')}. Нажмите "Сохранить изменения" для сохранения.`);
-            } else {
-                alert('Нет данных для применения.');
-            }
-        }
-        
-        let recognition = null;
-        let currentVoiceField = null;
-        
-        // Инициализация Web Speech API
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.lang = 'ru-RU';
-            recognition.continuous = false;
-            recognition.interimResults = true; // Промежуточные результаты только для индикации
-            
-            recognition.onresult = function(event) {
-                let newFinalTranscript = '';
-                let interimTranscript = '';
-                
-                // Обрабатываем только НОВЫЕ результаты начиная с event.resultIndex
-                // Это предотвращает дублирование уже обработанных результатов
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const transcript = event.results[i][0].transcript;
-                    if (event.results[i].isFinal) {
-                        // Это новый финальный результат - добавляем его
-                        newFinalTranscript += (newFinalTranscript ? ' ' : '') + transcript;
-                    } else if (i === event.results.length - 1) {
-                        // Последний промежуточный результат (самый актуальный)
-                        interimTranscript = transcript;
-                    }
-                }
-                
-                if (currentVoiceField) {
-                    const field = document.getElementById(currentVoiceField);
-                    if (field) {
-                        if (field.tagName === 'TEXTAREA') {
-                            // Для textarea добавляем только финальные результаты
-                            if (newFinalTranscript) {
-                                const currentValue = field.value.trim();
-                                // Убираем предыдущие промежуточные результаты если есть
-                                const cleanValue = currentValue.replace(/\s*\[распознавание\.\.\.\].*$/, '');
-                                // Добавляем новый финальный текст
-                                field.value = cleanValue + (cleanValue ? ' ' : '') + newFinalTranscript;
-                            } else if (interimTranscript) {
-                                // Показываем промежуточный результат с меткой
-                                const currentValue = field.value.trim();
-                                const cleanValue = currentValue.replace(/\s*\[распознавание\.\.\.\].*$/, '');
-                                field.value = cleanValue + (cleanValue ? ' ' : '') + '[распознавание...] ' + interimTranscript;
-                            }
-                        } else {
-                            // Для input заменяем текст
-                            if (newFinalTranscript) {
-                                field.value = newFinalTranscript;
-                            } else if (interimTranscript) {
-                                // Показываем промежуточный результат
-                                field.value = interimTranscript;
-                            }
-                        }
-                        // Триггерим событие input для обновления
-                        field.dispatchEvent(new Event('input', { bubbles: true }));
-                    }
-                }
-                
-                // Если есть финальный результат, останавливаем
-                if (newFinalTranscript) {
-                    stopVoiceInput();
-                }
-            };
-            
-            recognition.onerror = function(event) {
-                console.error('Speech recognition error:', event.error);
-                stopVoiceInput();
-                if (event.error === 'no-speech') {
-                    alert('Не удалось распознать речь. Попробуйте еще раз.');
-                } else {
-                    alert('Ошибка распознавания речи: ' + event.error);
-                }
-            };
-            
-            recognition.onend = function() {
-                console.log('Speech recognition ended');
-                // Не очищаем currentVoiceField сразу, может быть еще результат
-                setTimeout(() => {
-                    stopVoiceInput();
-                }, 100);
-            };
-            
-            recognition.onstart = function() {
-                console.log('Speech recognition started');
-            };
-        }
-        
-        function startVoiceInput(fieldId, evt) {
-            if (!recognition) {
-                alert('Голосовой ввод не поддерживается в вашем браузере');
-                return;
-            }
-            
-            // Останавливаем предыдущее распознавание если есть
-            if (currentVoiceField) {
-                try {
-                    recognition.stop();
-                } catch (e) {
-                    // Уже остановлено
-                }
-                // Ждем немного перед новым запуском
-                setTimeout(() => {
-                    doStartVoiceInput(fieldId, evt);
-                }, 200);
-            } else {
-                doStartVoiceInput(fieldId, evt);
-            }
-        }
-        
-        function doStartVoiceInput(fieldId, evt) {
-            currentVoiceField = fieldId;
-            const btn = evt ? evt.target : document.querySelector(`[onclick*="${fieldId}"]`);
-            if (btn) {
-                btn.classList.add('recording');
-                btn.textContent = '🔴 Запись...';
-            }
-            
-            try {
-                recognition.start();
-                console.log('Started voice input for field:', fieldId);
-            } catch (e) {
-                console.error('Error starting recognition:', e);
-                // Если уже запущено, останавливаем и запускаем заново
-                if (e.message && (e.message.includes('already started') || e.name === 'InvalidStateError')) {
-                    try {
-                        recognition.stop();
-                    } catch (stopErr) {
-                        // Игнорируем ошибки остановки
-                    }
-                    setTimeout(() => {
-                        try {
-                            recognition.start();
-                            console.log('Restarted voice input after error');
-                        } catch (retryErr) {
-                            console.error('Failed to restart:', retryErr);
-                            alert('Не удалось запустить распознавание. Попробуй еще раз.');
-                            stopVoiceInput();
-                        }
-                    }, 300);
-                } else {
-                    alert('Ошибка запуска распознавания: ' + (e.message || e));
-                    stopVoiceInput();
-                }
-            }
-        }
-        
-        function stopVoiceInput() {
-            if (recognition) {
-                try {
-                    recognition.stop();
-                } catch (e) {
-                    // Уже остановлено, это нормально
-                }
-            }
-            
-            if (currentVoiceField) {
-                const btn = document.querySelector(`[onclick*="${currentVoiceField}"]`);
-                if (btn) {
-                    btn.classList.remove('recording');
-                    btn.textContent = '🎤';
-                }
-            }
-            
-            currentVoiceField = null;
-        }
-        
-        function applyAllAISuggestions() {
-            const fields = {
-                'title': 'input[name="title"]',
-                'brand': 'input[name="brand"]',
-                'description': 'textarea[name="description"]',
-                'category': 'input[name="category"]',
-                'price': 'input[name="price"]',
-                'size': 'input[name="size"]',
-                'color': 'input[name="color"]'
-            };
-            
-            let applied = false;
-            
-            for (const [key, selector] of Object.entries(fields)) {
-                const aiField = document.getElementById(`ai-${key}`);
-                const formField = document.querySelector(selector);
-                
-                if (aiField && aiField.value && formField) {
-                    if (key === 'price') {
-                        formField.value = parseFloat(aiField.value) || '';
-                    } else {
-                        formField.value = aiField.value;
-                    }
-                    applied = true;
-                }
-            }
-            
-            if (applied) {
-                alert('✅ Все предложения применены! Нажмите "Сохранить изменения" для сохранения.');
-                // Прокручиваем к форме
-                document.querySelector('.product-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                alert('Нет данных для применения');
-            }
-        }
-        
-        function applyAISuggestions() {
-            applyAllAISuggestions();
-        }
-        
-        async function generateSummary() {
-            const btn = document.getElementById('generate-summary-btn');
-            const loadingDiv = document.getElementById('summary-loading');
-            const summarySection = document.querySelector('.ai-summary-section');
-            
-            if (!btn || !loadingDiv) return;
-            
-            btn.disabled = true;
-            btn.textContent = '⏳ Генерирую...';
-            loadingDiv.style.display = 'block';
-            
-            try {
-                const contentDiv = document.querySelector('.content');
-                const cardId = contentDiv ? contentDiv.getAttribute('data-card-id') : null;
-                
-                if (!cardId) {
-                    throw new Error('ID карточки не найден');
-                }
-                
-                const response = await fetch(`/photos/api/generate-summary/${cardId}/`, {
+                // Ищем информацию о товаре по баркоду
+                const response = await fetch('/photos/api/search-barcode/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCookie('csrftoken'),
-                    }
+                    },
+                    body: JSON.stringify({ barcode: barcode }),
                 });
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Response error:', response.status, errorText);
-                    let errorData;
-                    try {
-                        errorData = JSON.parse(errorText);
-                    } catch (e) {
-                        errorData = { error: errorText };
+                const data = await response.json();
+                
+                // Также ищем стоковые фото по баркоду
+                const cardId = document.querySelector('.content-area').dataset.cardId;
+                let stockPhotosHtml = '';
+                
+                try {
+                    const stockResponse = await fetch(`/photos/api/search-stock-photos/${cardId}/?barcode=${encodeURIComponent(barcode)}`, {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRFToken': getCookie('csrftoken'),
+                        },
+                    });
+                    
+                    const stockData = await stockResponse.json();
+                    
+                    if (stockData.success && stockData.images && stockData.images.length > 0) {
+                        stockPhotosHtml = '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">';
+                        stockPhotosHtml += '<h4 style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #111827;">📷 Найденные стоковые фото:</h4>';
+                        stockPhotosHtml += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">';
+                        stockData.images.forEach(img => {
+                            const imgUrl = img.thumbnail || img.url;
+                            stockPhotosHtml += `<div style="position: relative; border-radius: 4px; overflow: hidden; border: 1px solid #e5e7eb; cursor: pointer;" onclick="addPhotoFromUrl('${img.url}')">`;
+                            stockPhotosHtml += `<img src="${imgUrl}" style="width: 100%; height: 100px; object-fit: cover; display: block;" onerror="this.src='${img.url}'">`;
+                            stockPhotosHtml += `<div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); padding: 4px; text-align: center; font-size: 10px; color: white;">+ Добавить</div>`;
+                            stockPhotosHtml += '</div>';
+                        });
+                        stockPhotosHtml += '</div></div>';
                     }
-                    throw new Error(errorData.error || `HTTP ${response.status}: ${errorText}`);
+                } catch (stockError) {
+                    console.log('Stock photos search error:', stockError);
                 }
+                
+                loadingDiv.style.display = 'none';
+                
+                if (data.success && data.results) {
+                    let html = '<div style="background: white; padding: 12px; border-radius: 6px;">';
+                    
+                    if (data.results.title) {
+                        html += `<h3 style="margin-bottom: 8px; font-size: 14px; color: #111827;">${data.results.title}</h3>`;
+                    }
+                    
+                    if (data.results.description) {
+                        html += `<p style="margin-bottom: 8px; font-size: 12px; color: #374151;">${data.results.description}</p>`;
+                    }
+                    
+                    if (data.results.price) {
+                        html += `<p style="margin-bottom: 8px; font-size: 13px; color: #059669; font-weight: 600;">Цена: $${data.results.price}</p>`;
+                    }
+                    
+                    if (data.results.images && data.results.images.length > 0) {
+                        html += '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">';
+                        html += '<h4 style="font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #111827;">🖼️ Фото товара:</h4>';
+                        html += '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;">';
+                        data.results.images.forEach(img => {
+                            html += `<div style="position: relative; border-radius: 4px; overflow: hidden; border: 1px solid #e5e7eb; cursor: pointer;" onclick="addPhotoFromUrl('${img}')">`;
+                            html += `<img src="${img}" style="width: 100%; height: 100px; object-fit: cover; display: block;">`;
+                            html += `<div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); padding: 4px; text-align: center; font-size: 10px; color: white;">+ Добавить</div>`;
+                            html += '</div>';
+                        });
+                        html += '</div></div>';
+                    }
+                    
+                    html += stockPhotosHtml;
+                    html += '</div>';
+                    contentDiv.innerHTML = html;
+                } else {
+                    // Если информации о товаре нет, но есть стоковые фото - показываем их
+                    if (stockPhotosHtml) {
+                        contentDiv.innerHTML = '<div style="background: white; padding: 12px; border-radius: 6px;"><p style="color: #6b7280; font-size: 12px; margin-bottom: 10px;">Информация о товаре не найдена, но найдены стоковые фото:</p>' + stockPhotosHtml + '</div>';
+                    } else {
+                        contentDiv.innerHTML = '<p style="color: #6b7280; font-size: 12px;">Информация и стоковые фото не найдены</p>';
+                    }
+                }
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                contentDiv.innerHTML = `<p style="color: #ef4444; font-size: 12px;">Ошибка: ${error.message}</p>`;
+            }
+        }
+        
+        function startVoiceInput(elementId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const element = document.getElementById(elementId);
+            if (!element) {
+                console.error('Element not found:', elementId);
+                    return;
+                }
+                
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert('Голосовой ввод не поддерживается в этом браузере');
+                return;
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'ru-RU';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            
+            recognition.onstart = () => {
+                button.classList.add('recording');
+                button.textContent = '🎤 Запись...';
+                button.disabled = true;
+            };
+            
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+                
+                if (element.tagName === 'TEXTAREA') {
+                    const currentValue = element.value;
+                    const currentInterim = currentValue.match(/\[временный текст\]$/);
+                    const baseValue = currentInterim ? currentValue.replace(/\[временный текст\]$/, '') : currentValue;
+                    element.value = baseValue + finalTranscript + (interimTranscript ? interimTranscript + ' [временный текст]' : '');
+                } else {
+                    element.value = finalTranscript + interimTranscript;
+                }
+                
+                element.dispatchEvent(new Event('input', { bubbles: true }));
+            };
+            
+            recognition.onend = () => {
+                button.classList.remove('recording');
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                if (element.tagName === 'TEXTAREA') {
+                    element.value = element.value.replace(/\[временный текст\]$/, '');
+                }
+            };
+            
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                button.classList.remove('recording');
+                button.textContent = originalText;
+                button.disabled = false;
+                alert('Ошибка распознавания речи: ' + event.error);
+            };
+            
+            function doStartVoiceInput() {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    if (e.name === 'InvalidStateError') {
+                        setTimeout(() => {
+                            try {
+                                recognition.stop();
+                                setTimeout(() => recognition.start(), 100);
+                            } catch (e2) {
+                                console.error('Error restarting recognition:', e2);
+                            }
+                        }, 100);
+                } else {
+                        console.error('Error starting recognition:', e);
+                    }
+                }
+            }
+            
+            doStartVoiceInput();
+        }
+        
+        async function generateSummary() {
+            const cardId = document.querySelector('.content-area').dataset.cardId;
+            const btn = document.getElementById('generate-summary-btn');
+            const loadingDiv = document.getElementById('summary-loading');
+            
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Генерирую...';
+            }
+            if (loadingDiv) {
+                loadingDiv.style.display = 'block';
+            }
+            
+            try {
+                const response = await fetch(`/photos/api/generate-summary/${cardId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                });
                 
                 const data = await response.json();
                 
                 if (data.success && data.summary) {
-                    // Создаем контейнер для сводки с textarea
-                    const container = document.createElement('div');
-                    container.style.cssText = 'background: white; padding: 20px; border-radius: 6px; margin-bottom: 15px;';
-                    
-                    const label = document.createElement('label');
-                    label.style.cssText = 'display: block; font-weight: bold; margin-bottom: 10px; color: #333;';
-                    label.textContent = '📝 Сводка (можно редактировать):';
-                    container.appendChild(label);
-                    
-                    const summaryTextarea = document.createElement('textarea');
-                    summaryTextarea.id = 'ai-summary-content';
-                    summaryTextarea.value = data.summary;
-                    summaryTextarea.style.cssText = 'width: 100%; min-height: 300px; padding: 15px; border: 2px solid #ddd; border-radius: 6px; line-height: 1.8; color: #333; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; resize: vertical;';
-                    summaryTextarea.placeholder = 'Сводка от OpenAI...';
-                    container.appendChild(summaryTextarea);
-                    
-                    const voiceContainer = document.createElement('div');
-                    voiceContainer.style.cssText = 'margin-top: 10px; display: flex; gap: 10px; align-items: center;';
-                    
-                    const voiceBtn = document.createElement('button');
-                    voiceBtn.type = 'button';
-                    voiceBtn.className = 'voice-btn';
-                    voiceBtn.onclick = (e) => startVoiceInput('ai-summary-content', e);
-                    voiceBtn.style.cssText = 'background: #9b59b6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px;';
-                    voiceBtn.textContent = '🎤 Диктовать';
-                    voiceContainer.appendChild(voiceBtn);
-                    
-                    const voiceHint = document.createElement('span');
-                    voiceHint.style.cssText = 'color: #666; font-size: 12px;';
-                    voiceHint.textContent = 'Нажми 🎤 чтобы редактировать сводку голосом';
-                    voiceContainer.appendChild(voiceHint);
-                    
-                    container.appendChild(voiceContainer);
-                    
-                    // Заменяем содержимое
-                    const oldContent = summarySection.querySelector('div[style*="background: white"]');
-                    if (oldContent && oldContent.parentNode) {
-                        oldContent.parentNode.replaceChild(container, oldContent);
-                    } else {
-                        // Если нет старого контента, добавляем перед кнопкой
-                        const oldBtn = summarySection.querySelector('button');
-                        if (oldBtn) {
-                            summarySection.insertBefore(container, oldBtn);
-                        } else {
-                            summarySection.appendChild(container);
-                        }
-                    }
-                    
-                    // Добавляем кнопку применения
-                    const applyBtn = document.createElement('button');
-                    applyBtn.type = 'button';
-                    applyBtn.onclick = applyAISummaryToCard;
-                    applyBtn.textContent = '✅ Применить сводку к карточке';
-                    applyBtn.style.cssText = 'margin-top: 15px; padding: 12px 24px; background: #4caf50; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;';
-                    
-                    // Удаляем старые элементы
-                    const oldBtn = summarySection.querySelector('button[id="generate-summary-btn"]');
-                    if (oldBtn) oldBtn.remove();
-                    const oldLoading = summarySection.querySelector('#summary-loading');
-                    if (oldLoading) oldLoading.remove();
-                    const existingApplyBtn = summarySection.querySelector('button[onclick="applyAISummaryToCard()"]');
-                    if (existingApplyBtn) existingApplyBtn.remove();
-                    
-                    // Добавляем кнопку применения
-                    summarySection.appendChild(applyBtn);
-                    
-                    // Убираем alert - сводка уже видна, не нужно кликать
-                    // alert('✅ Сводка сгенерирована!');
+                    window.location.reload();
                 } else {
-                    const errorMsg = data.error || 'Не удалось сгенерировать сводку';
-                    console.error('Summary generation failed:', data);
-                    if (data.traceback) {
-                        console.error('Traceback:', data.traceback);
-                    }
-                    alert('Ошибка: ' + errorMsg + '\n\nПроверь консоль (F12) для деталей.');
+                    alert('Ошибка при генерации сводки: ' + (data.error || 'Неизвестная ошибка'));
                 }
             } catch (error) {
-                console.error('Error:', error);
-                alert('Ошибка при генерации сводки: ' + error.message + '\n\nПроверь консоль (F12) для деталей.');
+                alert('Ошибка при генерации сводки: ' + error.message);
             } finally {
-                btn.disabled = false;
-                btn.textContent = '✨ Сгенерировать сводку';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '✨ Сгенерировать сводку';
+                }
+                if (loadingDiv) {
+                loadingDiv.style.display = 'none';
+                }
             }
         }
         
         function applyAISummaryToCard() {
-            // Парсим сводку и извлекаем информацию для заполнения карточки
             const summaryDiv = document.querySelector('.ai-summary-section');
             if (!summaryDiv) {
                 alert('Сводка не найдена');
                 return;
             }
             
-            const summaryContent = summaryDiv.querySelector('#ai-summary-content');
-            // Если это textarea, берем value, иначе textContent/innerText
+            const summaryContent = document.querySelector('#ai-summary-content');
             const summaryText = summaryContent ? (summaryContent.tagName === 'TEXTAREA' ? summaryContent.value : (summaryContent.textContent || summaryContent.innerText)) : '';
             
             if (!summaryText || summaryText.trim() === '') {
@@ -1401,7 +1331,6 @@
             console.log('Applying summary, text length:', summaryText.length);
             console.log('Summary preview:', summaryText.substring(0, 300));
             
-            // Пытаемся извлечь информацию из сводки
             let title = '';
             let description = '';
             let brand = '';
@@ -1411,38 +1340,31 @@
             let color = '';
             let condition = '';
             
-            // Ищем бренд и модель
             const brandMatch = summaryText.match(/\*\*Бренд и модель:\*\*\s*(.+?)(?:\n|$)/i);
             if (brandMatch) {
                 const brandModel = brandMatch[1].trim();
                 title = brandModel;
-                // Пытаемся разделить бренд и модель
                 const parts = brandModel.split(/\s+/);
                 if (parts.length > 0) {
                     brand = parts[0];
                 }
             }
             
-            // Ищем размер из "Размер и характеристики"
             const sizeMatch = summaryText.match(/\*\*Размер и характеристики:\*\*\s*(.+?)(?:\n|$)/i);
             if (sizeMatch) {
                 const sizeText = sizeMatch[1].trim();
-                // Извлекаем размер (обычно в начале, до запятой или точки с запятой)
                 const sizeParts = sizeText.split(/[,;]/);
                 if (sizeParts.length > 0) {
-                    // Ищем паттерны размера: M, L, XL, 42, 10, и т.д.
                     const sizePattern = /\b([XS]{1,2}|S|M|L|XL{1,2}|XXL|\d{1,2}(?:\.\d)?)\b/i;
                     const foundSize = sizeText.match(sizePattern);
                     if (foundSize) {
                         size = foundSize[1].trim();
                     } else {
-                        // Если не нашли стандартный размер, берем первое слово/число
                         size = sizeParts[0].trim().split(/\s+/)[0];
                     }
                 }
             }
             
-            // Ищем цвет из отдельной секции
             console.log('🔍 Searching for color...');
             const colorMatch = summaryText.match(/\*\*Цвет:\*\*\s*([^\n]+?)(?:\n\*\*|$)/i);
             if (colorMatch) {
@@ -1454,44 +1376,39 @@
                 } else {
                     console.log('⚠️ Color section says "not specified"');
                 }
-            } else {
-                console.log('⚠️ Color section not found, trying alternatives...');
+            }
+            
+            if (!color && sizeMatch) {
+                const sizeText = sizeMatch[1].trim();
+                console.log('Checking size text for color:', sizeText.substring(0, 100));
+                const colorPatterns = [
+                    /цвет[:\s]+([^,;.\n]+)/i,
+                    /color[:\s]+([^,;.\n]+)/i,
+                    /цвет[:\s]+([а-яё]+)/i,
+                    /\b(коричневый|черный|синий|белый|красный|зеленый|желтый|серый|бежевый|розовый|фиолетовый|оранжевый|голубой|бирюзовый)\b/i
+                ];
                 
-                // Если не нашли в отдельной секции, пытаемся извлечь из "Размер и характеристики"
-                if (sizeMatch) {
-                    const sizeText = sizeMatch[1].trim();
-                    console.log('Checking size text for color:', sizeText.substring(0, 100));
-                    // Ищем цвет после слова "цвет:" или "color:"
-                    const colorPatterns = [
-                        /цвет[:\s]+([^,;.\n]+)/i,
-                        /color[:\s]+([^,;.\n]+)/i,
-                        /цвет[:\s]+([а-яё]+)/i,
-                        /\b(коричневый|черный|синий|белый|красный|зеленый|желтый|серый|бежевый|розовый|фиолетовый|оранжевый|голубой|бирюзовый)\b/i
-                    ];
-                    
-                    for (const pattern of colorPatterns) {
-                        const colorInText = sizeText.match(pattern);
-                        if (colorInText) {
-                            color = colorInText[1].trim();
-                            console.log('✅ Found color in characteristics:', color);
-                            break;
-                        }
+                for (const pattern of colorPatterns) {
+                    const colorInText = sizeText.match(pattern);
+                    if (colorInText) {
+                        color = colorInText[1].trim();
+                        console.log('✅ Found color in characteristics:', color);
+                        break;
                     }
                 }
-                
-                // Если все еще не нашли, ищем в тексте описания
-                if (!color) {
-                    console.log('Searching for color keywords in full summary...');
-                    const colorKeywords = ['коричневый', 'черный', 'синий', 'белый', 'красный', 'зеленый', 'желтый', 
-                                        'серый', 'бежевый', 'розовый', 'фиолетовый', 'оранжевый', 'голубой', 'бирюзовый',
-                                        'brown', 'black', 'blue', 'white', 'red', 'green', 'yellow', 'gray', 'grey', 'beige'];
-                    for (const keyword of colorKeywords) {
-                        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-                        if (summaryText.match(regex)) {
-                            color = keyword;
-                            console.log('✅ Found color by keyword:', color);
-                            break;
-                        }
+            }
+            
+            if (!color) {
+                console.log('Searching for color keywords in full summary...');
+                const colorKeywords = ['коричневый', 'черный', 'синий', 'белый', 'красный', 'зеленый', 'желтый', 
+                                    'серый', 'бежевый', 'розовый', 'фиолетовый', 'оранжевый', 'голубой', 'бирюзовый',
+                                    'brown', 'black', 'blue', 'white', 'red', 'green', 'yellow', 'gray', 'grey', 'beige'];
+                for (const keyword of colorKeywords) {
+                    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+                    if (summaryText.match(regex)) {
+                        color = keyword;
+                        console.log('✅ Found color by keyword:', color);
+                        break;
                     }
                 }
             }
@@ -1500,7 +1417,6 @@
                 console.warn('❌ Color not found in summary');
             }
             
-            // Ищем состояние товара
             const conditionMatch = summaryText.match(/\*\*Состояние товара:\*\*\s*(.+?)(?:\n|$)/i);
             if (conditionMatch) {
                 const conditionText = conditionMatch[1].trim().toLowerCase();
@@ -1516,42 +1432,31 @@
                 }
             }
             
-            // Ищем описание для продажи (приоритетно)
-            // Ищем секцию "Описание для продажи" - она последняя в сводке, берем всё до конца
             const descMatch = summaryText.match(/\*\*Описание для продажи:\*\*\s*([\s\S]+)$/i);
             if (descMatch && descMatch[1]) {
                 description = descMatch[1].trim();
-                // Убираем лишние пробелы и переносы в начале/конце
                 description = description.replace(/^\s+|\s+$/g, '');
-                // Убираем пустые строки в начале и конце
                 description = description.replace(/^\n+|\n+$/g, '');
                 console.log('✅ Found description for sale, length:', description.length);
                 console.log('Description preview:', description.substring(0, 100));
             } else {
                 console.warn('⚠️ Description for sale not found in summary');
-                // Если нет специального описания, оставляем пустым
                 description = '';
             }
             
-            // Ищем цену и вычисляем -20%
             console.log('🔍 Searching for price...');
-            // Ищем секцию с ценой - цена может быть на той же строке, на следующей, или через пустую строку
-            // Сначала ищем паттерн который захватывает все до следующей секции
             const priceSectionMatch = summaryText.match(/\*\*Рекомендуемая розничная цена \(USD\):\*\*\s*([\s\S]*?)(?:\n\*\*|$)/i);
             
             if (priceSectionMatch) {
                 let priceText = priceSectionMatch[1].trim();
                 console.log('Price section content:', priceText);
                 
-                // Если цена пустая или содержит только пробелы/переносы, ищем число на следующей строке
                 if (!priceText || priceText === '' || /^\s*$/.test(priceText) || priceText.toLowerCase().includes('не указана') || priceText.toLowerCase().includes('не указано')) {
-                    // Ищем число на следующей строке (может быть пустая строка между заголовком и ценой)
                     const priceOnNextLine = summaryText.match(/\*\*Рекомендуемая розничная цена \(USD\):\*\*\s*\n\s*(\d+\.?\d*)/m);
                     if (priceOnNextLine) {
                         priceText = priceOnNextLine[1].trim();
                         console.log('✅ Price found on next line:', priceText);
                     } else {
-                        // Пробуем найти число через одну или две пустые строки
                         const priceAfterBlank = summaryText.match(/\*\*Рекомендуемая розничная цена \(USD\):\*\*\s*\n\s*\n\s*(\d+\.?\d*)/m);
                         if (priceAfterBlank) {
                             priceText = priceAfterBlank[1].trim();
@@ -1560,16 +1465,13 @@
                     }
                 }
                 
-                // Извлекаем число из текста
                 if (priceText && !priceText.toLowerCase().includes('не указана') && !priceText.toLowerCase().includes('не указано')) {
-                    // Ищем число в тексте (может быть с пробелами, запятыми и т.д.)
                     const numberMatch = priceText.match(/(\d+\.?\d*)/);
                     if (numberMatch) {
                         const cleanPriceText = numberMatch[1].replace(',', '.');
                         const priceNumber = parseFloat(cleanPriceText);
                         console.log('Parsed price number:', priceNumber);
                         if (!isNaN(priceNumber) && priceNumber > 0) {
-                            // Вычисляем цену с учетом -20%
                             const discountedPrice = priceNumber * 0.8;
                             price = discountedPrice.toFixed(2);
                             console.log(`✅ Found price: ${priceNumber}, discounted (-20%): ${price}`);
@@ -1584,29 +1486,24 @@
                 console.warn('⚠️ Price section header not found');
             }
             
-            // Если не нашли в секции или там "Не указана", ищем цену во всей сводке
             if (!price) {
                 console.log('Searching for price in full summary text...');
-                // Пробуем найти цену в тексте по паттернам - более агрессивный поиск
                 const pricePatterns = [
-                    /\*\*Рекомендуемая розничная цена[^\n]*(\d+\.?\d*)/i,  // Цена в заголовке секции
-                    /\b(\d{2,3}(?:\.\d{2})?)\s*(USD|доллар|dollar)/i,  // Число + USD/доллар
+                    /\*\*Рекомендуемая розничная цена[^\n]*(\d+\.?\d*)/i,
+                    /\b(\d{2,3}(?:\.\d{2})?)\s*(USD|доллар|dollar)/i,
                     /USD[:\s]+(\d+\.?\d*)/i,
                     /(\d+\.?\d*)\s*USD/i,
                     /цена[:\s]+(\d+\.?\d*)/i,
                     /price[:\s]+(\d+\.?\d*)/i,
                     /\$\s*(\d+\.?\d*)/i,
-                    /(\d+\.?\d*)\s*доллар/i,
-                    /\b(\d{2,3}(?:\.\d{2})?)\b/  // Любое число от 10 до 999 с опциональными десятичными
+                    /(\d+\.?\d*)\s*доллар/i
                 ];
                 for (const pattern of pricePatterns) {
                     const matches = summaryText.matchAll(new RegExp(pattern.source, pattern.flags + 'g'));
                     for (const match of matches) {
                         const priceNumber = parseFloat(match[1]);
                         console.log('Found potential price:', match[1], 'parsed:', priceNumber, 'context:', match[0]);
-                        // Проверяем что это разумная цена товара (не размер, не год и т.д.)
                         if (!isNaN(priceNumber) && priceNumber >= 10 && priceNumber < 10000) {
-                            // Пропускаем если это размер (M, L, XL = 10, 11, 12 в ASCII или похожие)
                             if (priceNumber < 13) {
                                 console.log('Skipping - likely size code');
                                 continue;
@@ -1625,7 +1522,6 @@
                 }
             }
             
-            // Ищем категорию из "Что это за товар"
             const categoryMatch = summaryText.match(/\*\*Что это за товар:\*\*\s*(.+?)(?:\n|$)/i);
             if (categoryMatch) {
                 const categoryText = categoryMatch[1].toLowerCase();
@@ -1650,7 +1546,6 @@
                 }
             }
             
-            // Заполняем поля
             let applied = [];
             
             console.log('Extracted values:', { title, description: description.substring(0, 50), brand, size, price, category, color, condition });
@@ -1744,7 +1639,6 @@
             }
             
             if (applied.length > 0) {
-                // Прокручиваем к форме без alert
                 document.querySelector('.product-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
                 console.log(`✅ Сводка применена! Заполнены поля: ${applied.join(', ')}`);
             } else {
@@ -1752,172 +1646,6 @@
                 alert('Не удалось извлечь информацию из сводки. Проверь текст вручную и консоль (F12) для деталей.');
             }
         }
-        
-        async function generateFromInstruction() {
-            const instructionField = document.getElementById('voice-instruction');
-            const instruction = instructionField ? instructionField.value.trim() : '';
-            
-            if (!instruction) {
-                alert('Введите инструкцию или продиктуйте её через 🎤');
-                return;
-            }
-            
-            // Получаем card_id из data атрибута
-            const contentDiv = document.querySelector('.content');
-            const cardId = contentDiv ? contentDiv.getAttribute('data-card-id') : null;
-            
-            if (!cardId) {
-                alert('Ошибка: не найден ID карточки');
-                return;
-            }
-            
-            // Показываем индикатор загрузки
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '⏳ Генерирую...';
-            
-            try {
-                const url = `/photos/api/generate-from-instruction/${cardId}/`;
-                console.log('Sending request to:', url);
-                console.log('Instruction:', instruction);
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken'),
-                    },
-                    body: JSON.stringify({ instruction: instruction })
-                });
-                
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Response error:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                const data = await response.json();
-                console.log('API response:', data);
-                
-                if (data.success && data.result) {
-                    const result = data.result;
-                    console.log('Generated result:', result);
-                    console.log('Result keys:', Object.keys(result));
-                    console.log('Result values:', Object.values(result));
-                    
-                    // Если есть ошибка, показываем её
-                    if (result.error) {
-                        alert('Ошибка OpenAI API: ' + result.error + '\n\nПопробуй еще раз или проверь логи сервера.');
-                        return;
-                    }
-                    
-                    let updatedFields = [];
-                    
-                    // Обновляем поля формы напрямую (приоритет)
-                    const fieldMappings = {
-                        'title': 'input[name="title"]',
-                        'description': 'textarea[name="description"]',
-                        'brand': 'input[name="brand"]',
-                        'category': 'input[name="category"]',
-                        'price': 'input[name="price"]',
-                        'size': 'input[name="size"]',
-                        'color': 'input[name="color"]'
-                    };
-                    
-                    for (const [key, selector] of Object.entries(fieldMappings)) {
-                        const value = result[key];
-                        // Проверяем что значение есть и не null/None
-                        if (value !== undefined && value !== null && value !== '' && value !== 'None' && String(value).toLowerCase() !== 'null') {
-                            const field = document.querySelector(selector);
-                            if (field) {
-                                if (key === 'price') {
-                                    const numValue = parseFloat(value);
-                                    if (!isNaN(numValue) && numValue > 0) {
-                                        field.value = numValue;
-                                    } else {
-                                        continue; // Пропускаем невалидную цену
-                                    }
-                                } else {
-                                    field.value = String(value);
-                                }
-                                updatedFields.push(key);
-                                console.log(`Updated ${key}:`, value);
-                                // Триггерим событие для обновления UI
-                                field.dispatchEvent(new Event('input', { bubbles: true }));
-                            } else {
-                                console.warn(`Field not found for ${key} with selector ${selector}`);
-                            }
-                        } else {
-                            console.log(`Skipping ${key} - value is empty/null:`, value);
-                        }
-                    }
-                    
-                    // Также обновляем поля AI предложений если они есть
-                    if (result.title) {
-                        const aiTitle = document.getElementById('ai-title');
-                        if (aiTitle) aiTitle.value = result.title;
-                    }
-                    if (result.brand) {
-                        const aiBrand = document.getElementById('ai-brand');
-                        if (aiBrand) aiBrand.value = result.brand;
-                    }
-                    if (result.description) {
-                        const aiDesc = document.getElementById('ai-description');
-                        if (aiDesc) {
-                            aiDesc.value = result.description;
-                            console.log('Updated AI description field');
-                        }
-                    }
-                    if (result.category) {
-                        const aiCat = document.getElementById('ai-category');
-                        if (aiCat) aiCat.value = result.category;
-                    }
-                    if (result.price) {
-                        const aiPrice = document.getElementById('ai-price');
-                        if (aiPrice) aiPrice.value = result.price;
-                    }
-                    if (result.size) {
-                        const aiSize = document.getElementById('ai-size');
-                        if (aiSize) aiSize.value = result.size;
-                    }
-                    if (result.color) {
-                        const aiColor = document.getElementById('ai-color');
-                        if (aiColor) aiColor.value = result.color;
-                    }
-                    if (result.material) {
-                        const aiMaterial = document.getElementById('ai-material');
-                        if (aiMaterial) aiMaterial.value = result.material;
-                    }
-                    
-                    if (updatedFields.length > 0) {
-                        alert(`✅ Описание сгенерировано! Обновлены поля: ${updatedFields.join(', ')}. Проверь и нажми "Сохранить изменения".`);
-                        // Прокручиваем к форме для видимости
-                        const descField = document.querySelector('textarea[name="description"]');
-                        if (descField) {
-                            descField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            descField.focus();
-                        }
-                    } else {
-                        console.warn('No fields were updated. Result:', result);
-                        console.warn('Available result keys:', Object.keys(result || {}));
-                        alert('⚠️ Результат получен, но не удалось обновить поля. Проверь консоль (F12) для деталей.\n\nРезультат: ' + JSON.stringify(result, null, 2));
-                    }
-                } else {
-                    console.error('API error:', data);
-                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка') + '\nПроверь консоль (F12) для деталей.');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Ошибка при генерации: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
-            }
-        }
     </script>
 </body>
 </html>
-
