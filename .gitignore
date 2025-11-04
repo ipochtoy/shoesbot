@@ -5,3 +5,12 @@ __pycache__/
 bot.log
 data/
 *.log
+
+# Django
+shoessite/db.sqlite3
+shoessite/media/
+shoessite/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
