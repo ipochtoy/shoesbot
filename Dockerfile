@@ -16,9 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
-# Copy entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Copy start script
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
 
 # Collect static files
 RUN python shoessite/manage.py collectstatic --noinput || true
@@ -26,6 +26,6 @@ RUN python shoessite/manage.py collectstatic --noinput || true
 # Expose port
 EXPOSE 8000
 
-# Use entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Simple CMD
+CMD ["/start.sh"]
 
