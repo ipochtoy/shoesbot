@@ -333,19 +333,30 @@
         async function sendGroupToBot(groupId) {
             if (!confirm(`Отправить группу ${groupId} в бота для обработки?`)) return;
             
-            const response = await fetch(`/photos/api/send-group-to-bot/${groupId}/`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            });
+            console.log('Sending group', groupId, 'to bot...');
             
-            const data = await response.json();
-            if (data.success) {
-                alert(`✅ Группа отправлена в бота`);
-                // Удаляем отправленные фото
-                photos = photos.filter(p => p.group_id !== groupId);
-                render();
-            } else {
-                alert(`Ошибка: ${data.error}`);
+            try {
+                const response = await fetch(`/photos/api/send-group-to-bot/${groupId}/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                console.log('Response status:', response.status);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (data.success) {
+                    alert(`✅ Группа отправлена!\n\nОтправлено фото: ${data.photos_sent}\nCorrelation ID: ${data.correlation_id}\n\nОсновной бот создаст карточку.`);
+                    // Удаляем отправленные фото
+                    photos = photos.filter(p => p.group_id !== groupId);
+                    render();
+                } else {
+                    alert(`❌ Ошибка: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error sending to bot:', error);
+                alert(`❌ Ошибка отправки: ${error.message}\n\nПроверь консоль (F12) для деталей.`);
             }
         }
         

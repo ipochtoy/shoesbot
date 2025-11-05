@@ -2266,47 +2266,40 @@ def update_photo_group(request, photo_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def send_group_to_bot(request, group_id):
-    """Отправить группу фото в основной бот для обработки."""
+    """Отправить группу фото напрямую в Telegram основного бота."""
     try:
         import requests as sync_requests
         
         # Получаем фото группы
-        group_photos = PhotoBuffer.objects.filter(group_id=group_id, processed=False).order_by('group_order')
+        group_photos = PhotoBuffer.objects.filter(group_id=group_id, processed=False).order_by('id')
         
         if not group_photos.exists():
             return JsonResponse({'error': 'Группа пуста'}, status=400)
         
-        # Подготавливаем данные для основного бота
-        photos_data = []
-        for p in group_photos:
-            # Читаем изображение
-            with p.image.open('rb') as f:
-                image_data = f.read()
-            
-            photos_data.append({
-                'file_id': p.file_id,
-                'message_id': p.message_id,
-                'image': base64.b64encode(image_data).decode('utf-8'),
-            })
+        # Отправляем в Telegram напрямую через Bot API
+        bot_token = os.getenv('BOT_TOKEN')
+        if not bot_token:
+            return JsonResponse({'error': 'BOT_TOKEN not set'}, status=500)
         
-        # Создаем correlation_id
-        import uuid
-        corr_id = uuid.uuid4().hex[:8]
-        
-        # Отправляем в основной бот через Django API
         chat_id = group_photos.first().chat_id
         
-        payload = {
-            'correlation_id': corr_id,
-            'chat_id': chat_id,
-            'message_ids': [p.message_id for p in group_photos],
-            'photos': photos_data,
-            'barcodes': []  # Баркоды распознаются при обработке
-        }
+        # Отправляем как media_group (album)
+        media_group = []
+        for p in group_photos:
+            media_group.append({
+                'type': 'photo',
+                'media': p.file_id
+            })
         
-        # Отправляем в API основного бота (upload_batch)
-        bot_api_url = 'http://127.0.0.1:8000/photos/api/upload-batch/'
-        resp = sync_requests.post(bot_api_url, json=payload, timeout=30)
+        # Отправка через Telegram API
+        telegram_url = f'https://api.telegram.org/bot{bot_token}/sendMediaGroup'
+        resp = sync_requests.post(telegram_url, json={
+            'chat_id': chat_id,
+            'media': media_group
+        }, timeout=30)
+        
+        print(f"Telegram API response: {resp.status_code}")
+        print(f"Response: {resp.text[:500]}")
         
         if resp.status_code == 200:
             # Помечаем как отправленные
@@ -2314,11 +2307,12 @@ def send_group_to_bot(request, group_id):
             
             return JsonResponse({
                 'success': True,
-                'correlation_id': corr_id,
-                'photos_sent': len(photos_data)
+                'correlation_id': f'web_{group_id}',
+                'photos_sent': len(media_group),
+                'chat_id': chat_id
             })
         else:
-            return JsonResponse({'error': f'Bot API error: {resp.status_code}'}, status=500)
+            return JsonResponse({'error': f'Telegram API error: {resp.status_code} - {resp.text[:200]}'}, status=500)
             
     except Exception as e:
         import traceback
