@@ -23,7 +23,7 @@ RUN python shoessite/manage.py collectstatic --noinput || true
 EXPOSE 8000
 
 # Start command
-CMD python shoessite/manage.py migrate && \
-    cd shoessite && \
+WORKDIR /app/shoessite
+CMD python manage.py migrate && \
     gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT
 
