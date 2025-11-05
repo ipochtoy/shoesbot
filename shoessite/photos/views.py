@@ -2023,16 +2023,16 @@ def enhance_photo_photoroom(request, photo_id):
                 print(f"📁 Product URL: {product_url}", file=sys.stderr)
                 sys.stderr.flush()
                 
-                # Подробный промпт для точности
-                prompt = "e-commerce catalog photo, product exactly as shown, no modifications, soft beige background"
+                # Подробный промпт для точности и реализма
+                prompt = "realistic e-commerce catalog photo, product exactly as shown with accurate colors and textures, remove any price tags, soft beige background"
                 if photo.batch.title:
                     title_lower = photo.batch.title.lower()
                     if any(x in title_lower for x in ['pants', 'брюки', 'штаны']):
-                        prompt = "full body catalog photo, product exactly as is, no styling changes, soft beige background"
+                        prompt = "realistic full body catalog photo, product exactly as is, accurate fabric texture, remove price tags, soft beige background"
                     elif any(x in title_lower for x in ['dress', 'платье']):
-                        prompt = "catalog photo, product exactly as shown, natural pose, soft beige background"
-                    elif any(x in title_lower for x in ['shirt', 'рубашка', 'sweater', 'свитер', 'blouse', 'блузка']):
-                        prompt = "upper body catalog photo, sleeves as shown, no rolling up, product exactly as is, soft beige background"
+                        prompt = "realistic catalog photo, product exactly as shown, natural pose, accurate fabric, remove price tags, soft beige background"
+                    elif any(x in title_lower for x in ['shirt', 'рубашка', 'sweater', 'свитер', 'blouse', 'блузка', 'футболка', 't-shirt']):
+                        prompt = "realistic upper body catalog photo, product exactly as is, accurate colors and print, sleeves as shown, remove price tags, soft beige background"
                 
                 print(f"📋 Prompt: {prompt}", file=sys.stderr)
                 sys.stderr.flush()

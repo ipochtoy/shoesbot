@@ -1068,6 +1068,10 @@
                 const url = `/photos/api/enhance-photo/${photoId}/`;
                 console.log(`📡 Sending POST to: ${url}`);
                 
+                // Увеличенный timeout для FASHN (может занять до 2 минут)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 150000); // 150 секунд = 2.5 минуты
+                
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -1075,7 +1079,8 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ mode: mode }),
-                });
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
                 
                 console.log(`📥 Response status: ${response.status}`);
                 
