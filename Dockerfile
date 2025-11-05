@@ -16,15 +16,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Collect static files
 RUN python shoessite/manage.py collectstatic --noinput || true
 
 # Expose port
 EXPOSE 8000
 
-# Change to Django directory
-WORKDIR /app/shoessite
-
-# Start server (migrations will run separately)
-CMD gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT
+# Use entrypoint script
+ENTRYPOINT ["/app/entrypoint.sh"]
 
