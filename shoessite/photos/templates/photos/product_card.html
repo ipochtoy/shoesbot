@@ -523,7 +523,37 @@
             
             <!-- Barcodes Section -->
             <div class="card" style="margin-top: 12px;">
+                <div class="card-header">
+                    <h2>Баркоды</h2>
+                    <button type="button" onclick="showAddBarcodeForm()" class="btn btn-success btn-sm">
+                        ➕ Добавить баркод
+                    </button>
+                </div>
                 <div class="card-body" style="padding: 8px 12px;">
+                    <div id="add-barcode-form" style="display: none; margin-bottom: 12px; padding: 12px; background: #f0fdf4; border-radius: 6px;">
+                        <div style="display: flex; gap: 8px; align-items: flex-end;">
+                            <div style="flex: 1;">
+                                <label style="font-size: 12px; margin-bottom: 4px; display: block;">Код:</label>
+                                <input type="text" id="barcode-data" placeholder="197613340718" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
+                            </div>
+                            <div style="width: 150px;">
+                                <label style="font-size: 12px; margin-bottom: 4px; display: block;">Тип:</label>
+                                <select id="barcode-type" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 5px;">
+                                    <option value="EAN13">EAN13</option>
+                                    <option value="UPCA">UPC-A</option>
+                                    <option value="CODE39">CODE39</option>
+                                    <option value="CODE128">CODE128</option>
+                                    <option value="QRCODE">QR Code</option>
+                                </select>
+                            </div>
+                            <button type="button" onclick="addBarcodeManually()" class="btn btn-success">
+                                ✅ Добавить
+                            </button>
+                            <button type="button" onclick="hideAddBarcodeForm()" class="btn btn-sm" style="background: #6b7280; color: white;">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
                     <div class="barcodes-compact">
                 {% if all_barcodes %}
                         {% for barcode in all_barcodes %}
@@ -820,6 +850,51 @@
                     btn.disabled = false;
                     btn.textContent = '🔍 Прочесть коды';
                 }
+            }
+        }
+        
+        function showAddBarcodeForm() {
+            document.getElementById('add-barcode-form').style.display = 'block';
+            document.getElementById('barcode-data').focus();
+        }
+        
+        function hideAddBarcodeForm() {
+            document.getElementById('add-barcode-form').style.display = 'none';
+            document.getElementById('barcode-data').value = '';
+        }
+        
+        async function addBarcodeManually() {
+            const cardId = document.querySelector('.content-area').dataset.cardId;
+            const barcodeData = document.getElementById('barcode-data').value.trim();
+            const barcodeType = document.getElementById('barcode-type').value;
+            
+            if (!barcodeData) {
+                alert('Введите код');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/photos/api/add-barcode/${cardId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        barcode: barcodeData,
+                        symbology: barcodeType
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка при добавлении баркода: ' + error.message);
             }
         }
         

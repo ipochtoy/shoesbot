@@ -2077,8 +2077,8 @@ def enhance_photo_photoroom(request, photo_id):
                 cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
                 product_url = f"{cloudflared_url}{photo.image.url}"
                 
-                # Минимальный промпт
-                bg_prompt = "studio background"
+                # Реалистичный промпт для Background Change
+                bg_prompt = "professional product photography, realistic studio background with soft beige gradient, natural lighting, subtle shadows, high quality commercial photo"
                 
                 print(f"📁 URL: {product_url}", file=sys.stderr)
                 print(f"📋 Background: {bg_prompt}", file=sys.stderr)
@@ -2163,6 +2163,57 @@ def enhance_photo_photoroom(request, photo_id):
             'success': False,
             'error': str(e),
             'traceback': tb
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def add_barcode_manually(request, card_id):
+    """Добавить баркод вручную."""
+    try:
+        card = get_object_or_404(PhotoBatch, id=card_id)
+        data = json.loads(request.body)
+        
+        barcode_data = data.get('barcode', '').strip()
+        symbology = data.get('symbology', 'EAN13')
+        
+        if not barcode_data:
+            return JsonResponse({'success': False, 'error': 'Баркод не указан'}, status=400)
+        
+        # Создаем баркод на первом фото карточки
+        first_photo = card.photos.first()
+        if not first_photo:
+            return JsonResponse({'success': False, 'error': 'Нет фото в карточке'}, status=400)
+        
+        # Проверяем что такого баркода еще нет
+        existing = BarcodeResult.objects.filter(
+            photo__batch=card,
+            data=barcode_data,
+            symbology=symbology
+        ).exists()
+        
+        if existing:
+            return JsonResponse({'success': False, 'error': 'Такой баркод уже существует'}, status=400)
+        
+        # Создаем баркод
+        BarcodeResult.objects.create(
+            photo=first_photo,
+            symbology=symbology,
+            data=barcode_data,
+            source='manual'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Баркод добавлен'
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
         }, status=500)
 
 

@@ -25,6 +25,7 @@ from shoesbot.decoders.zbar_decoder import ZBarDecoder
 from shoesbot.decoders.cv_qr_decoder import OpenCvQrDecoder
 from shoesbot.decoders.vision_decoder import VisionDecoder
 from shoesbot.decoders.gg_label_decoder import GGLabelDecoder
+from shoesbot.decoders.openai_barcode_decoder import OpenAIBarcodeDecoder
 from shoesbot.renderers.card_renderer import CardRenderer
 from shoesbot.logging_setup import logger
 from shoesbot.diagnostics import system_info
@@ -36,7 +37,7 @@ from shoesbot.django_upload import upload_batch_to_django
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
 
-pipeline = DecoderPipeline([ZBarDecoder(), OpenCvQrDecoder(), VisionDecoder(), GGLabelDecoder()])
+pipeline = DecoderPipeline([ZBarDecoder(), OpenCvQrDecoder(), VisionDecoder(), GGLabelDecoder(), OpenAIBarcodeDecoder()])
 renderer = CardRenderer(templates_dir=os.path.join(os.path.dirname(__file__), "..", "templates"))
 
 DEBUG_DEFAULT = os.getenv("DEBUG", "0") in ("1", "true", "True")

@@ -18,5 +18,6 @@ urlpatterns = [
     path('api/rotate-photo/<int:photo_id>/', views.rotate_photo, name='rotate_photo'),
     path('api/save-ai-summary/<int:card_id>/', views.save_ai_summary, name='save_ai_summary'),
     path('api/enhance-photo/<int:photo_id>/', views.enhance_photo_photoroom, name='enhance_photo_photoroom'),
+    path('api/add-barcode/<int:card_id>/', views.add_barcode_manually, name='add_barcode_manually'),
 ]
 
