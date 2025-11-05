@@ -137,8 +137,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if resp.status == 200:
                     print(f"✅ Photo {file_id[:20]} saved to buffer")
                     photo_stats['successfully_saved'] += 1
-                    # Реакция подтверждения
-                    await update.message.react("👍")
                     
                     # Каждые 10 фото - промежуточный отчет
                     if photo_stats['total_received'] % 10 == 0:
@@ -149,7 +147,6 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else:
                     print(f"❌ Django error: {resp.status}")
                     photo_stats['errors'] += 1
-                    await update.message.react("❌")
         
         # Таймер для финального репорта (если 5 секунд нет новых фото)
         if hasattr(context, 'job_queue'):
