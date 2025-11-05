@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["python39", "postgresql"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.build]
+cmds = ["python shoessite/manage.py collectstatic --noinput"]
+
+[start]
+cmd = "python shoessite/manage.py migrate && cd shoessite && gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT"
+
