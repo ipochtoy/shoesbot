@@ -158,6 +158,85 @@ def generate_model_with_product(
         return None
 
 
+def change_background(image_url: str, background_prompt: str = "studio background") -> Optional[str]:
+    """
+    Меняет фон через FASHN Background Change.
+    
+    Args:
+        image_url: Публичный URL изображения
+        background_prompt: Описание фона
+    
+    Returns:
+        URL обработанного изображения
+    """
+    log_file = '/tmp/fashn_bg_change.log'
+    
+    def log(msg):
+        with open(log_file, 'a') as f:
+            f.write(f"{msg}\n")
+        print(msg)
+    
+    log(f"\n{'='*70}")
+    log(f"FASHN Background Change")
+    log(f"Image: {image_url}")
+    log(f"Prompt: {background_prompt}")
+    
+    if not FASHN_API_KEY:
+        return None
+    
+    try:
+        headers = {
+            'Authorization': f'Bearer {FASHN_API_KEY}',
+            'Content-Type': 'application/json',
+        }
+        
+        response = requests.post(
+            f'{FASHN_API_URL}/run',
+            headers=headers,
+            json={
+                'model_name': 'background-change',
+                'inputs': {
+                    'image': image_url,
+                    'prompt': background_prompt,
+                    'output_format': 'jpeg'
+                }
+            },
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            log(f"❌ Submit failed: {response.status_code}")
+            return None
+        
+        prediction_id = response.json().get('id')
+        log(f"Prediction ID: {prediction_id}")
+        
+        # Poll
+        for attempt in range(40):
+            time.sleep(2)
+            status_resp = requests.get(f'{FASHN_API_URL}/status/{prediction_id}', headers=headers, timeout=10)
+            status = status_resp.json().get('status')
+            
+            log(f"Attempt {attempt + 1}: {status}")
+            
+            if status == 'completed':
+                output = status_resp.json().get('output', [])
+                if output:
+                    log(f"✅ Done: {output[0]}")
+                    return output[0]
+                return None
+            elif status == 'failed':
+                log(f"❌ Failed")
+                return None
+        
+        log("❌ Timeout")
+        return None
+        
+    except Exception as e:
+        log(f"❌ Exception: {e}")
+        return None
+
+
 def download_image_from_url(url: str) -> Optional[bytes]:
     """Скачивает изображение по URL."""
     try:
