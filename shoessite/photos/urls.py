@@ -16,5 +16,7 @@ urlpatterns = [
     path('api/move-photo/<int:photo_id>/', views.move_photo, name='move_photo'),
     path('api/delete-photo/<int:photo_id>/', views.delete_photo, name='delete_photo'),
     path('api/rotate-photo/<int:photo_id>/', views.rotate_photo, name='rotate_photo'),
+    path('api/save-ai-summary/<int:card_id>/', views.save_ai_summary, name='save_ai_summary'),
+    path('api/enhance-photo/<int:photo_id>/', views.enhance_photo_photoroom, name='enhance_photo_photoroom'),
 ]
 

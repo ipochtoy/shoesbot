@@ -40,6 +40,7 @@ class PhotoBatch(models.Model):
     size = models.CharField(max_length=100, blank=True, verbose_name='Размер')
     color = models.CharField(max_length=100, blank=True, verbose_name='Цвет')
     sku = models.CharField(max_length=200, blank=True, verbose_name='SKU/Артикул')
+    ai_summary = models.TextField(blank=True, verbose_name='AI Сводка')
     
     class Meta:
         ordering = ['-uploaded_at']

@@ -491,6 +491,14 @@
                                 <button type="button" onclick="reprocessPhoto({{ photo.id }})" class="btn btn-sm" style="margin-top: 4px; width: 100%; background: #ef4444; color: white; padding: 3px 6px; font-size: 10px;">
                                     🔍 Коды
                             </button>
+                                <div style="display: flex; gap: 2px; margin-top: 4px;">
+                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" class="btn btn-sm" style="flex: 1; background: #8b5cf6; color: white; padding: 3px 4px; font-size: 9px;" title="Генерация модели (FASHN AI, ~30 сек)">
+                                        👤
+                                    </button>
+                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" class="btn btn-sm" style="flex: 1; background: #ec4899; color: white; padding: 3px 4px; font-size: 9px;" title="Улучшить фото (Photoroom)">
+                                        ✨
+                                    </button>
+                                </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -543,34 +551,38 @@
             <!-- AI Summary Section -->
             <div class="card ai-summary-section">
                 <div class="card-header">
-                    <h2>🤖 Сводка от OpenAI</h2>
+                    <h2>🤖 AI Генерация</h2>
                 </div>
                 <div class="card-body">
-                    {% if ai_summary %}
-                    <div class="form-group" style="margin-bottom: 8px;">
-                        <label style="font-size: 12px; margin-bottom: 4px;">📝 Сводка (можно редактировать):</label>
-                        <textarea id="ai-summary-content" class="summary-textarea" placeholder="Сводка от OpenAI...">{{ ai_summary }}</textarea>
-                        <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
-                            <button type="button" class="btn btn-sm" onclick="startVoiceInput('ai-summary-content', event)" style="background: #9333ea; color: white;">
-                                🎤 Диктовать
-                            </button>
-                            <span style="color: #6b7280; font-size: 11px;">Нажми 🎤 чтобы редактировать сводку голосом</span>
-                        </div>
-                    </div>
-                    <button type="button" onclick="applyAISummaryToCard()" class="btn btn-success" style="width: 100%;">
-                        ✅ Применить сводку к карточке
-                    </button>
-                    {% else %}
-                    <div style="text-align: center; padding: 12px; color: #6b7280;">
-                        <p style="margin-bottom: 10px; font-size: 13px;">Сводка еще не сгенерирована. Нажми кнопку ниже чтобы создать её.</p>
-                        <button type="button" onclick="generateSummary()" id="generate-summary-btn" class="btn btn-success">
-                            ✨ Сгенерировать сводку
+                    <div style="text-align: center; padding: 12px;">
+                        <button type="button" onclick="generateSummary()" id="generate-summary-btn" class="btn btn-success" style="width: 100%;">
+                            ✨ Сгенерировать описание товара
                         </button>
                         <div id="summary-loading" style="display: none; margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px;">
-                            <p>⏳ Генерирую сводку... Это может занять 10-30 секунд.</p>
+                            <p>⏳ Генерирую описание... Это может занять 10-30 секунд.</p>
+                        </div>
+                        {% if ai_summary %}
+                        <details style="margin-top: 12px; text-align: left;">
+                            <summary style="cursor: pointer; font-size: 12px; color: #6b7280; padding: 8px; background: #f9fafb; border-radius: 4px;">
+                                📝 Показать/редактировать последнюю сводку
+                            </summary>
+                            <div style="margin-top: 8px;">
+                                <textarea id="ai-summary-content" class="summary-textarea" placeholder="Сводка от OpenAI...">{{ ai_summary }}</textarea>
+                                <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
+                                    <button type="button" class="btn btn-sm" onclick="startVoiceInput('ai-summary-content', event)" style="background: #9333ea; color: white;">
+                                        🎤 Диктовать
+                                    </button>
+                                    <button type="button" class="btn btn-sm" onclick="saveAISummary()" style="background: #6366f1; color: white;">
+                                        💾 Сохранить
+                                    </button>
+                                    <button type="button" onclick="applyAISummaryToCard()" class="btn btn-sm" style="background: #10b981; color: white;">
+                                        ✅ Применить к полям
+                                    </button>
+                                </div>
+                            </div>
+                        </details>
+                        {% endif %}
                     </div>
-                </div>
-                {% endif %}
                 </div>
             </div>
             
@@ -1036,6 +1048,66 @@
             }
         }
         
+        async function enhancePhoto(photoId, mode = 'ghost_mannequin') {
+            const photoElement = document.getElementById(`photo-${photoId}`);
+            const img = photoElement ? photoElement.querySelector('img') : null;
+            
+            console.log(`🚀 Starting enhancePhoto: photoId=${photoId}, mode=${mode}`);
+            
+            if (img) {
+                img.style.opacity = '0.5';
+                console.log('✅ Set image opacity to 0.5');
+            } else {
+                console.warn('⚠️ Image element not found');
+            }
+            
+            const modeText = mode === 'ghost_mannequin' ? 'Генерирую модель (может занять 30-60 сек)' : 'Улучшаю фото';
+            console.log(`${modeText} для фото ${photoId}...`);
+            
+            try {
+                const url = `/photos/api/enhance-photo/${photoId}/`;
+                console.log(`📡 Sending POST to: ${url}`);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ mode: mode }),
+                });
+                
+                console.log(`📥 Response status: ${response.status}`);
+                
+                const data = await response.json();
+                console.log('📥 Response data:', data);
+                
+                if (data.success) {
+                    console.log(`✅ ${data.message}`);
+                    // Перезагружаем страницу чтобы показать новое фото
+                    if (data.reload) {
+                        console.log('🔄 Reloading page...');
+                        window.location.reload();
+                    } else if (img) {
+                        img.src = data.photo_url + '?t=' + Date.now();
+                        img.style.opacity = '1';
+                    }
+                } else {
+                    console.error('❌ Photoroom API error:', data.error);
+                    alert(`❌ Ошибка Photoroom:\n${data.error}\n\nПроверь консоль (F12) для деталей`);
+                    if (img) {
+                        img.style.opacity = '1';
+                    }
+                }
+            } catch (error) {
+                console.error('❌ Exception in enhancePhoto:', error);
+                alert(`❌ Ошибка при обработке:\n${error.message}\n\nПроверь консоль (F12) для деталей`);
+                if (img) {
+                    img.style.opacity = '1';
+                }
+            }
+        }
+        
         async function rotatePhoto(photoId, direction = 'right') {
             const photoElement = document.getElementById(`photo-${photoId}`);
             const img = photoElement ? photoElement.querySelector('img') : null;
@@ -1271,6 +1343,38 @@
             doStartVoiceInput();
         }
         
+        async function saveAISummary() {
+            const cardId = document.querySelector('.content-area').dataset.cardId;
+            const summaryContent = document.querySelector('#ai-summary-content');
+            const summaryText = summaryContent ? summaryContent.value : '';
+            
+            if (!summaryText || summaryText.trim() === '') {
+                alert('Сводка пуста');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/photos/api/save-ai-summary/${cardId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ summary: summaryText }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Сводка сохранена');
+                } else {
+                    alert('Ошибка при сохранении сводки: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка при сохранении сводки: ' + error.message);
+            }
+        }
+        
         async function generateSummary() {
             const cardId = document.querySelector('.content-area').dataset.cardId;
             const btn = document.getElementById('generate-summary-btn');
@@ -1296,40 +1400,52 @@
                 const data = await response.json();
                 
                 if (data.success && data.summary) {
-                    window.location.reload();
+                    console.log('✅ Summary generated, applying to card fields...');
+                    
+                    // Автоматически применяем сводку к полям
+                    const summaryText = data.summary;
+                    
+                    // Проверяем что это полноценное описание (минимум 50 символов)
+                    if (summaryText.length < 50) {
+                        console.error('Description too short:', summaryText);
+                        window.location.reload();
+                        return;
+                    }
+                    
+                    const applied = await autoApplySummary(summaryText);
+                    
+                    if (applied && applied.length > 0) {
+                        console.log(`✅ Applied fields: ${applied.join(', ')}`);
+                        // Сохраняем форму автоматически
+                        const form = document.querySelector('.product-form');
+                        if (form) {
+                            form.submit();
+                        }
+                    } else {
+                        console.error('Failed to extract data from summary');
+                        window.location.reload();
+                    }
                 } else {
-                    alert('Ошибка при генерации сводки: ' + (data.error || 'Неизвестная ошибка'));
+                    console.error('Generation failed:', data.error);
+                    window.location.reload();
                 }
             } catch (error) {
-                alert('Ошибка при генерации сводки: ' + error.message);
+                console.error('Ошибка при генерации сводки:', error);
+                window.location.reload();
             } finally {
                 if (btn) {
                     btn.disabled = false;
-                    btn.textContent = '✨ Сгенерировать сводку';
+                    btn.textContent = '✨ Сгенерировать описание товара';
                 }
                 if (loadingDiv) {
-                loadingDiv.style.display = 'none';
+                    loadingDiv.style.display = 'none';
                 }
             }
         }
         
-        function applyAISummaryToCard() {
-            const summaryDiv = document.querySelector('.ai-summary-section');
-            if (!summaryDiv) {
-                alert('Сводка не найдена');
-                return;
-            }
-            
-            const summaryContent = document.querySelector('#ai-summary-content');
-            const summaryText = summaryContent ? (summaryContent.tagName === 'TEXTAREA' ? summaryContent.value : (summaryContent.textContent || summaryContent.innerText)) : '';
-            
-            if (!summaryText || summaryText.trim() === '') {
-                alert('Сводка пуста');
-                return;
-            }
-            
-            console.log('Applying summary, text length:', summaryText.length);
-            console.log('Summary preview:', summaryText.substring(0, 300));
+        async function autoApplySummary(summaryText) {
+            // Автоматическое применение сводки к полям (без alert и скролла)
+            console.log('📋 Auto-applying summary, text length:', summaryText.length);
             
             let title = '';
             let description = '';
@@ -1340,31 +1456,178 @@
             let color = '';
             let condition = '';
             
-            const brandMatch = summaryText.match(/\*\*Бренд и модель:\*\*\s*(.+?)(?:\n|$)/i);
+            // Парсим все поля (используем ту же логику что и в applyAISummaryToCard)
+            return parseSummaryAndFillFields(summaryText, true);
+        }
+        
+        function parseSummaryAndFillFields(summaryText, silent = false) {
+            if (!summaryText || summaryText.trim() === '') {
+                if (!silent) alert('Сводка пуста');
+                return null;
+            }
+            
+            if (!silent) {
+                console.log('📋 Applying summary, text length:', summaryText.length);
+                console.log('📋 Summary preview:', summaryText.substring(0, 300));
+            }
+            
+            let title = '';
+            let description = '';
+            let brand = '';
+            let category = '';
+            let size = '';
+            let price = '';
+            let color = '';
+            let condition = '';
+            
+            // 1. Название товара: из "Бренд и модель" или из "Что это за товар" или из описания
+            const brandMatch = summaryText.match(/\*\*Бренд и модель:\*\*\s*(.+?)(?:\n\*\*|$)/i);
             if (brandMatch) {
                 const brandModel = brandMatch[1].trim();
                 title = brandModel;
+                // Извлекаем бренд (первое слово)
                 const parts = brandModel.split(/\s+/);
                 if (parts.length > 0) {
                     brand = parts[0];
                 }
+                console.log('✅ Title from brand&model:', title);
             }
             
-            const sizeMatch = summaryText.match(/\*\*Размер и характеристики:\*\*\s*(.+?)(?:\n|$)/i);
-            if (sizeMatch) {
-                const sizeText = sizeMatch[1].trim();
-                const sizeParts = sizeText.split(/[,;]/);
-                if (sizeParts.length > 0) {
-                    const sizePattern = /\b([XS]{1,2}|S|M|L|XL{1,2}|XXL|\d{1,2}(?:\.\d)?)\b/i;
-                    const foundSize = sizeText.match(sizePattern);
-                    if (foundSize) {
-                        size = foundSize[1].trim();
-                    } else {
-                        size = sizeParts[0].trim().split(/\s+/)[0];
+            // Если нет названия, пробуем из "Что это за товар"
+            if (!title) {
+                const whatMatch = summaryText.match(/\*\*Что это за товар:\*\*\s*(.+?)(?:\n\*\*|$)/i);
+                if (whatMatch) {
+                    const whatText = whatMatch[1].trim();
+                    // Берем первое предложение как название
+                    title = whatText.split(/[\.\n]/)[0].trim();
+                    console.log('✅ Title from "Что это за товар":', title);
+                }
+            }
+            
+            // Если всё ещё нет названия, извлекаем из описания
+            if (!title) {
+                const descMatch = summaryText.match(/\*\*Описание для продажи:\*\*\s*([\s\S]+?)(?:\n\*\*|$)/i);
+                if (descMatch) {
+                    const descText = descMatch[1].trim();
+                    // Извлекаем бренд и тип товара из описания
+                    // Паттерны для извлечения короткого названия
+                    const brandPatterns = [
+                        // Расширенный список брендов
+                        // "Stone Island" в начале
+                        /^(Stone Island|Tommy Hilfiger|Victoria's Secret|Calvin Klein|Ralph Lauren|Hugo Boss|Lacoste|Guess|Armani|Zara|H&M|XGO|Nike|Adidas|Puma|Reebok|Under Armour|The North Face|Patagonia|Columbia|Levi's|Wrangler|Lee|Gap|Old Navy|Banana Republic|J\.Crew)\s+(черн\w+|бел\w+|син\w+|красн\w+|зелен\w+|сер\w+|коричнев\w+|бежев\w+|розов\w+)?\s*(свитер|футболка|кофта|худи|штаны|брюки|куртка|термобелье|трусы|белье|джинсы|шорты|майка|рубашка|блузка|платье|юбка)/i,
+                        // "черный свитер от Tommy Hilfiger"
+                        /(черн\w+|бел\w+|син\w+|красн\w+|зелен\w+|сер\w+|коричнев\w+|бежев\w+|розов\w+)?\s*(свитер|футболка|кофта|худи|штаны|брюки|куртка|термобелье|трусы|белье|рубашка|блузка)\s+от\s+(Stone Island|Tommy Hilfiger|Victoria's Secret|Calvin Klein|Ralph Lauren|Hugo Boss|Lacoste|Guess|Armani|Zara|H&M|XGO|Nike|Adidas|Puma)/i,
+                        // "свитер от Tommy Hilfiger"
+                        /(свитер|футболка|кофта|худи|штаны|брюки|куртка|термобелье|трусы|белье|рубашка|блузка)\s+от\s+(Stone Island|Tommy Hilfiger|Victoria's Secret|Calvin Klein|Ralph Lauren|Hugo Boss|Lacoste|Guess|Armani|Zara|H&M|XGO|Nike|Adidas|Puma|The North Face)/i,
+                        // "черный свитер"
+                        /(черн\w+|бел\w+|син\w+|красн\w+|зелен\w+|сер\w+|коричнев\w+|бежев\w+|розов\w+)\s+(свитер|футболка|кофта|худи|штаны|брюки|куртка|термобелье|трусы|белье|рубашка|блузка)/i
+                    ];
+                    
+                    for (const pattern of brandPatterns) {
+                        const match = descText.match(pattern);
+                        if (match) {
+                            if (match[3]) {
+                                // Формат: Бренд Цвет Товар (Stone Island черный свитер)
+                                const colorPart = match[2] ? ` ${match[2]}` : '';
+                                title = `${match[3]}${colorPart} ${match[1]}`;
+                                brand = match[3];
+                            } else if (match[2] && match[1]) {
+                                // Формат: Цвет Товар от Бренд или Товар от Бренд
+                                if (match[3]) {
+                                    title = `${match[3]} ${match[1]} ${match[2]}`;
+                                    brand = match[3];
+                                } else {
+                                    title = `${match[1]} ${match[2]}`;
+                                }
+                            } else {
+                                title = match[0];
+                            }
+                            console.log('✅ Title extracted from description:', title);
+                            break;
+                        }
+                    }
+                    
+                    // Если не нашли по паттернам, извлекаем бренд и тип товара из текста
+                    if (!title) {
+                        // Ищем упоминание бренда в тексте
+                        const brandInText = descText.match(/(Stone Island|Victoria's Secret|XGO|Nike|Adidas|Puma|Under Armour|The North Face|Patagonia|Columbia)/i);
+                        const itemType = descText.match(/(свитер|футболка|кофта|худи|штаны|брюки|куртка|термобелье|трусы|белье|джинсы|шорты|майка)/i);
+                        const colorInText = descText.match(/(черн\w+|бел\w+|син\w+|красн\w+|зелен\w+|сер\w+|коричнев\w+|бежев\w+|розов\w+)/i);
+                        
+                        if (brandInText && itemType) {
+                            brand = brandInText[1];
+                            const itemWord = itemType[1];
+                            const colorWord = colorInText ? colorInText[1] : '';
+                            title = colorWord ? `${itemWord} ${colorWord} ${brand}` : `${itemWord} ${brand}`;
+                            console.log('✅ Title constructed from parts:', title);
+                        } else if (itemType) {
+                            const colorWord = colorInText ? colorInText[1] : '';
+                            title = colorWord ? `${itemType[1]} ${colorWord}` : itemType[1];
+                            console.log('✅ Title from item type:', title);
+                        } else {
+                            // Fallback: берем первые 3-5 слов
+                            const words = descText.split(/\s+/).slice(0, 5).join(' ');
+                            title = words.length > 50 ? words.substring(0, 50) : words;
+                            console.log('✅ Title from first words:', title);
+                        }
                     }
                 }
             }
             
+            // 2. Размер: из "Размер и характеристики" или из любого места в сводке
+            const sizeMatch = summaryText.match(/\*\*Размер и характеристики:\*\*\s*(.+?)(?:\n\*\*|$)/i);
+            if (sizeMatch) {
+                const sizeText = sizeMatch[1].trim();
+                // Ищем размер: XS, S, M, L, XL, XXL или цифры (38, 42, 10.5 и т.д.)
+                const sizePatterns = [
+                    /размер[:\s]+([XSML]{1,3}|\d{1,2})/i,
+                    /size[:\s]+([XSML]{1,3}|\d{1,2})/i,
+                    /\b([XS]{1,2}|S|M|L|XL{1,2}|XXL)\b/i,
+                    /\b(\d{1,2})\b/
+                ];
+                
+                for (const pattern of sizePatterns) {
+                    const found = sizeText.match(pattern);
+                    if (found && found[1]) {
+                        size = found[1].trim().toUpperCase();
+                        console.log('✅ Size found:', size);
+                        break;
+                    }
+                }
+                
+                // Если не нашли, берем первое слово
+                if (!size) {
+                    const sizeParts = sizeText.split(/[,;]/);
+                    if (sizeParts.length > 0) {
+                        const firstPart = sizeParts[0].trim();
+                        const words = firstPart.split(/\s+/);
+                        if (words.length > 0) {
+                            size = words[0];
+                            console.log('✅ Size from first word:', size);
+                        }
+                    }
+                }
+            }
+            
+            // Если размер не найден, ищем во всей сводке
+            if (!size) {
+                const allSizePatterns = [
+                    /размер[:\s]+([XSML]{1,3}|\d{1,2})/i,
+                    /size[:\s]+([XSML]{1,3}|\d{1,2})/i,
+                    /\b([XS]{1,2}|S|M|L|XL{1,2}|XXL)\b/i
+                ];
+                
+                for (const pattern of allSizePatterns) {
+                    const found = summaryText.match(pattern);
+                    if (found && found[1]) {
+                        size = found[1].trim().toUpperCase();
+                        console.log('✅ Size found in full summary:', size);
+                        break;
+                    }
+                }
+            }
+            
+            // 3. Цвет: из "Цвет:" или из "Размер и характеристики" или из описания
             console.log('🔍 Searching for color...');
             const colorMatch = summaryText.match(/\*\*Цвет:\*\*\s*([^\n]+?)(?:\n\*\*|$)/i);
             if (colorMatch) {
@@ -1373,19 +1636,17 @@
                 if (colorText && !colorText.toLowerCase().includes('не указан') && !colorText.toLowerCase().includes('не указано')) {
                     color = colorText;
                     console.log('✅ Found color from section:', color);
-                } else {
-                    console.log('⚠️ Color section says "not specified"');
                 }
             }
             
+            // Если цвет не найден, ищем в характеристиках
             if (!color && sizeMatch) {
                 const sizeText = sizeMatch[1].trim();
                 console.log('Checking size text for color:', sizeText.substring(0, 100));
                 const colorPatterns = [
                     /цвет[:\s]+([^,;.\n]+)/i,
                     /color[:\s]+([^,;.\n]+)/i,
-                    /цвет[:\s]+([а-яё]+)/i,
-                    /\b(коричневый|черный|синий|белый|красный|зеленый|желтый|серый|бежевый|розовый|фиолетовый|оранжевый|голубой|бирюзовый)\b/i
+                    /\b(коричневый|черный|синий|белый|красный|зеленый|желтый|серый|бежевый|розовый|фиолетовый|оранжевый|голубой|бирюзовый|темно-синий|светло-серый)\b/i
                 ];
                 
                 for (const pattern of colorPatterns) {
@@ -1398,17 +1659,42 @@
                 }
             }
             
+            // Если цвет не найден, ищем во всей сводке
             if (!color) {
-                console.log('Searching for color keywords in full summary...');
-                const colorKeywords = ['коричневый', 'черный', 'синий', 'белый', 'красный', 'зеленый', 'желтый', 
-                                    'серый', 'бежевый', 'розовый', 'фиолетовый', 'оранжевый', 'голубой', 'бирюзовый',
-                                    'brown', 'black', 'blue', 'white', 'red', 'green', 'yellow', 'gray', 'grey', 'beige'];
-                for (const keyword of colorKeywords) {
-                    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-                    if (summaryText.match(regex)) {
-                        color = keyword;
-                        console.log('✅ Found color by keyword:', color);
+                console.log('Searching for color in full summary...');
+                
+                // Сначала ищем явные упоминания цвета
+                const explicitColorPatterns = [
+                    /цвет[:\s]+([а-яё\-]+)/i,
+                    /color[:\s]+([a-z\-]+)/i,
+                    /(черн\w+|бел\w+|син\w+|красн\w+|зелен\w+|сер\w+|коричнев\w+|бежев\w+|розов\w+|фиолетов\w+|оранжев\w+|голуб\w+|бирюзов\w+)\s+(свитер|футболка|кофта|худи|штаны|брюки|куртка|термобелье|трусы|белье)/i
+                ];
+                
+                for (const pattern of explicitColorPatterns) {
+                    const match = summaryText.match(pattern);
+                    if (match && match[1]) {
+                        color = match[1].trim();
+                        console.log('✅ Found color by pattern:', color);
                         break;
+                    }
+                }
+                
+                // Если не нашли, ищем ключевые слова
+                if (!color) {
+                    const colorKeywords = [
+                        'черный', 'белый', 'синий', 'красный', 'зеленый', 'желтый', 
+                        'серый', 'бежевый', 'розовый', 'фиолетовый', 'оранжевый', 'голубой', 'бирюзовый',
+                        'коричневый', 'темно-синий', 'светло-серый',
+                        'black', 'white', 'blue', 'red', 'green', 'yellow', 'gray', 'grey', 'beige', 'brown'
+                    ];
+                    
+                    for (const keyword of colorKeywords) {
+                        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+                        if (summaryText.match(regex)) {
+                            color = keyword;
+                            console.log('✅ Found color by keyword:', color);
+                            break;
+                        }
                     }
                 }
             }
@@ -1432,7 +1718,8 @@
                 }
             }
             
-            const descMatch = summaryText.match(/\*\*Описание для продажи:\*\*\s*([\s\S]+)$/i);
+            // 3. Описание: из "Описание для продажи" (всё до конца)
+            const descMatch = summaryText.match(/\*\*Описание для продажи:\*\*\s*([\s\S]+?)(?:\n*$)/i);
             if (descMatch && descMatch[1]) {
                 description = descMatch[1].trim();
                 description = description.replace(/^\s+|\s+$/g, '');
@@ -1440,8 +1727,15 @@
                 console.log('✅ Found description for sale, length:', description.length);
                 console.log('Description preview:', description.substring(0, 100));
             } else {
-                console.warn('⚠️ Description for sale not found in summary');
-                description = '';
+                // Fallback: используем "Что это за товар" как описание
+                const whatMatch = summaryText.match(/\*\*Что это за товар:\*\*\s*(.+?)(?:\n\*\*|$)/i);
+                if (whatMatch) {
+                    description = whatMatch[1].trim();
+                    console.log('✅ Using "Что это за товар" as description');
+                } else {
+                    console.warn('⚠️ Description not found in summary');
+                    description = '';
+                }
             }
             
             console.log('🔍 Searching for price...');
@@ -1522,28 +1816,44 @@
                 }
             }
             
-            const categoryMatch = summaryText.match(/\*\*Что это за товар:\*\*\s*(.+?)(?:\n|$)/i);
-            if (categoryMatch) {
-                const categoryText = categoryMatch[1].toLowerCase();
-                console.log('Category text:', categoryText);
-                if (categoryText.includes('термобель') || categoryText.includes('thermal') || categoryText.includes('base layer') || 
-                    categoryText.includes('флис') || categoryText.includes('fleece') || categoryText.includes('одежда') || 
-                    categoryText.includes('рубашка') || categoryText.includes('shirt') || categoryText.includes('куртка') ||
-                    categoryText.includes('jacket') || categoryText.includes('штаны') || categoryText.includes('pants') ||
-                    categoryText.includes('трусы') || categoryText.includes('underwear') || categoryText.includes('белье') ||
-                    categoryText.includes('футболка') || categoryText.includes('t-shirt') || categoryText.includes('кофта') ||
-                    categoryText.includes('sweater') || categoryText.includes('худи') || categoryText.includes('hoodie')) {
-                    category = 'Одежда';
-                    console.log('Category set to: Одежда');
-                } else if (categoryText.includes('обувь') || categoryText.includes('shoe') || categoryText.includes('ботинки') ||
-                          categoryText.includes('boots') || categoryText.includes('кроссовки') || categoryText.includes('sneakers')) {
-                    category = 'Обувь';
-                    console.log('Category set to: Обувь');
-                } else if (categoryText.includes('сумка') || categoryText.includes('bag') || categoryText.includes('рюкзак') ||
-                          categoryText.includes('backpack')) {
-                    category = 'Аксессуары';
-                    console.log('Category set to: Аксессуары');
-                }
+            // 4. Категория: из "Что это за товар" или из всего текста
+            const categoryMatch = summaryText.match(/\*\*Что это за товар:\*\*\s*(.+?)(?:\n\*\*|$)/i);
+            let categoryText = categoryMatch ? categoryMatch[1].toLowerCase() : summaryText.toLowerCase();
+            
+            console.log('Searching for category...');
+            
+            // Одежда
+            if (categoryText.includes('термобель') || categoryText.includes('thermal') || categoryText.includes('base layer') || 
+                categoryText.includes('флис') || categoryText.includes('fleece') || categoryText.includes('одежда') || 
+                categoryText.includes('рубашка') || categoryText.includes('shirt') || categoryText.includes('куртка') ||
+                categoryText.includes('jacket') || categoryText.includes('штаны') || categoryText.includes('pants') ||
+                categoryText.includes('трусы') || categoryText.includes('underwear') || categoryText.includes('белье') ||
+                categoryText.includes('футболка') || categoryText.includes('t-shirt') || categoryText.includes('кофта') ||
+                categoryText.includes('sweater') || categoryText.includes('худи') || categoryText.includes('hoodie') ||
+                categoryText.includes('брюки') || categoryText.includes('trousers') || categoryText.includes('джинсы') ||
+                categoryText.includes('jeans') || categoryText.includes('шорты') || categoryText.includes('shorts') ||
+                categoryText.includes('свитер')) {
+                category = 'Одежда';
+                console.log('✅ Category set to: Одежда');
+            } 
+            // Обувь
+            else if (categoryText.includes('обувь') || categoryText.includes('shoe') || categoryText.includes('ботинки') ||
+                      categoryText.includes('boots') || categoryText.includes('кроссовки') || categoryText.includes('sneakers') ||
+                      categoryText.includes('туфли') || categoryText.includes('slippers') || categoryText.includes('сапоги')) {
+                category = 'Обувь';
+                console.log('✅ Category set to: Обувь');
+            } 
+            // Аксессуары
+            else if (categoryText.includes('сумка') || categoryText.includes('bag') || categoryText.includes('рюкзак') ||
+                      categoryText.includes('backpack') || categoryText.includes('шарф') || categoryText.includes('scarf') ||
+                      categoryText.includes('шапка') || categoryText.includes('hat') || categoryText.includes('перчатки') ||
+                      categoryText.includes('gloves') || categoryText.includes('очки') || categoryText.includes('glasses')) {
+                category = 'Аксессуары';
+                console.log('✅ Category set to: Аксессуары');
+            }
+            
+            if (!category) {
+                console.warn('❌ Category not found');
             }
             
             let applied = [];
@@ -1569,6 +1879,24 @@
                     console.log('✅ Description applied, length:', description.length);
                 } else {
                     console.warn('❌ Description field not found');
+                }
+            }
+            
+            // Если бренд не найден, пытаемся извлечь из названия
+            if (!brand && title) {
+                const brandInTitle = title.match(/(Stone Island|Tommy Hilfiger|Victoria's Secret|Calvin Klein|Ralph Lauren|Hugo Boss|Lacoste|Guess|Armani|Zara|H&M|XGO|Nike|Adidas|Puma|Reebok|Under Armour|The North Face|Patagonia|Columbia|Levi's|Wrangler|Lee|Gap|Old Navy|Banana Republic|J\.Crew)/i);
+                if (brandInTitle) {
+                    brand = brandInTitle[1];
+                    console.log('✅ Brand extracted from title:', brand);
+                }
+            }
+            
+            // Если всё ещё нет, ищем во всей сводке
+            if (!brand) {
+                const brandInSummary = summaryText.match(/(Stone Island|Tommy Hilfiger|Victoria's Secret|Calvin Klein|Ralph Lauren|Hugo Boss|Lacoste|Guess|Armani|Zara|H&M|XGO|Nike|Adidas|Puma|Reebok|Under Armour|The North Face|Patagonia|Columbia|Levi's|Wrangler|Lee|Gap|Old Navy|Banana Republic|J\.Crew)/i);
+                if (brandInSummary) {
+                    brand = brandInSummary[1];
+                    console.log('✅ Brand found in summary:', brand);
                 }
             }
             
@@ -1639,12 +1967,28 @@
             }
             
             if (applied.length > 0) {
-                document.querySelector('.product-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
                 console.log(`✅ Сводка применена! Заполнены поля: ${applied.join(', ')}`);
+                if (!silent) {
+                    document.querySelector('.product-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                return applied;
             } else {
-                console.error('No fields were applied. Summary text:', summaryText.substring(0, 200));
-                alert('Не удалось извлечь информацию из сводки. Проверь текст вручную и консоль (F12) для деталей.');
+                console.error('❌ No fields were applied. Summary text:', summaryText.substring(0, 200));
+                return null;
             }
+        }
+        
+        function applyAISummaryToCard() {
+            const summaryDiv = document.querySelector('.ai-summary-section');
+            if (!summaryDiv) {
+                alert('Сводка не найдена');
+                return;
+            }
+            
+            const summaryContent = document.querySelector('#ai-summary-content');
+            const summaryText = summaryContent ? (summaryContent.tagName === 'TEXTAREA' ? summaryContent.value : (summaryContent.textContent || summaryContent.innerText)) : '';
+            
+            parseSummaryAndFillFields(summaryText, false);
         }
     </script>
 </body>

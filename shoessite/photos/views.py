@@ -271,7 +271,7 @@ def product_card_detail(request, card_id):
     
     # Автозаполнение через AI (если есть OpenAI ключ) - всегда вызываем
     ai_suggestions = {}
-    ai_summary = None
+    ai_summary = card.ai_summary if card.ai_summary else None
     
     if 'OPENAI_API_KEY' in os.environ:
         try:
@@ -291,10 +291,6 @@ def product_card_detail(request, card_id):
                 'barcodes': barcodes_data,
                 'brand': card.brand,
             }, photo_urls=photo_urls)
-            
-            # Сводка генерируется только по запросу через API (кнопка "Сгенерировать сводку")
-            # Не генерируем автоматически при загрузке страницы, чтобы не замедлять её
-            ai_summary = None
         except Exception as e:
             print(f"Ошибка AI автозаполнения: {e}")
             import traceback
@@ -1256,6 +1252,10 @@ def generate_summary_api(request, card_id):
         print(f"Summary result: {summary[:100] if summary else 'None'}...")
         
         if summary:
+            # Сохраняем сводку в БД
+            card.ai_summary = summary
+            card.save()
+            print(f"✅ AI summary saved to card {card_id}")
             return JsonResponse({
                 'success': True,
                 'summary': summary
@@ -1940,6 +1940,214 @@ def delete_photo(request, photo_id):
             'success': False,
             'error': str(e),
             'traceback': traceback.format_exc()
+        }, status=500)
+
+
+@csrf_exempt
+@staff_member_required
+@require_http_methods(["POST"])
+def save_ai_summary(request, card_id):
+    """Сохранить AI сводку для карточки."""
+    try:
+        card = get_object_or_404(PhotoBatch, id=card_id)
+        data = json.loads(request.body)
+        summary_text = data.get('summary', '').strip()
+        
+        card.ai_summary = summary_text
+        card.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Сводка сохранена'
+        })
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def enhance_photo_photoroom(request, photo_id):
+    """Обработать фото через Photoroom API."""
+    import traceback
+    import sys
+    
+    # Логируем в файл сразу
+    with open('/tmp/enhance_calls.log', 'a') as f:
+        f.write(f"\n=== enhance_photo_photoroom called: photo_id={photo_id} ===\n")
+    
+    print(f"\n{'='*70}", file=sys.stderr)
+    print(f"🚀 enhance_photo_photoroom called: photo_id={photo_id}", file=sys.stderr)
+    print(f"{'='*70}\n", file=sys.stderr)
+    sys.stderr.flush()
+    
+    try:
+        import sys
+        print(f"✅ Step 1: Getting photo {photo_id}", file=sys.stderr)
+        sys.stderr.flush()
+        
+        photo = get_object_or_404(Photo, id=photo_id)
+        print(f"✅ Step 2: Photo found: {photo.id}, image: {photo.image.name if photo.image else 'None'}", file=sys.stderr)
+        sys.stderr.flush()
+        
+        if not photo.image:
+            print("❌ Photo image is None", file=sys.stderr)
+            return JsonResponse({'success': False, 'error': 'Фото не найдено'}, status=400)
+        
+        # Получаем режим обработки
+        print(f"✅ Step 3: Parsing request body", file=sys.stderr)
+        sys.stderr.flush()
+        
+        data = json.loads(request.body) if request.body else {}
+        mode = data.get('mode', 'ghost_mannequin')  # ghost_mannequin или product_beautifier
+        print(f"✅ Step 4: Mode = {mode}", file=sys.stderr)
+        sys.stderr.flush()
+        
+        # Обрабатываем фото
+        enhanced_image = None
+        
+        if mode == 'ghost_mannequin':
+            # FASHN AI - генерация модели в одежде
+            try:
+                from .fashn_api import generate_model_with_product, download_image_from_url
+                print("✅ FASHN modules imported", file=sys.stderr)
+                sys.stderr.flush()
+                
+                # Публичный URL через cloudflared
+                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
+                product_url = f"{cloudflared_url}{photo.image.url}"
+                print(f"📁 Product URL: {product_url}", file=sys.stderr)
+                sys.stderr.flush()
+                
+                # Определяем prompt - акцент на ТОЧНОЕ сохранение товара как есть
+                prompt = "e-commerce catalog photo, product exactly as shown, no modifications, soft beige background"
+                if photo.batch.title:
+                    title_lower = photo.batch.title.lower()
+                    if any(x in title_lower for x in ['pants', 'брюки', 'штаны']):
+                        prompt = "full body catalog photo, product exactly as is, no styling changes, soft beige background"
+                    elif any(x in title_lower for x in ['dress', 'платье']):
+                        prompt = "catalog photo, product exactly as shown, natural pose, soft beige background"
+                    elif any(x in title_lower for x in ['shirt', 'рубашка', 'sweater', 'свитер', 'blouse', 'блузка']):
+                        prompt = "upper body catalog photo, sleeves as shown, no rolling up, product exactly as is, soft beige background"
+                
+                print(f"📋 Prompt: {prompt}", file=sys.stderr)
+                sys.stderr.flush()
+                
+                # Генерируем модель (асинхронный процесс с polling)
+                print("🚀 Starting FASHN generation...", file=sys.stderr)
+                sys.stderr.flush()
+                
+                result_url = generate_model_with_product(
+                    product_url,
+                    prompt=prompt,
+                    resolution='1k'  # Точная генерация для каталога
+                )
+                
+                print(f"📥 FASHN result URL: {result_url}", file=sys.stderr)
+                sys.stderr.flush()
+                
+                if result_url:
+                    # Скачиваем результат
+                    print(f"📥 Downloading from FASHN CDN...", file=sys.stderr)
+                    sys.stderr.flush()
+                    enhanced_image = download_image_from_url(result_url)
+                    print(f"📦 Downloaded: {len(enhanced_image) if enhanced_image else 0} bytes", file=sys.stderr)
+                    sys.stderr.flush()
+                else:
+                    print("❌ FASHN returned None", file=sys.stderr)
+                    sys.stderr.flush()
+                    
+            except Exception as e:
+                print(f"❌ FASHN exception: {e}", file=sys.stderr)
+                import traceback
+                traceback.print_exc()
+                sys.stderr.flush()
+        else:
+            # Product Beautifier через Photoroom
+            try:
+                from .photoroom_api import enhance_product_photo
+                
+                image_path = photo.image.path
+                print(f"📁 Image path: {image_path}", file=sys.stderr)
+                sys.stderr.flush()
+                
+                enhanced_image = enhance_product_photo(image_path, mode=mode)
+                print(f"📦 Enhanced image: {len(enhanced_image) if enhanced_image else 'None'} bytes", file=sys.stderr)
+                sys.stderr.flush()
+                
+            except Exception as e:
+                print(f"❌ Photoroom exception: {e}", file=sys.stderr)
+                import traceback
+                traceback.print_exc()
+                sys.stderr.flush()
+        
+        if not enhanced_image:
+            print("❌ Enhancement failed")
+            return JsonResponse({
+                'success': False,
+                'error': f'Не удалось обработать фото ({mode}). Проверь API ключи и логи сервера.'
+            }, status=500)
+        
+        # Создаем НОВОЕ фото вместо замены
+        from django.db.models import Max
+        
+        # Определяем порядок для нового фото
+        max_order = Photo.objects.filter(batch=photo.batch).aggregate(Max('order'))['order__max'] or 0
+        
+        # Создаем новое фото
+        new_photo = Photo.objects.create(
+            batch=photo.batch,
+            file_id=f'enhanced_{mode}_{uuid.uuid4().hex[:8]}',
+            message_id=0,
+            order=max_order + 1,
+        )
+        
+        # Определяем расширение файла
+        file_ext = 'png' if mode == 'ghost_mannequin' else 'jpg'
+        filename = f'{photo.batch.correlation_id}_enhanced_{new_photo.id}.{file_ext}'
+        
+        # Сохраняем обработанное изображение
+        new_photo.image.save(filename, ContentFile(enhanced_image), save=True)
+        
+        mode_text = 'ghost mannequin' if mode == 'ghost_mannequin' else 'улучшено'
+        return JsonResponse({
+            'success': True,
+            'photo_id': new_photo.id,
+            'photo_url': new_photo.image.url,
+            'message': f'Фото обработано ({mode_text})',
+            'reload': True  # Перезагрузить страницу чтобы показать новое фото
+        })
+            
+    except Exception as e:
+        import traceback
+        import sys
+        
+        # Записываем полный traceback в файл и stderr
+        tb = traceback.format_exc()
+        print(f"\n{'='*70}", file=sys.stderr)
+        print(f"❌ EXCEPTION in enhance_photo_photoroom for photo_id={photo_id}:", file=sys.stderr)
+        print(tb, file=sys.stderr)
+        print(f"{'='*70}\n", file=sys.stderr)
+        sys.stderr.flush()
+        
+        # Также в файл
+        try:
+            with open('/tmp/photoroom_error.log', 'a') as f:
+                f.write(f"\n{'='*70}\n")
+                f.write(f"Error at photo_id={photo_id}: {e}\n")
+                f.write(tb)
+                f.write(f"\n{'='*70}\n")
+        except:
+            pass
+        
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'traceback': tb
         }, status=500)
 
 
