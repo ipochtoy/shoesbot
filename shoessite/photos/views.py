@@ -2266,60 +2266,67 @@ def update_photo_group(request, photo_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def send_group_to_bot(request, group_id):
-    """Отправить группу фото напрямую в Telegram основного бота."""
+    """Создать карточку напрямую из группы фото (без Telegram)."""
     try:
-        import requests as sync_requests
-        
         # Получаем фото группы
         group_photos = PhotoBuffer.objects.filter(group_id=group_id, processed=False).order_by('id')
         
         if not group_photos.exists():
             return JsonResponse({'error': 'Группа пуста'}, status=400)
         
-        # Отправляем в Telegram напрямую через Bot API
-        bot_token = os.getenv('BOT_TOKEN')
-        if not bot_token:
-            return JsonResponse({'error': 'BOT_TOKEN not set'}, status=500)
+        # Создаем correlation_id
+        import uuid
+        corr_id = uuid.uuid4().hex[:8]
         
         chat_id = group_photos.first().chat_id
         
-        # Отправляем фото ПО ОДНОМУ с интервалом (чтобы основной бот успел забуферизовать)
-        import time
-        sent_count = 0
+        # Подготавливаем фото для upload_batch
+        photos_data = []
+        for idx, p in enumerate(group_photos):
+            # Читаем изображение
+            with p.image.open('rb') as f:
+                image_data = f.read()
+            
+            photos_data.append({
+                'file_id': p.file_id,
+                'message_id': p.message_id,
+                'image': base64.b64encode(image_data).decode('utf-8'),
+            })
         
-        telegram_url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
+        # Создаем карточку напрямую через upload_batch
+        batch_data = {
+            'correlation_id': corr_id,
+            'chat_id': chat_id,
+            'message_ids': [p.message_id for p in group_photos],
+            'photos': photos_data,
+            'barcodes': []  # Баркоды будут распознаны автоматически
+        }
         
-        for p in group_photos:
-            try:
-                resp = sync_requests.post(telegram_url, json={
-                    'chat_id': chat_id,
-                    'photo': p.file_id
-                }, timeout=10)
-                
-                if resp.status_code == 200:
-                    sent_count += 1
-                    print(f"✅ Sent photo {p.id} ({sent_count}/{len(group_photos)})")
-                    time.sleep(0.5)  # Интервал 0.5 сек между фото
-                else:
-                    print(f"❌ Failed to send photo {p.id}: {resp.status_code}")
-                    
-            except Exception as send_err:
-                print(f"❌ Error sending photo {p.id}: {send_err}")
+        # Вызываем upload_batch напрямую
+        from django.test import RequestFactory
+        factory = RequestFactory()
+        batch_request = factory.post('/photos/api/upload-batch/', 
+                                     data=json.dumps(batch_data),
+                                     content_type='application/json')
         
-        print(f"Sent {sent_count} photos to Telegram")
+        # Вызываем функцию напрямую
+        batch_response = upload_batch(batch_request)
+        batch_result = json.loads(batch_response.content)
         
-        if sent_count > 0:
-            # Помечаем отправленные как обработанные
+        print(f"Upload batch result: {batch_result}")
+        
+        if batch_result.get('success'):
+            # Помечаем как обработанные
             group_photos.update(sent_to_bot=True, processed=True)
             
             return JsonResponse({
                 'success': True,
-                'correlation_id': f'web_{group_id}',
-                'photos_sent': sent_count,
-                'chat_id': chat_id
+                'correlation_id': corr_id,
+                'photos_sent': len(photos_data),
+                'card_created': True
             })
         else:
-            return JsonResponse({'error': 'Failed to send any photos'}, status=500)
+            return JsonResponse({'error': batch_result.get('error', 'Unknown error')}, status=500)
             
     except Exception as e:
         import traceback
