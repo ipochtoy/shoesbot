@@ -120,14 +120,17 @@
     
     <div class="toolbar">
         <button class="btn btn-success" onclick="createNewGroup()">➕ Новая группа</button>
-        <button class="btn btn-primary" onclick="detectGGLabels()">🔍 Распознать GG на всех фото</button>
-        <button class="btn btn-primary" onclick="autoGroup()">🤖 Автогруппировка (по GG)</button>
-        <button class="btn btn-danger" onclick="sendAllToBot()">✅ Отправить всё в бота</button>
+        <button class="btn btn-primary" onclick="autoGroup()" style="background: #6b7280;">🤖 Автогруппировка (опционально)</button>
         <button class="btn btn-danger" onclick="clearBuffer()" style="background: #dc2626;">🗑️ Очистить буфер</button>
         <div class="stats">
-            Всего фото: <strong id="total-count">{{ photos.count }}</strong>
+            Всего фото: <strong id="total-count">{{ photos.count }}</strong> | 
+            Несортированных: <strong id="unsorted-count">0</strong>
         </div>
     </div>
+    
+    <p style="color: #6b7280; margin: 10px 0; font-size: 14px;">
+        💡 Инструкция: Перетаскивай фото из "Несортированные" в группы. Когда группа готова - жми "Отправить в бота"
+    </p>
     
     <div class="groups-container" id="groups-container">
         <!-- Группы будут здесь -->
@@ -149,36 +152,60 @@
                 grouped[gid].push(p);
             });
             
-            // Рендерим группы
-            Object.keys(grouped).forEach(gid => {
+            // Обновляем счетчик несортированных
+            const unsortedCount = grouped['ungrouped'] ? grouped['ungrouped'].length : 0;
+            document.getElementById('unsorted-count').textContent = unsortedCount;
+            document.getElementById('total-count').textContent = photos.length;
+            
+            // Сначала показываем НЕСОРТИРОВАННЫЕ (всегда вверху)
+            if (grouped['ungrouped']) {
+                const groupDiv = createGroupElement('ungrouped', grouped['ungrouped'], 'Несортированные 👇 Перетаскивай отсюда в группы');
+                container.appendChild(groupDiv);
+            }
+            
+            // Потом все остальные группы
+            Object.keys(grouped).sort((a, b) => {
+                if (a === 'ungrouped') return -1;
+                if (b === 'ungrouped') return 1;
+                return parseInt(a) - parseInt(b);
+            }).forEach(gid => {
+                if (gid === 'ungrouped') return; // Уже показали
+                
                 const groupPhotos = grouped[gid];
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'group';
-                groupDiv.dataset.groupId = gid;
-                
-                const label = gid === 'ungrouped' ? 'Несортированные' : `Группа ${gid}`;
                 const ggLabels = [...new Set(groupPhotos.filter(p => p.gg_label).map(p => p.gg_label))];
-                const ggText = ggLabels.length > 0 ? ` [${ggLabels.join(', ')}]` : '';
+                const label = `Группа ${gid}` + (ggLabels.length > 0 ? ` [${ggLabels.join(', ')}]` : '');
                 
-                groupDiv.innerHTML = `
-                    <div class="group-header">
-                        <div class="group-title">${label}${ggText} (${groupPhotos.length} фото)</div>
-                        <div>
-                            ${gid !== 'ungrouped' ? `<button class="btn btn-success" onclick="sendGroupToBot(${gid})">📤 Отправить в бота</button>` : ''}
-                        </div>
-                    </div>
-                    <div class="photo-grid" data-group-id="${gid}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
-                        ${groupPhotos.map(p => `
-                            <div class="photo-item" draggable="true" data-photo-id="${p.id}" ondragstart="drag(event)">
-                                <img src="${p.image_url}" alt="Фото ${p.id}">
-                                ${p.gg_label ? `<div class="photo-label">${p.gg_label}</div>` : ''}
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                
+                const groupDiv = createGroupElement(gid, groupPhotos, label);
                 container.appendChild(groupDiv);
             });
+        }
+        
+        function createGroupElement(gid, groupPhotos, label) {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'group';
+            groupDiv.dataset.groupId = gid;
+            
+            groupDiv.innerHTML = `
+                <div class="group-header">
+                    <div class="group-title">${label} (${groupPhotos.length} фото)</div>
+                    <div>
+                        ${gid !== 'ungrouped' ? `
+                            <button class="btn btn-success" onclick="sendGroupToBot(${gid})">📤 Отправить в бота</button>
+                            <button class="btn btn-danger" onclick="deleteGroup(${gid})" style="background: #dc2626;">🗑️</button>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="photo-grid" data-group-id="${gid}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                    ${groupPhotos.map(p => `
+                        <div class="photo-item" draggable="true" data-photo-id="${p.id}" ondragstart="drag(event)" ondragend="dragEnd(event)">
+                            <img src="${p.image_url}" alt="Фото ${p.id}">
+                            ${p.gg_label ? `<div class="photo-label">${p.gg_label}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            return groupDiv;
         }
         
         function allowDrop(e) {
@@ -191,8 +218,16 @@
         }
         
         function drag(e) {
-            e.dataTransfer.setData('photo_id', e.target.dataset.photoId);
-            e.target.classList.add('dragging');
+            const photoItem = e.target.closest('.photo-item');
+            if (photoItem) {
+                e.dataTransfer.setData('photo_id', photoItem.dataset.photoId);
+                photoItem.classList.add('dragging');
+                console.log('Dragging photo:', photoItem.dataset.photoId);
+            }
+        }
+        
+        function dragEnd(e) {
+            e.target.classList.remove('dragging');
         }
         
         function drop(e) {
@@ -202,13 +237,31 @@
             const photoId = parseInt(e.dataTransfer.getData('photo_id'));
             const newGroupId = e.currentTarget.dataset.groupId;
             
+            console.log('Drop: photo', photoId, 'to group', newGroupId);
+            
             // Обновляем группу
             const photo = photos.find(p => p.id === photoId);
             if (photo) {
+                const oldGroup = photo.group_id;
                 photo.group_id = newGroupId === 'ungrouped' ? null : parseInt(newGroupId);
                 updatePhotoGroup(photoId, photo.group_id);
+                console.log(`Moved photo ${photoId} from group ${oldGroup} to ${photo.group_id}`);
                 render();
             }
+        }
+        
+        function deleteGroup(groupId) {
+            if (!confirm(`Удалить группу ${groupId}? Фото вернутся в несортированные.`)) return;
+            
+            // Возвращаем все фото группы в несортированные
+            photos.forEach(p => {
+                if (p.group_id === groupId) {
+                    p.group_id = null;
+                    updatePhotoGroup(p.id, null);
+                }
+            });
+            
+            render();
         }
         
         async function updatePhotoGroup(photoId, groupId) {
