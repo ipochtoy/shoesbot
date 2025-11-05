@@ -1,3 +1,2 @@
-web: cd shoessite && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT
-bot: DYLD_LIBRARY_PATH=/opt/homebrew/lib python shoesbot/telegram_bot.py
+web: python shoessite/manage.py migrate && python shoessite/manage.py collectstatic --noinput && cd shoessite && gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT
 
