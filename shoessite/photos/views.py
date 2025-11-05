@@ -2391,6 +2391,22 @@ def detect_gg_in_buffer(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def clear_buffer(request):
+    """Очистить весь буфер - удалить все несортированные фото."""
+    try:
+        deleted_count = PhotoBuffer.objects.filter(processed=False).count()
+        PhotoBuffer.objects.filter(processed=False).delete()
+        
+        return JsonResponse({
+            'success': True,
+            'deleted_count': deleted_count
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def buffer_upload(request):
     """API для буферного бота - сохраняет фото без обработки."""
     try:

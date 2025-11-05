@@ -123,6 +123,7 @@
         <button class="btn btn-primary" onclick="detectGGLabels()">🔍 Распознать GG на всех фото</button>
         <button class="btn btn-primary" onclick="autoGroup()">🤖 Автогруппировка (по GG)</button>
         <button class="btn btn-danger" onclick="sendAllToBot()">✅ Отправить всё в бота</button>
+        <button class="btn btn-danger" onclick="clearBuffer()" style="background: #dc2626;">🗑️ Очистить буфер</button>
         <div class="stats">
             Всего фото: <strong id="total-count">{{ photos.count }}</strong>
         </div>
@@ -311,6 +312,24 @@
             for (let gid of groupIds) {
                 await sendGroupToBot(gid);
                 await new Promise(r => setTimeout(r, 15000)); // 15 сек интервал
+            }
+        }
+        
+        async function clearBuffer() {
+            if (!confirm('Удалить ВСЕ фото из буфера? Это действие необратимо!')) return;
+            if (!confirm('Точно удалить? Фото будут потеряны!')) return;
+            
+            const response = await fetch('/photos/api/clear-buffer/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(`✅ Удалено фото: ${data.deleted_count}`);
+                location.reload();
+            } else {
+                alert(`Ошибка: ${data.error}`);
             }
         }
         
