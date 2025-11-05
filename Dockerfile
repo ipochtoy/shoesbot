@@ -22,8 +22,9 @@ RUN python shoessite/manage.py collectstatic --noinput || true
 # Expose port
 EXPOSE 8000
 
-# Start command
+# Change to Django directory
 WORKDIR /app/shoessite
-CMD python manage.py migrate && \
-    gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT
+
+# Run migrations and start server
+CMD ["sh", "-c", "python manage.py migrate && gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT"]
 
