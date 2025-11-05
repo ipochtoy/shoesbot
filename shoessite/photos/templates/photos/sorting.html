@@ -228,24 +228,36 @@
         }
         
         function autoGroup() {
-            // Группируем по GG лейблам
-            const ggGroups = {};
-            let groupCounter = 1;
+            // Группируем по GG лейблам с учетом порядка (отсечка)
+            // Если между фото с GG681 есть фото с другим GG - это новая группа
             
-            photos.forEach(p => {
+            let groupCounter = 1;
+            let lastGG = null;
+            let totalGroups = 0;
+            
+            // Сортируем фото по времени загрузки (как пришли в Telegram)
+            const sortedPhotos = [...photos].sort((a, b) => a.id - b.id);
+            
+            sortedPhotos.forEach(p => {
                 if (p.gg_label) {
-                    if (!ggGroups[p.gg_label]) {
-                        ggGroups[p.gg_label] = groupCounter++;
+                    // Если GG изменился - новая группа (отсечка)
+                    if (p.gg_label !== lastGG) {
+                        groupCounter++;
+                        lastGG = p.gg_label;
+                        totalGroups++;
                     }
-                    p.group_id = ggGroups[p.gg_label];
+                    
+                    p.group_id = groupCounter;
                     updatePhotoGroup(p.id, p.group_id);
                 } else {
+                    // Фото без GG не группируем
                     p.group_id = null;
+                    lastGG = null;  // Сбрасываем отсечку
                 }
             });
             
             render();
-            alert(`Сгруппировано по ${Object.keys(ggGroups).length} GG лейблам`);
+            alert(`Создано групп: ${totalGroups}`);
         }
         
         async function sendGroupToBot(groupId) {

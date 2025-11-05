@@ -16,7 +16,29 @@ DJANGO_API_URL = os.getenv("DJANGO_API_URL", "http://127.0.0.1:8000/photos/api/b
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Буферный бот. Отправляй фото - я сохраню их для сортировки.")
+    await update.message.reply_text("Буферный бот. Отправляй фото - я сохраню их для сортировки.\n\n/reprocess - переобработать все фото в буфере (распознать GG заново)")
+
+
+async def reprocess_buffer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Переобработать все фото в буфере - распознать GG лейблы."""
+    await update.message.reply_text("🔄 Запускаю переобработку всех фото в буфере...")
+    
+    try:
+        # Отправляем запрос в Django для переобработки
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                'http://127.0.0.1:8000/photos/api/detect-gg-in-buffer/',
+                json={},
+                timeout=aiohttp.ClientTimeout(total=300)  # 5 минут макс
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    found = data.get('found_count', 0)
+                    await update.message.reply_text(f"✅ Готово! Распознано GG лейблов: {found}\n\nТеперь открой /photos/sorting/ и жми 'Автогруппировка'")
+                else:
+                    await update.message.reply_text(f"❌ Ошибка: {resp.status}")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка: {e}")
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -104,6 +126,7 @@ def main():
     app = Application.builder().token(BUFFER_BOT_TOKEN).build()
     
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("reprocess", reprocess_buffer))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     
     print("✅ Buffer Bot started. Listening for photos...")
