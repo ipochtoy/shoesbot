@@ -157,19 +157,25 @@
             document.getElementById('unsorted-count').textContent = unsortedCount;
             document.getElementById('total-count').textContent = photos.length;
             
-            // Сначала показываем НЕСОРТИРОВАННЫЕ (всегда вверху)
-            if (grouped['ungrouped']) {
-                const groupDiv = createGroupElement('ungrouped', grouped['ungrouped'], 'Несортированные 👇 Перетаскивай отсюда в группы');
-                container.appendChild(groupDiv);
+            const existingGroupIds = Object.keys(grouped).filter(g => g !== 'ungrouped').map(g => parseInt(g));
+            const maxGroupId = existingGroupIds.length > 0 ? Math.max(...existingGroupIds) : 0;
+            
+            // 1. Сначала 5 пустых групп СВЕРХУ (куда перетаскивать)
+            for (let i = 1; i <= 5; i++) {
+                const gid = maxGroupId + i;
+                if (!grouped[gid]) {
+                    const emptyDiv = createGroupElement(gid, [], `📦 Группа ${gid} ← Перетаскивай сюда`);
+                    container.appendChild(emptyDiv);
+                }
             }
             
-            // Потом все остальные группы
+            // 2. Потом существующие группы с фото
             Object.keys(grouped).sort((a, b) => {
-                if (a === 'ungrouped') return -1;
-                if (b === 'ungrouped') return 1;
+                if (a === 'ungrouped') return 1;
+                if (b === 'ungrouped') return -1;
                 return parseInt(a) - parseInt(b);
             }).forEach(gid => {
-                if (gid === 'ungrouped') return; // Уже показали
+                if (gid === 'ungrouped') return;
                 
                 const groupPhotos = grouped[gid];
                 const ggLabels = [...new Set(groupPhotos.filter(p => p.gg_label).map(p => p.gg_label))];
@@ -178,12 +184,23 @@
                 const groupDiv = createGroupElement(gid, groupPhotos, label);
                 container.appendChild(groupDiv);
             });
+            
+            // 3. В самом низу несортированные
+            if (grouped['ungrouped']) {
+                const groupDiv = createGroupElement('ungrouped', grouped['ungrouped'], '📥 Несортированные (тащи отсюда вверх в группы)');
+                groupDiv.style.marginTop = '30px';
+                groupDiv.style.borderTop = '3px solid #dc2626';
+                container.appendChild(groupDiv);
+            }
         }
         
         function createGroupElement(gid, groupPhotos, label) {
             const groupDiv = document.createElement('div');
             groupDiv.className = 'group';
             groupDiv.dataset.groupId = gid;
+            
+            // Сортируем фото по ID (порядок загрузки)
+            const sortedPhotos = [...groupPhotos].sort((a, b) => a.id - b.id);
             
             groupDiv.innerHTML = `
                 <div class="group-header">
@@ -196,7 +213,7 @@
                     </div>
                 </div>
                 <div class="photo-grid" data-group-id="${gid}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
-                    ${groupPhotos.map(p => `
+                    ${sortedPhotos.map(p => `
                         <div class="photo-item" draggable="true" data-photo-id="${p.id}" ondragstart="drag(event)" ondragend="dragEnd(event)">
                             <img src="${p.image_url}" alt="Фото ${p.id}">
                             ${p.gg_label ? `<div class="photo-label">${p.gg_label}</div>` : ''}
@@ -388,6 +405,13 @@
         // Инициализация
         render();
         document.getElementById('total-count').textContent = photos.length;
+        
+        // Автоматически создаем 5 пустых групп если их нет
+        const existingGroups = [...new Set(photos.filter(p => p.group_id).map(p => p.group_id))];
+        if (existingGroups.length === 0) {
+            console.log('Creating initial empty groups...');
+            // Просто рендерим пустые группы - они появятся при drag & drop
+        }
     </script>
 </body>
 </html>
