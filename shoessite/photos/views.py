@@ -6,7 +6,7 @@ from django.core.files.base import ContentFile
 from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.http import require_http_methods as require_methods
-from .models import PhotoBatch, Photo, BarcodeResult, ProcessingTask
+from .models import PhotoBatch, Photo, BarcodeResult, ProcessingTask, PhotoBuffer
 from django.db.models import Max
 import json
 
@@ -2222,6 +2222,159 @@ def add_barcode_manually(request, card_id):
             'error': str(e),
             'traceback': traceback.format_exc()
         }, status=500)
+
+
+@staff_member_required
+def sorting_view(request):
+    """Страница сортировки фото."""
+    photos = PhotoBuffer.objects.filter(processed=False).order_by('group_id', 'group_order', 'uploaded_at')
+    
+    # Конвертим в JSON для JS
+    photos_data = []
+    for p in photos:
+        photos_data.append({
+            'id': p.id,
+            'image_url': p.image.url if p.image else '',
+            'gg_label': p.gg_label,
+            'barcode': p.barcode,
+            'group_id': p.group_id,
+        })
+    
+    return render(request, 'photos/sorting.html', {
+        'photos': photos,
+        'photos_json': json.dumps(photos_data)
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_photo_group(request, photo_id):
+    """Обновить группу фото."""
+    try:
+        photo = get_object_or_404(PhotoBuffer, id=photo_id)
+        data = json.loads(request.body)
+        
+        group_id = data.get('group_id')
+        photo.group_id = group_id
+        photo.save()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def send_group_to_bot(request, group_id):
+    """Отправить группу фото в основной бот для обработки."""
+    try:
+        import requests as sync_requests
+        
+        # Получаем фото группы
+        group_photos = PhotoBuffer.objects.filter(group_id=group_id, processed=False).order_by('group_order')
+        
+        if not group_photos.exists():
+            return JsonResponse({'error': 'Группа пуста'}, status=400)
+        
+        # Подготавливаем данные для основного бота
+        photos_data = []
+        for p in group_photos:
+            # Читаем изображение
+            with p.image.open('rb') as f:
+                image_data = f.read()
+            
+            photos_data.append({
+                'file_id': p.file_id,
+                'message_id': p.message_id,
+                'image': base64.b64encode(image_data).decode('utf-8'),
+            })
+        
+        # Создаем correlation_id
+        import uuid
+        corr_id = uuid.uuid4().hex[:8]
+        
+        # Отправляем в основной бот через Django API
+        chat_id = group_photos.first().chat_id
+        
+        payload = {
+            'correlation_id': corr_id,
+            'chat_id': chat_id,
+            'message_ids': [p.message_id for p in group_photos],
+            'photos': photos_data,
+            'barcodes': []  # Баркоды распознаются при обработке
+        }
+        
+        # Отправляем в API основного бота (upload_batch)
+        bot_api_url = 'http://127.0.0.1:8000/photos/api/upload-batch/'
+        resp = sync_requests.post(bot_api_url, json=payload, timeout=30)
+        
+        if resp.status_code == 200:
+            # Помечаем как отправленные
+            group_photos.update(sent_to_bot=True, processed=True)
+            
+            return JsonResponse({
+                'success': True,
+                'correlation_id': corr_id,
+                'photos_sent': len(photos_data)
+            })
+        else:
+            return JsonResponse({'error': f'Bot API error: {resp.status_code}'}, status=500)
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def buffer_upload(request):
+    """API для буферного бота - сохраняет фото без обработки."""
+    try:
+        data = json.loads(request.body)
+        
+        file_id = data.get('file_id')
+        message_id = data.get('message_id')
+        chat_id = data.get('chat_id')
+        image_b64 = data.get('image')
+        
+        if not all([file_id, message_id, chat_id, image_b64]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        
+        # Проверяем что такого фото еще нет
+        if PhotoBuffer.objects.filter(file_id=file_id).exists():
+            return JsonResponse({'success': True, 'message': 'Already exists'})
+        
+        # Декодируем base64
+        image_bytes = base64.b64decode(image_b64)
+        
+        # Создаем запись
+        photo_buffer = PhotoBuffer.objects.create(
+            file_id=file_id,
+            message_id=message_id,
+            chat_id=chat_id,
+        )
+        
+        # Сохраняем изображение
+        from django.core.files.base import ContentFile
+        photo_buffer.image.save(
+            f'buffer_{photo_buffer.id}.jpg',
+            ContentFile(image_bytes),
+            save=True
+        )
+        
+        print(f"✅ Saved photo {photo_buffer.id} to buffer")
+        
+        return JsonResponse({
+            'success': True,
+            'photo_id': photo_buffer.id
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Error in buffer_upload: {e}")
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 @csrf_exempt

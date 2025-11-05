@@ -142,3 +142,32 @@ class ProcessingTask(models.Model):
     
     def __str__(self):
         return f"{self.api_name} для фото {self.photo.id} ({self.get_status_display()})"
+
+
+class PhotoBuffer(models.Model):
+    """Буфер для несортированных фото из Telegram."""
+    file_id = models.CharField(max_length=255, unique=True, verbose_name='Telegram File ID')
+    message_id = models.BigIntegerField(verbose_name='Message ID')
+    chat_id = models.BigIntegerField(verbose_name='Chat ID')
+    image = models.ImageField(upload_to='buffer/%Y/%m/%d/', verbose_name='Изображение')
+    uploaded_at = models.DateTimeField(default=timezone.now, verbose_name='Загружено')
+    
+    # Распознанные данные
+    gg_label = models.CharField(max_length=50, blank=True, verbose_name='GG лейбл')
+    barcode = models.CharField(max_length=200, blank=True, verbose_name='Баркод')
+    
+    # Группировка
+    group_id = models.IntegerField(null=True, blank=True, verbose_name='Группа')
+    group_order = models.IntegerField(default=0, verbose_name='Порядок в группе')
+    
+    # Статус
+    processed = models.BooleanField(default=False, verbose_name='Обработано')
+    sent_to_bot = models.BooleanField(default=False, verbose_name='Отправлено в бота')
+    
+    class Meta:
+        ordering = ['group_id', 'group_order', 'uploaded_at']
+        verbose_name = 'Фото в буфере'
+        verbose_name_plural = 'Фото в буфере'
+    
+    def __str__(self):
+        return f"Буфер фото {self.id} (группа {self.group_id or 'не назначена'})"

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Сортировка фото</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #f5f7fa; padding: 20px; }
+        
+        h1 { margin-bottom: 20px; }
+        
+        .toolbar {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .groups-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .group {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        .group-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            min-height: 100px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 2px dashed #d1d5db;
+        }
+        
+        .photo-grid.drag-over {
+            background: #eff6ff;
+            border-color: #2563eb;
+        }
+        
+        .photo-item {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: move;
+            transition: transform 0.2s;
+        }
+        
+        .photo-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .photo-item.dragging {
+            opacity: 0.5;
+        }
+        
+        .photo-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .photo-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        
+        .stats {
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📦 Сортировка фото</h1>
+    
+    <div class="toolbar">
+        <button class="btn btn-success" onclick="createNewGroup()">➕ Новая группа</button>
+        <button class="btn btn-primary" onclick="autoGroup()">🤖 Автогруппировка (по GG)</button>
+        <button class="btn btn-danger" onclick="sendAllToBot()">✅ Отправить всё в бота</button>
+        <div class="stats">
+            Всего фото: <strong id="total-count">{{ photos.count }}</strong>
+        </div>
+    </div>
+    
+    <div class="groups-container" id="groups-container">
+        <!-- Группы будут здесь -->
+    </div>
+    
+    <script>
+        let groups = [];
+        let photos = {{ photos_json|safe }};
+        
+        function render() {
+            const container = document.getElementById('groups-container');
+            container.innerHTML = '';
+            
+            // Группируем фото
+            const grouped = {};
+            photos.forEach(p => {
+                const gid = p.group_id || 'ungrouped';
+                if (!grouped[gid]) grouped[gid] = [];
+                grouped[gid].push(p);
+            });
+            
+            // Рендерим группы
+            Object.keys(grouped).forEach(gid => {
+                const groupPhotos = grouped[gid];
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'group';
+                groupDiv.dataset.groupId = gid;
+                
+                const label = gid === 'ungrouped' ? 'Несортированные' : `Группа ${gid}`;
+                const ggLabels = [...new Set(groupPhotos.filter(p => p.gg_label).map(p => p.gg_label))];
+                const ggText = ggLabels.length > 0 ? ` [${ggLabels.join(', ')}]` : '';
+                
+                groupDiv.innerHTML = `
+                    <div class="group-header">
+                        <div class="group-title">${label}${ggText} (${groupPhotos.length} фото)</div>
+                        <div>
+                            ${gid !== 'ungrouped' ? `<button class="btn btn-success" onclick="sendGroupToBot(${gid})">📤 Отправить в бота</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="photo-grid" data-group-id="${gid}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
+                        ${groupPhotos.map(p => `
+                            <div class="photo-item" draggable="true" data-photo-id="${p.id}" ondragstart="drag(event)">
+                                <img src="${p.image_url}" alt="Фото ${p.id}">
+                                ${p.gg_label ? `<div class="photo-label">${p.gg_label}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                container.appendChild(groupDiv);
+            });
+        }
+        
+        function allowDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+        
+        function dragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+        
+        function drag(e) {
+            e.dataTransfer.setData('photo_id', e.target.dataset.photoId);
+            e.target.classList.add('dragging');
+        }
+        
+        function drop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            
+            const photoId = parseInt(e.dataTransfer.getData('photo_id'));
+            const newGroupId = e.currentTarget.dataset.groupId;
+            
+            // Обновляем группу
+            const photo = photos.find(p => p.id === photoId);
+            if (photo) {
+                photo.group_id = newGroupId === 'ungrouped' ? null : parseInt(newGroupId);
+                updatePhotoGroup(photoId, photo.group_id);
+                render();
+            }
+        }
+        
+        async function updatePhotoGroup(photoId, groupId) {
+            await fetch(`/photos/api/update-photo-group/${photoId}/`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ group_id: groupId })
+            });
+        }
+        
+        function createNewGroup() {
+            const maxGroup = Math.max(0, ...photos.filter(p => p.group_id).map(p => p.group_id));
+            const newGroupId = maxGroup + 1;
+            
+            // Добавляем пустую группу
+            photos.push({ id: -newGroupId, group_id: newGroupId, image_url: '', gg_label: '' });
+            render();
+        }
+        
+        function autoGroup() {
+            // Группируем по GG лейблам
+            const ggGroups = {};
+            let groupCounter = 1;
+            
+            photos.forEach(p => {
+                if (p.gg_label) {
+                    if (!ggGroups[p.gg_label]) {
+                        ggGroups[p.gg_label] = groupCounter++;
+                    }
+                    p.group_id = ggGroups[p.gg_label];
+                    updatePhotoGroup(p.id, p.group_id);
+                } else {
+                    p.group_id = null;
+                }
+            });
+            
+            render();
+            alert(`Сгруппировано по ${Object.keys(ggGroups).length} GG лейблам`);
+        }
+        
+        async function sendGroupToBot(groupId) {
+            if (!confirm(`Отправить группу ${groupId} в бота для обработки?`)) return;
+            
+            const response = await fetch(`/photos/api/send-group-to-bot/${groupId}/`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                alert(`✅ Группа отправлена в бота`);
+                // Удаляем отправленные фото
+                photos = photos.filter(p => p.group_id !== groupId);
+                render();
+            } else {
+                alert(`Ошибка: ${data.error}`);
+            }
+        }
+        
+        async function sendAllToBot() {
+            if (!confirm('Отправить ВСЕ группы в бота?')) return;
+            
+            const groupIds = [...new Set(photos.filter(p => p.group_id).map(p => p.group_id))];
+            
+            for (let gid of groupIds) {
+                await sendGroupToBot(gid);
+                await new Promise(r => setTimeout(r, 15000)); // 15 сек интервал
+            }
+        }
+        
+        // Инициализация
+        render();
+        document.getElementById('total-count').textContent = photos.length;
+    </script>
+</body>
+</html>
+
