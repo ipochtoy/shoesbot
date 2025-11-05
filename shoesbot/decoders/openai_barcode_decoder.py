@@ -34,16 +34,22 @@ class OpenAIBarcodeDecoder(Decoder):
                     'content': [
                         {
                             'type': 'text',
-                            'text': '''Find and extract ALL barcodes/UPC codes visible on this image.
-Look for:
-- Long numeric codes (12-14 digits) under barcodes
-- UPC/EAN numbers on product boxes
-- Any visible numeric codes
+                            'text': '''Look at this product box/package and find ALL numeric codes.
 
-Return ONLY the numbers, one per line, no additional text.
+Find:
+1. Barcode numbers (usually 12-14 digits under the barcode lines)
+2. UPC/EAN codes on labels
+3. Any long numeric sequences
+
+IMPORTANT:
+- Look carefully at numbers under barcode stripes
+- Numbers may have spaces (like "1 97613 40718 7") - remove spaces
+- Return the complete number without spaces
+
+Format: Just the numbers, one per line, nothing else.
 Example:
 197613340718
-012345678901'''
+012345678905'''
                         },
                         {
                             'type': 'image_url',
@@ -69,13 +75,17 @@ Example:
             results = []
             seen = set()
             
+            print(f"OpenAI barcode response: {text[:200]}")  # Для отладки
+            
             for line in text.split('\n'):
-                # Убираем лишнее и оставляем только цифры
+                # Убираем пробелы и оставляем только цифры
+                # "1 97613 40718 7" -> "197613340718"
                 digits = ''.join(c for c in line if c.isdigit())
                 
                 # Баркоды обычно 12-14 цифр
                 if 12 <= len(digits) <= 14 and digits not in seen:
                     seen.add(digits)
+                    print(f"Found barcode: {digits}")  # Для отладки
                     
                     # Определяем тип по длине
                     if len(digits) == 13:
