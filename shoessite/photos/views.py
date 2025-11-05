@@ -261,6 +261,11 @@ def product_card_detail(request, card_id):
         card.size = request.POST.get('size', '')
         card.color = request.POST.get('color', '')
         card.sku = request.POST.get('sku', '')
+        quantity_str = request.POST.get('quantity', '1')
+        try:
+            card.quantity = int(quantity_str) if quantity_str else 1
+        except ValueError:
+            card.quantity = 1
         card.save()
         return redirect('product_card_detail', card_id=card.id)
     

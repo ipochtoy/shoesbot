@@ -671,6 +671,10 @@
                     <label>SKU/Артикул</label>
                             <input type="text" name="sku" value="{{ card.sku }}" placeholder="SKU/Артикул">
                 </div>
+                <div class="form-group">
+                    <label>Количество</label>
+                    <input type="number" name="quantity" min="1" value="{{ card.quantity|default:1 }}" placeholder="1">
+                </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">
                             💾 Сохранить изменения
                         </button>
