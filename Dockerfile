@@ -25,6 +25,6 @@ EXPOSE 8000
 # Change to Django directory
 WORKDIR /app/shoessite
 
-# Run migrations and start server
-CMD ["sh", "-c", "python manage.py migrate && gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT"]
+# Start server (migrations will run separately)
+CMD gunicorn shoessite.wsgi:application --bind 0.0.0.0:$PORT
 
