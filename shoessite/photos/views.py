@@ -2023,7 +2023,7 @@ def enhance_photo_photoroom(request, photo_id):
                 print(f"📁 Product URL: {product_url}", file=sys.stderr)
                 sys.stderr.flush()
                 
-                # Определяем prompt - акцент на ТОЧНОЕ сохранение товара как есть
+                # Подробный промпт для точности
                 prompt = "e-commerce catalog photo, product exactly as shown, no modifications, soft beige background"
                 if photo.batch.title:
                     title_lower = photo.batch.title.lower()
