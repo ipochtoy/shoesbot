@@ -39,12 +39,44 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Конвертим в base64
         img_b64 = base64.b64encode(image_data).decode('utf-8')
         
+        # Быстрое распознавание GG лейбла (без полной обработки)
+        gg_label = ''
+        try:
+            # Простой поиск GG на фото через OpenAI
+            import os
+            openai_key = os.getenv('OPENAI_API_KEY')
+            if openai_key:
+                import requests
+                resp = requests.post('https://api.openai.com/v1/chat/completions',
+                    headers={'Authorization': f'Bearer {openai_key}'},
+                    json={
+                        'model': 'gpt-4o-mini',
+                        'messages': [{
+                            'role': 'user',
+                            'content': [
+                                {'type': 'text', 'text': 'Find GG label on this image (like GG681, GG700, Q747). Return ONLY the code, nothing else. If no GG label - return "none".'},
+                                {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
+                            ]
+                        }],
+                        'max_tokens': 20
+                    },
+                    timeout=10
+                )
+                if resp.status_code == 200:
+                    text = resp.json().get('choices', [{}])[0].get('message', {}).get('content', '').strip().upper()
+                    if text and text != 'NONE' and 'GG' in text or 'Q' in text:
+                        gg_label = text
+                        print(f"  Found GG: {gg_label}")
+        except:
+            pass
+        
         # Отправляем в Django
         payload = {
             'file_id': file_id,
             'message_id': message_id,
             'chat_id': chat_id,
             'image': img_b64,
+            'gg_label': gg_label,
         }
         
         async with aiohttp.ClientSession() as session:

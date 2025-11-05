@@ -120,6 +120,7 @@
     
     <div class="toolbar">
         <button class="btn btn-success" onclick="createNewGroup()">➕ Новая группа</button>
+        <button class="btn btn-primary" onclick="detectGGLabels()">🔍 Распознать GG на всех фото</button>
         <button class="btn btn-primary" onclick="autoGroup()">🤖 Автогруппировка (по GG)</button>
         <button class="btn btn-danger" onclick="sendAllToBot()">✅ Отправить всё в бота</button>
         <div class="stats">
@@ -263,6 +264,30 @@
                 render();
             } else {
                 alert(`Ошибка: ${data.error}`);
+            }
+        }
+        
+        async function detectGGLabels() {
+            if (!confirm('Распознать GG лейблы на всех фото? Это может занять 1-2 минуты.')) return;
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Распознаю...';
+            
+            const response = await fetch('/photos/api/detect-gg-in-buffer/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(`✅ Распознано GG лейблов: ${data.found_count}`);
+                location.reload();
+            } else {
+                alert(`Ошибка: ${data.error}`);
+                btn.disabled = false;
+                btn.textContent = '🔍 Распознать GG на всех фото';
             }
         }
         

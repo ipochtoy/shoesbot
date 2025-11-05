@@ -2328,6 +2328,69 @@ def send_group_to_bot(request, group_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def detect_gg_in_buffer(request):
+    """Распознать GG лейблы на всех фото в буфере."""
+    try:
+        from .ai_helpers import generate_product_summary
+        import requests as sync_requests
+        
+        photos = PhotoBuffer.objects.filter(processed=False, gg_label='')
+        found_count = 0
+        
+        for photo in photos:
+            try:
+                # Читаем изображение
+                with photo.image.open('rb') as f:
+                    image_data = f.read()
+                
+                img_b64 = base64.b64encode(image_data).decode('utf-8')
+                
+                # Спрашиваем OpenAI
+                openai_key = os.getenv('OPENAI_API_KEY')
+                if not openai_key:
+                    continue
+                
+                resp = sync_requests.post('https://api.openai.com/v1/chat/completions',
+                    headers={'Authorization': f'Bearer {openai_key}'},
+                    json={
+                        'model': 'gpt-4o-mini',
+                        'messages': [{
+                            'role': 'user',
+                            'content': [
+                                {'type': 'text', 'text': 'Find GG label on this image (like GG681, GG700, Q747). Return ONLY the code, nothing else. If no GG label - return "none".'},
+                                {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
+                            ]
+                        }],
+                        'max_tokens': 20
+                    },
+                    timeout=10
+                )
+                
+                if resp.status_code == 200:
+                    text = resp.json().get('choices', [{}])[0].get('message', {}).get('content', '').strip().upper()
+                    if text and text != 'NONE' and ('GG' in text or 'Q' in text):
+                        photo.gg_label = text
+                        photo.save()
+                        found_count += 1
+                        print(f"Found GG {text} on photo {photo.id}")
+                        
+            except Exception as e:
+                print(f"Error detecting GG on photo {photo.id}: {e}")
+                continue
+        
+        return JsonResponse({
+            'success': True,
+            'found_count': found_count
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def buffer_upload(request):
     """API для буферного бота - сохраняет фото без обработки."""
     try:
@@ -2337,6 +2400,7 @@ def buffer_upload(request):
         message_id = data.get('message_id')
         chat_id = data.get('chat_id')
         image_b64 = data.get('image')
+        gg_label = data.get('gg_label', '')
         
         if not all([file_id, message_id, chat_id, image_b64]):
             return JsonResponse({'error': 'Missing required fields'}, status=400)
@@ -2348,11 +2412,12 @@ def buffer_upload(request):
         # Декодируем base64
         image_bytes = base64.b64decode(image_b64)
         
-        # Создаем запись
+        # Создаем запись с GG лейблом
         photo_buffer = PhotoBuffer.objects.create(
             file_id=file_id,
             message_id=message_id,
             chat_id=chat_id,
+            gg_label=gg_label,
         )
         
         # Сохраняем изображение
