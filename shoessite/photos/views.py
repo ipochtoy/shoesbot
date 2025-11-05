@@ -736,21 +736,23 @@ def reprocess_photo(request, photo_id):
         # Пробуем импортировать декодеры
         import_error = None
         try:
-            from shoesbot.pipeline import BarcodePipeline
+            from shoesbot.pipeline import DecoderPipeline
             from shoesbot.decoders.gg_label_decoder import GGLabelDecoder
             from shoesbot.decoders.vision_decoder import VisionDecoder
             from shoesbot.decoders.zbar_decoder import ZBarDecoder
-            from shoesbot.decoders.opencv_qr_decoder import OpenCvQrDecoder
+            from shoesbot.decoders.cv_qr_decoder import OpenCvQrDecoder
+            from shoesbot.decoders.openai_barcode_decoder import OpenAIBarcodeDecoder
             
-            # Инициализируем декодеры
+            # Инициализируем декодеры (включая OpenAI для веб-интерфейса)
             decoders = [
                 ZBarDecoder(),
                 OpenCvQrDecoder(),
                 VisionDecoder(),
                 GGLabelDecoder(),
+                OpenAIBarcodeDecoder(),  # Только для веб-интерфейса
             ]
             
-            pipeline = BarcodePipeline(decoders)
+            pipeline = DecoderPipeline(decoders)
             
             # Запускаем обработку
             loop = asyncio.new_event_loop()
