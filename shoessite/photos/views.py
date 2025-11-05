@@ -2283,36 +2283,43 @@ def send_group_to_bot(request, group_id):
         
         chat_id = group_photos.first().chat_id
         
-        # Отправляем как media_group (album)
-        media_group = []
+        # Отправляем фото ПО ОДНОМУ с интервалом (чтобы основной бот успел забуферизовать)
+        import time
+        sent_count = 0
+        
+        telegram_url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
+        
         for p in group_photos:
-            media_group.append({
-                'type': 'photo',
-                'media': p.file_id
-            })
+            try:
+                resp = sync_requests.post(telegram_url, json={
+                    'chat_id': chat_id,
+                    'photo': p.file_id
+                }, timeout=10)
+                
+                if resp.status_code == 200:
+                    sent_count += 1
+                    print(f"✅ Sent photo {p.id} ({sent_count}/{len(group_photos)})")
+                    time.sleep(0.5)  # Интервал 0.5 сек между фото
+                else:
+                    print(f"❌ Failed to send photo {p.id}: {resp.status_code}")
+                    
+            except Exception as send_err:
+                print(f"❌ Error sending photo {p.id}: {send_err}")
         
-        # Отправка через Telegram API
-        telegram_url = f'https://api.telegram.org/bot{bot_token}/sendMediaGroup'
-        resp = sync_requests.post(telegram_url, json={
-            'chat_id': chat_id,
-            'media': media_group
-        }, timeout=30)
+        print(f"Sent {sent_count} photos to Telegram")
         
-        print(f"Telegram API response: {resp.status_code}")
-        print(f"Response: {resp.text[:500]}")
-        
-        if resp.status_code == 200:
-            # Помечаем как отправленные
+        if sent_count > 0:
+            # Помечаем отправленные как обработанные
             group_photos.update(sent_to_bot=True, processed=True)
             
             return JsonResponse({
                 'success': True,
                 'correlation_id': f'web_{group_id}',
-                'photos_sent': len(media_group),
+                'photos_sent': sent_count,
                 'chat_id': chat_id
             })
         else:
-            return JsonResponse({'error': f'Telegram API error: {resp.status_code} - {resp.text[:200]}'}, status=500)
+            return JsonResponse({'error': 'Failed to send any photos'}, status=500)
             
     except Exception as e:
         import traceback
