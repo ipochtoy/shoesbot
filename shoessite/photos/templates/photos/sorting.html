@@ -229,36 +229,35 @@
         }
         
         function autoGroup() {
-            // Группируем по GG лейблам с учетом порядка (отсечка)
-            // Если между фото с GG681 есть фото с другим GG - это новая группа
+            // Группируем по GG лейблам ПОСЛЕДОВАТЕЛЬНО
+            // GG681, GG681, GG700, GG681 = 3 группы (отсечка при смене GG)
             
-            let groupCounter = 1;
+            let groupCounter = 0;
             let lastGG = null;
-            let totalGroups = 0;
             
-            // Сортируем фото по времени загрузки (как пришли в Telegram)
+            // Сортируем фото по ID (порядок загрузки)
             const sortedPhotos = [...photos].sort((a, b) => a.id - b.id);
             
             sortedPhotos.forEach(p => {
-                if (p.gg_label) {
-                    // Если GG изменился - новая группа (отсечка)
+                if (p.gg_label && p.gg_label !== '') {
+                    // Если GG изменился или это первое фото с GG - новая группа
                     if (p.gg_label !== lastGG) {
                         groupCounter++;
                         lastGG = p.gg_label;
-                        totalGroups++;
+                        console.log(`New group ${groupCounter} for ${p.gg_label}`);
                     }
                     
                     p.group_id = groupCounter;
                     updatePhotoGroup(p.id, p.group_id);
                 } else {
-                    // Фото без GG не группируем
+                    // Фото без GG - сбрасываем последний GG (отсечка)
                     p.group_id = null;
-                    lastGG = null;  // Сбрасываем отсечку
+                    lastGG = null;
                 }
             });
             
             render();
-            alert(`Создано групп: ${totalGroups}`);
+            alert(`✅ Создано групп: ${groupCounter}\n\nФото без GG остались несортированными`);
         }
         
         async function sendGroupToBot(groupId) {

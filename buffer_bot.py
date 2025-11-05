@@ -14,6 +14,14 @@ load_dotenv()
 BUFFER_BOT_TOKEN = os.getenv("BUFFER_BOT_TOKEN") or os.getenv("BOT_TOKEN")
 DJANGO_API_URL = os.getenv("DJANGO_API_URL", "http://127.0.0.1:8000/photos/api/buffer-upload/")
 
+# Счетчики для статистики
+photo_stats = {
+    'total_received': 0,
+    'successfully_saved': 0,
+    'errors': 0,
+    'last_report_chat': None
+}
+
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Буферный бот. Отправляй фото - я сохраню их для сортировки.\n\n/reprocess - переобработать все фото в буфере (распознать GG заново)")
@@ -41,6 +49,21 @@ async def reprocess_buffer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"❌ Ошибка: {e}")
 
 
+async def send_report(context, chat_id):
+    """Отправляет отчет о загруженных фото."""
+    total = photo_stats['total_received']
+    saved = photo_stats['successfully_saved']
+    errors = photo_stats['errors']
+    
+    text = f"📊 Загрузка завершена:\n\n"
+    text += f"✅ Успешно: {saved}\n"
+    if errors > 0:
+        text += f"❌ Ошибок: {errors}\n"
+    text += f"\nОткрой http://127.0.0.1:8000/photos/sorting/ для сортировки"
+    
+    await context.bot.send_message(chat_id, text)
+
+
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Получил фото → отправил в Django буфер."""
     try:
@@ -51,6 +74,14 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message_id = update.message.message_id
         largest = update.message.photo[-1]
         file_id = largest.file_id
+        
+        # Увеличиваем счетчик
+        photo_stats['total_received'] += 1
+        photo_stats['last_report_chat'] = chat_id
+        
+        # Первое фото - отправляем уведомление
+        if photo_stats['total_received'] == 1:
+            await update.message.reply_text("📥 Принимаю фото. Отправляй еще, потом скажу статистику...")
         
         # Скачиваем фото
         tg_file = await context.bot.get_file(file_id)
@@ -105,14 +136,37 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
             async with session.post(DJANGO_API_URL, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as resp:
                 if resp.status == 200:
                     print(f"✅ Photo {file_id[:20]} saved to buffer")
+                    photo_stats['successfully_saved'] += 1
                     # Реакция подтверждения
                     await update.message.react("👍")
+                    
+                    # Каждые 10 фото - промежуточный отчет
+                    if photo_stats['total_received'] % 10 == 0:
+                        await update.message.reply_text(
+                            f"📊 Принято: {photo_stats['total_received']}, "
+                            f"сохранено: {photo_stats['successfully_saved']}"
+                        )
                 else:
                     print(f"❌ Django error: {resp.status}")
+                    photo_stats['errors'] += 1
                     await update.message.react("❌")
+        
+        # Таймер для финального репорта (если 5 секунд нет новых фото)
+        if hasattr(context, 'job_queue'):
+            # Отменяем предыдущий таймер
+            for job in context.job_queue.get_jobs_by_name(f'report_{chat_id}'):
+                job.schedule_removal()
+            
+            # Ставим новый таймер на 5 секунд
+            context.job_queue.run_once(
+                lambda c: send_report(c, chat_id),
+                5,
+                name=f'report_{chat_id}'
+            )
                     
     except Exception as e:
         print(f"Error in handle_photo: {e}")
+        photo_stats['errors'] += 1
         import traceback
         traceback.print_exc()
 
