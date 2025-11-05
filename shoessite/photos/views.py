@@ -2067,20 +2067,35 @@ def enhance_photo_photoroom(request, photo_id):
                 traceback.print_exc()
                 sys.stderr.flush()
         else:
-            # Product Beautifier через Photoroom
+            # Background Change через FASHN (вместо Photoroom)
             try:
-                from .photoroom_api import enhance_product_photo
-                
-                image_path = photo.image.path
-                print(f"📁 Image path: {image_path}", file=sys.stderr)
+                from .fashn_api import change_background, download_image_from_url
+                print("✅ FASHN Background Change", file=sys.stderr)
                 sys.stderr.flush()
                 
-                enhanced_image = enhance_product_photo(image_path, mode=mode)
-                print(f"📦 Enhanced image: {len(enhanced_image) if enhanced_image else 'None'} bytes", file=sys.stderr)
+                # Публичный URL
+                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
+                product_url = f"{cloudflared_url}{photo.image.url}"
+                
+                # Минимальный промпт
+                bg_prompt = "studio background"
+                
+                print(f"📁 URL: {product_url}", file=sys.stderr)
+                print(f"📋 Background: {bg_prompt}", file=sys.stderr)
                 sys.stderr.flush()
+                
+                result_url = change_background(product_url, bg_prompt)
+                
+                if result_url:
+                    enhanced_image = download_image_from_url(result_url)
+                    print(f"📦 Downloaded: {len(enhanced_image) if enhanced_image else 0} bytes", file=sys.stderr)
+                    sys.stderr.flush()
+                else:
+                    print("❌ FASHN returned None", file=sys.stderr)
+                    sys.stderr.flush()
                 
             except Exception as e:
-                print(f"❌ Photoroom exception: {e}", file=sys.stderr)
+                print(f"❌ FASHN exception: {e}", file=sys.stderr)
                 import traceback
                 traceback.print_exc()
                 sys.stderr.flush()
