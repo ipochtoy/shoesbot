@@ -117,6 +117,15 @@ def upload_batch(request):
                 )
                 barcode_count += 1
         
+        # Автоматически отправляем в Pochtoy API
+        try:
+            from .pochtoy_integration import send_card_to_pochtoy
+            pochtoy_result = send_card_to_pochtoy(batch)
+            print(f"Pochtoy auto-send result: {pochtoy_result}")
+        except Exception as e:
+            print(f"Pochtoy auto-send error: {e}")
+            # Не падаем если Pochtoy недоступен
+        
         return JsonResponse({
             'success': True,
             'correlation_id': correlation_id,
