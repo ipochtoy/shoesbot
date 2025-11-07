@@ -392,15 +392,37 @@ async def on_delete_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
         chat_id = entry['chat_id']
         ids = entry['message_ids']
+        
+        # Удаляем карточку из Django
+        try:
+            django_url = os.getenv('DJANGO_URL', 'http://127.0.0.1:8000')
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.delete(
+                    f'{django_url}/photos/api/delete-card-by-correlation/{corr}/',
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status == 200:
+                        result = await resp.json()
+                        logger.info(f"Django card deleted: {result}")
+                        deleted_info = f"Карточка удалена ({result.get('photos_deleted', 0)} фото)"
+                    else:
+                        logger.warning(f"Django delete failed: {resp.status}")
+                        deleted_info = "Ошибка удаления карточки из Django"
+        except Exception as django_err:
+            logger.error(f"Django delete error: {django_err}")
+            deleted_info = "Django недоступен"
+        
         # Delete in reverse order (from last to first)
         for mid in sorted(set(ids), reverse=True):
             try:
                 await context.bot.delete_message(chat_id=chat_id, message_id=mid)
             except Exception as e:
                 logger.debug(f"on_delete_batch: failed to delete {mid}: {e}")
-        # Optionally, confirm
+        
+        # Confirm
         try:
-            await context.bot.send_message(chat_id, "🗑️ Удалено")
+            await context.bot.send_message(chat_id, f"🗑️ Удалено:\n- Сообщения в Telegram\n- {deleted_info}")
         except Exception:
             pass
     except Exception as e:
