@@ -207,7 +207,8 @@
                     <div class="group-title">${label} (${groupPhotos.length} фото)</div>
                     <div>
                         ${gid !== 'ungrouped' ? `
-                            <button class="btn btn-success" onclick="sendGroupToBot(${gid})">📤 Отправить в бота</button>
+                            <button class="btn btn-success" onclick="sendGroupToBot(${gid})">📤 Создать карточку</button>
+                            <button class="btn btn-primary" onclick="sendGroupToPochtoy(${gid})" style="background: #8b5cf6;">📡 В Pochtoy</button>
                             <button class="btn btn-danger" onclick="deleteGroup(${gid})" style="background: #dc2626;">🗑️</button>
                         ` : ''}
                     </div>
@@ -392,6 +393,31 @@
             for (let gid of groupIds) {
                 await sendGroupToBot(gid);
                 await new Promise(r => setTimeout(r, 15000)); // 15 сек интервал
+            }
+        }
+        
+        async function sendGroupToPochtoy(groupId) {
+            if (!confirm(`Отправить группу ${groupId} в Pochtoy API?`)) return;
+            
+            console.log('Sending group', groupId, 'to Pochtoy...');
+            
+            try {
+                const response = await fetch(`/photos/api/send-group-to-pochtoy/${groupId}/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const data = await response.json();
+                console.log('Pochtoy response:', data);
+                
+                if (data.success) {
+                    alert(`✅ Отправлено в Pochtoy!\n\nИзображений: ${data.images_sent}\nТрекингов: ${data.trackings_sent}`);
+                } else {
+                    alert(`❌ Ошибка Pochtoy: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Pochtoy error:', error);
+                alert(`❌ Ошибка: ${error.message}`);
             }
         }
         

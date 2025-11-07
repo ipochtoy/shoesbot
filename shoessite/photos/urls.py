@@ -9,6 +9,7 @@ urlpatterns = [
     path('api/send-group-to-bot/<int:group_id>/', views.send_group_to_bot, name='send_group_to_bot'),
     path('api/detect-gg-in-buffer/', views.detect_gg_in_buffer, name='detect_gg_in_buffer'),
     path('api/clear-buffer/', views.clear_buffer, name='clear_buffer'),
+    path('api/send-group-to-pochtoy/<int:group_id>/', views.send_group_to_pochtoy, name='send_group_to_pochtoy'),
     path('admin/process-task/<int:task_id>/', views.process_task, name='process_task'),
     path('card/<int:card_id>/', views.product_card_detail, name='product_card_detail'),
     path('api/search-barcode/', views.search_by_barcode, name='search_by_barcode'),

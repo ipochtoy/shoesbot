@@ -2399,6 +2399,33 @@ def detect_gg_in_buffer(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def send_group_to_pochtoy(request, group_id):
+    """Отправить группу фото в Pochtoy API."""
+    try:
+        from .pochtoy_integration import send_buffer_group_to_pochtoy
+        
+        group_photos = PhotoBuffer.objects.filter(group_id=group_id, processed=False).order_by('id')
+        
+        if not group_photos.exists():
+            return JsonResponse({'error': 'Группа пуста'}, status=400)
+        
+        # Отправляем в Pochtoy
+        result = send_buffer_group_to_pochtoy(group_photos)
+        
+        if result and result.get('success'):
+            # НЕ помечаем как processed - можно отправлять и в Pochtoy и создавать карточку
+            return JsonResponse(result)
+        else:
+            return JsonResponse(result or {'error': 'Unknown error'}, status=500)
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def clear_buffer(request):
     """Очистить весь буфер - удалить все несортированные фото."""
     try:
