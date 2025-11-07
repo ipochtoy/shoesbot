@@ -2436,16 +2436,37 @@ def send_group_to_pochtoy(request, group_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def clear_buffer(request):
-    """Очистить весь буфер - удалить все несортированные фото."""
+    """Очистить весь буфер - удалить все несортированные фото и файлы."""
     try:
-        deleted_count = PhotoBuffer.objects.filter(processed=False).count()
-        PhotoBuffer.objects.filter(processed=False).delete()
+        import os
+        
+        photos = PhotoBuffer.objects.filter(processed=False)
+        deleted_count = photos.count()
+        files_deleted = 0
+        
+        # Удаляем физические файлы
+        for photo in photos:
+            try:
+                if photo.image and os.path.exists(photo.image.path):
+                    os.remove(photo.image.path)
+                    files_deleted += 1
+                    print(f"Deleted file: {photo.image.path}")
+            except Exception as e:
+                print(f"Error deleting file for photo {photo.id}: {e}")
+        
+        # Удаляем записи из БД
+        photos.delete()
+        
+        print(f"Cleared buffer: {deleted_count} records, {files_deleted} files")
         
         return JsonResponse({
             'success': True,
-            'deleted_count': deleted_count
+            'deleted_count': deleted_count,
+            'files_deleted': files_deleted
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
