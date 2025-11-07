@@ -2471,6 +2471,52 @@ def clear_buffer(request):
 
 
 @csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_card_by_correlation(request, correlation_id):
+    """Удалить карточку товара по correlation_id (из Telegram бота)."""
+    try:
+        import os
+        
+        # Находим карточку по correlation_id
+        card = PhotoBatch.objects.filter(correlation_id=correlation_id).first()
+        
+        if not card:
+            return JsonResponse({'error': 'Card not found'}, status=404)
+        
+        # Считаем что удаляем
+        photos_count = card.photos.count()
+        barcodes_count = card.get_all_barcodes().count()
+        
+        # Удаляем физические файлы фото
+        files_deleted = 0
+        for photo in card.photos.all():
+            try:
+                if photo.image and os.path.exists(photo.image.path):
+                    os.remove(photo.image.path)
+                    files_deleted += 1
+            except Exception as e:
+                print(f"Error deleting photo file {photo.id}: {e}")
+        
+        # Удаляем карточку (каскадом удалятся Photo и BarcodeResult)
+        card.delete()
+        
+        print(f"Deleted card {correlation_id}: {photos_count} photos, {barcodes_count} barcodes, {files_deleted} files")
+        
+        return JsonResponse({
+            'success': True,
+            'correlation_id': correlation_id,
+            'photos_deleted': photos_count,
+            'barcodes_deleted': barcodes_count,
+            'files_deleted': files_deleted
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def buffer_upload(request):
     """API для буферного бота - сохраняет фото без обработки."""
