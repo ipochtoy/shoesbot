@@ -2518,6 +2518,24 @@ def delete_card_by_correlation(request, correlation_id):
             except Exception as e:
                 print(f"Error deleting photo file {photo.id}: {e}")
         
+        # Удаляем из Pochtoy перед удалением карточки
+        try:
+            from .pochtoy_integration import delete_from_pochtoy
+            
+            # Собираем все трекинги
+            trackings = []
+            trackings.extend(card.get_gg_labels())
+            for bc in card.get_all_barcodes():
+                if bc.data not in trackings:
+                    trackings.append(bc.data)
+            
+            if trackings:
+                pochtoy_result = delete_from_pochtoy(trackings)
+                print(f"Pochtoy delete result: {pochtoy_result}")
+        except Exception as e:
+            print(f"Pochtoy delete error: {e}")
+            # Не падаем если Pochtoy недоступен
+        
         # Удаляем карточку (каскадом удалятся Photo и BarcodeResult)
         card.delete()
         
