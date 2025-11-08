@@ -42,6 +42,9 @@ renderer = CardRenderer(templates_dir=os.path.join(os.path.dirname(__file__), ".
 DEBUG_DEFAULT = os.getenv("DEBUG", "0") in ("1", "true", "True")
 DEBUG_CHATS: set[int] = set()
 USE_PARALLEL_DECODERS = os.getenv("PARALLEL_DECODERS", "1") == "1"
+
+# Storage for photos waiting for GG label
+PENDING_WITHOUT_GG: dict = {}  # {chat_id: {'photos': [...], 'message_ids': [...]}}
 USE_SMART_SKIP = os.getenv("SMART_SKIP_VISION", "0") == "1"  # Disabled by default
 
 # In-memory registry of sent messages per batch (correlation id)
