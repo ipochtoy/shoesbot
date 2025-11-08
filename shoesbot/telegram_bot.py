@@ -283,17 +283,17 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                                         'type': 'text',
                                         'text': '''Look at the YELLOW STICKER on this product.
 
-Find the GG code or Q code written in LARGE LETTERS.
+Find ALL codes on the sticker:
+1. GG code (like GG727, GG681) - large black numbers
+2. Q code (like Q2622988, Q747) - can be smaller, usually 7-10 digits
 
-Examples:
-- GG727
-- GG681
-- Q2622988
+Look EVERYWHERE on the yellow sticker for Q followed by numbers.
 
-The code is printed in LARGE BLACK TEXT on the yellow label.
+Return ALL codes you find, separated by space.
+Example: GG727 Q2622988
 
-Return ONLY the code (GG727 or Q2622988), nothing else.
-If you see both GG and Q codes, return BOTH separated by space.'''
+If you find only one type, return just that.
+Do NOT return anything else.'''
                                     },
                                     {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
                                 ]
