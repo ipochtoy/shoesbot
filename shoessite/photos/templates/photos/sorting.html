@@ -20,8 +20,9 @@
         
         .groups-container {
             display: flex;
-            flex-direction: column;
             gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 20px;
         }
         
         .group {
@@ -29,6 +30,15 @@
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            min-width: 300px;
+            max-width: 300px;
+            flex-shrink: 0;
+        }
+        
+        .group.unsorted {
+            min-width: 400px;
+            max-width: 400px;
+            border: 3px solid #dc2626;
         }
         
         .group-header {
@@ -46,10 +56,12 @@
         }
         
         .photo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 10px;
-            min-height: 100px;
+            min-height: 200px;
+            max-height: 600px;
+            overflow-y: auto;
             padding: 10px;
             background: #f9fafb;
             border-radius: 6px;
@@ -66,12 +78,18 @@
             border-radius: 8px;
             overflow: hidden;
             cursor: move;
-            transition: transform 0.2s;
+            transition: all 0.2s;
+            border: 3px solid transparent;
         }
         
         .photo-item:hover {
-            transform: scale(1.05);
+            transform: scale(1.02);
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .photo-item.selected {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
         }
         
         .photo-item.dragging {
@@ -80,9 +98,29 @@
         
         .photo-item img {
             width: 100%;
-            height: 150px;
+            height: 120px;
             object-fit: cover;
             display: block;
+        }
+        
+        .select-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #2563eb;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .photo-item.selected .select-badge {
+            display: flex;
         }
         
         .photo-label {
@@ -129,7 +167,7 @@
     </div>
     
     <p style="color: #6b7280; margin: 10px 0; font-size: 14px;">
-        💡 Инструкция: Перетаскивай фото из "Несортированные" в группы. Когда группа готова - жми "Отправить в бота"
+        💡 Инструкция: Кликни на фото чтобы выбрать (можно несколько). Перетащи СЛЕВА (несортированные) → НАПРАВО (в группы). Жми "Создать карточку" когда готово.
     </p>
     
     <div class="groups-container" id="groups-container">
@@ -139,6 +177,7 @@
     <script>
         let groups = [];
         let photos = {{ photos_json|safe }};
+        let selectedPhotos = new Set();
         
         function render() {
             const container = document.getElementById('groups-container');
@@ -215,9 +254,15 @@
                 </div>
                 <div class="photo-grid" data-group-id="${gid}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)">
                     ${sortedPhotos.map(p => `
-                        <div class="photo-item" draggable="true" data-photo-id="${p.id}" ondragstart="drag(event)" ondragend="dragEnd(event)">
+                        <div class="photo-item ${selectedPhotos.has(p.id) ? 'selected' : ''}" 
+                             draggable="true" 
+                             data-photo-id="${p.id}" 
+                             ondragstart="drag(event)" 
+                             ondragend="dragEnd(event)"
+                             onclick="toggleSelect(event, ${p.id})">
                             <img src="${p.image_url}" alt="Фото ${p.id}">
                             ${p.gg_label ? `<div class="photo-label">${p.gg_label}</div>` : ''}
+                            <div class="select-badge">✓</div>
                         </div>
                     `).join('')}
                 </div>
@@ -235,37 +280,76 @@
             e.currentTarget.classList.remove('drag-over');
         }
         
+        function toggleSelect(e, photoId) {
+            e.stopPropagation();
+            
+            // Если Cmd/Ctrl не зажат - сбрасываем выбор
+            if (!e.metaKey && !e.ctrlKey) {
+                selectedPhotos.clear();
+            }
+            
+            // Переключаем выбор
+            if (selectedPhotos.has(photoId)) {
+                selectedPhotos.delete(photoId);
+            } else {
+                selectedPhotos.add(photoId);
+            }
+            
+            console.log('Selected:', Array.from(selectedPhotos));
+            render();
+        }
+        
         function drag(e) {
             const photoItem = e.target.closest('.photo-item');
-            if (photoItem) {
-                e.dataTransfer.setData('photo_id', photoItem.dataset.photoId);
+            if (!photoItem) return;
+            
+            const photoId = parseInt(photoItem.dataset.photoId);
+            
+            // Если тащим выбранное фото - тащим все выбранные
+            if (selectedPhotos.has(photoId)) {
+                e.dataTransfer.setData('photo_ids', JSON.stringify(Array.from(selectedPhotos)));
                 photoItem.classList.add('dragging');
-                console.log('Dragging photo:', photoItem.dataset.photoId);
+                // Подсвечиваем все выбранные
+                selectedPhotos.forEach(id => {
+                    document.querySelector(`[data-photo-id="${id}"]`)?.classList.add('dragging');
+                });
+            } else {
+                // Тащим только одно фото
+                e.dataTransfer.setData('photo_ids', JSON.stringify([photoId]));
+                photoItem.classList.add('dragging');
             }
+            
+            console.log('Dragging photos:', e.dataTransfer.getData('photo_ids'));
         }
         
         function dragEnd(e) {
-            e.target.classList.remove('dragging');
+            document.querySelectorAll('.photo-item').forEach(item => {
+                item.classList.remove('dragging');
+            });
         }
         
         function drop(e) {
             e.preventDefault();
             e.currentTarget.classList.remove('drag-over');
             
-            const photoId = parseInt(e.dataTransfer.getData('photo_id'));
+            const photoIdsJson = e.dataTransfer.getData('photo_ids');
+            const photoIds = JSON.parse(photoIdsJson || '[]');
             const newGroupId = e.currentTarget.dataset.groupId;
             
-            console.log('Drop: photo', photoId, 'to group', newGroupId);
+            console.log('Drop:', photoIds.length, 'photos to group', newGroupId);
             
-            // Обновляем группу
-            const photo = photos.find(p => p.id === photoId);
-            if (photo) {
-                const oldGroup = photo.group_id;
-                photo.group_id = newGroupId === 'ungrouped' ? null : parseInt(newGroupId);
-                updatePhotoGroup(photoId, photo.group_id);
-                console.log(`Moved photo ${photoId} from group ${oldGroup} to ${photo.group_id}`);
-                render();
-            }
+            // Обновляем группу для всех фото
+            photoIds.forEach(photoId => {
+                const photo = photos.find(p => p.id === photoId);
+                if (photo) {
+                    photo.group_id = newGroupId === 'ungrouped' ? null : parseInt(newGroupId);
+                    updatePhotoGroup(photoId, photo.group_id);
+                }
+            });
+            
+            // Сбрасываем выбор
+            selectedPhotos.clear();
+            render();
         }
         
         function deleteGroup(groupId) {
