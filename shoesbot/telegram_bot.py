@@ -256,6 +256,76 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         # Проверяем наличие GG лейблов
         gg_labels = [r for r in barcode_results if r.symbology == 'GG_LABEL']
         
+        # Если не нашли - пробуем OpenAI как последний шанс
+        if not gg_labels:
+            logger.info("Trying OpenAI as last attempt for GG detection...")
+            try:
+                import base64
+                import requests as sync_requests
+                
+                # Берем первое фото
+                first_photo = photo_items[0]
+                from io import BytesIO
+                buf = BytesIO()
+                await first_photo.file_obj.download_to_memory(out=buf)
+                img_data = buf.getvalue()
+                img_b64 = base64.b64encode(img_data).decode('utf-8')
+                
+                openai_key = os.getenv('OPENAI_API_KEY')
+                if openai_key:
+                    resp = sync_requests.post('https://api.openai.com/v1/chat/completions',
+                        headers={'Authorization': f'Bearer {openai_key}'},
+                        json={
+                            'model': 'gpt-4o-mini',
+                            'messages': [{
+                                'role': 'user',
+                                'content': [
+                                    {
+                                        'type': 'text',
+                                        'text': '''Look at the YELLOW STICKER on this product.
+
+Find the GG code or Q code written in LARGE LETTERS.
+
+Examples:
+- GG727
+- GG681
+- Q2622988
+
+The code is printed in LARGE BLACK TEXT on the yellow label.
+
+Return ONLY the code (GG727 or Q2622988), nothing else.
+If you see both GG and Q codes, return BOTH separated by space.'''
+                                    },
+                                    {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
+                                ]
+                            }],
+                            'max_tokens': 30,
+                            'temperature': 0
+                        },
+                        timeout=15
+                    )
+                    
+                    if resp.status_code == 200:
+                        text = resp.json().get('choices', [{}])[0].get('message', {}).get('content', '').strip().upper()
+                        logger.info(f"OpenAI GG response: {text}")
+                        
+                        # Ищем GG и Q коды
+                        import re
+                        gg_matches = re.findall(r'\b(GG\d{2,7})\b', text)
+                        q_matches = re.findall(r'\b(Q\d{4,10})\b', text)
+                        
+                        for match in gg_matches + q_matches:
+                            from shoesbot.models import Barcode
+                            gg_labels.append(Barcode(
+                                symbology='GG_LABEL',
+                                data=match,
+                                source='openai-emergency'
+                            ))
+                            barcode_results.append(gg_labels[-1])
+                            logger.info(f"OpenAI emergency found: {match}")
+            except Exception as e:
+                logger.error(f"OpenAI emergency GG detection failed: {e}")
+        
         if not gg_labels:
             # GG лейбла не найдена - просим догрузить
             logger.warning(f"process_photo_batch: NO GG LABEL FOUND for {corr}")
