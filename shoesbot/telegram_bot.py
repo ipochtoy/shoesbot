@@ -265,10 +265,9 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                 
                 # Берем первое фото
                 first_photo = photo_items[0]
-                from io import BytesIO
-                buf = BytesIO()
-                await first_photo.file_obj.download_to_memory(out=buf)
-                img_data = buf.getvalue()
+                buf2 = BytesIO()
+                await first_photo.file_obj.download_to_memory(out=buf2)
+                img_data = buf2.getvalue()
                 img_b64 = base64.b64encode(img_data).decode('utf-8')
                 
                 openai_key = os.getenv('OPENAI_API_KEY')
