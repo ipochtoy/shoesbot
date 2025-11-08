@@ -130,21 +130,24 @@
 <body>
     <div class="header">
         <h1>📦 Сортировка фото</h1>
+        <p style="color: #6b7280; font-size: 13px; margin: 8px 0;">
+            💡 Кликай фото чтобы выбрать (до 15 штук). Cmd+клик для нескольких, Shift+клик для диапазона
+        </p>
         <div class="toolbar">
             <button class="btn btn-primary" onclick="createCardFromSelected()" id="create-btn" disabled>
-                ✅ Создать карточку (<span id="selected-count">0</span>)
+                ✅ Создать карточку из <span id="selected-count">0</span> фото
             </button>
             <button class="btn btn-secondary" onclick="deselectAll()" id="deselect-btn" disabled>
                 ↩️ Отменить выбор
             </button>
             <button class="btn btn-secondary" onclick="autoSelect()">
-                🤖 Автовыбор по GG
+                🤖 Автовыбор первого GG
             </button>
             <button class="btn btn-danger" onclick="clearBuffer()">
                 🗑️ Очистить всё
             </button>
             <div class="stats">
-                Всего фото: <strong id="total-count">{{ photos.count }}</strong>
+                Всего фото: <strong id="total-count">{{ photos.count }}</strong> | Макс за раз: <strong>15</strong>
             </div>
         </div>
     </div>
@@ -199,6 +202,8 @@
         }
         
         function toggleSelect(e, photoId) {
+            const MAX_SELECTION = 15;
+            
             if (e.shiftKey && selectedPhotos.size > 0) {
                 // Shift+клик - выбрать диапазон
                 const lastSelected = Array.from(selectedPhotos).pop();
@@ -206,7 +211,13 @@
                 const start = Math.min(allIds.indexOf(photoId), allIds.indexOf(lastSelected));
                 const end = Math.max(allIds.indexOf(photoId), allIds.indexOf(lastSelected));
                 
-                for (let i = start; i <= end; i++) {
+                const rangeSize = end - start + 1;
+                if (rangeSize > MAX_SELECTION) {
+                    alert(`⚠️ Максимум ${MAX_SELECTION} фото за раз. Выбрано будет ${MAX_SELECTION}.`);
+                }
+                
+                selectedPhotos.clear();
+                for (let i = start; i < Math.min(end + 1, start + MAX_SELECTION); i++) {
                     selectedPhotos.add(allIds[i]);
                 }
             } else if (e.metaKey || e.ctrlKey) {
@@ -214,6 +225,10 @@
                 if (selectedPhotos.has(photoId)) {
                     selectedPhotos.delete(photoId);
                 } else {
+                    if (selectedPhotos.size >= MAX_SELECTION) {
+                        alert(`⚠️ Максимум ${MAX_SELECTION} фото за раз!`);
+                        return;
+                    }
                     selectedPhotos.add(photoId);
                 }
             } else {
