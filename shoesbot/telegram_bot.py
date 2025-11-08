@@ -253,9 +253,39 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             reg.extend([m.message_id for m in mg])
         await asyncio.sleep(0.2)  # Баланс между скоростью и стабильностью
         
+        # Проверяем наличие GG лейблов
+        gg_labels = [r for r in barcode_results if r.symbology == 'GG_LABEL']
+        
+        if not gg_labels:
+            # GG лейбла не найдена - просим догрузить
+            logger.warning(f"process_photo_batch: NO GG LABEL FOUND for {corr}")
+            
+            error_msg = "❌ <b>GG лейбла не найдена!</b>\n\n"
+            error_msg += "Не могу создать карточку без GG кода.\n\n"
+            error_msg += "📸 <b>Отправь фото лейбы (желтый стикер с GG кодом)</b>\n\n"
+            error_msg += "Код обычно выглядит как:\n"
+            error_msg += "  • GG681\n"
+            error_msg += "  • GG700\n"
+            error_msg += "  • Q2622911\n\n"
+            error_msg += "После получения фото лейбы я создам карточку товара."
+            
+            m_error = await send_message_ret(context.bot, chat_id, error_msg, parse_mode='HTML')
+            if m_error:
+                reg.append(m_error.message_id)
+            
+            # НЕ создаем карточку и НЕ загружаем в Django
+            logger.info("process_photo_batch: STOPPED - waiting for GG label photo")
+            return
+        
+        # GG найдена - продолжаем как обычно
+        logger.info(f"process_photo_batch: GG labels found: {[g.data for g in gg_labels]}")
+        
         # Card (includes both regular barcodes and GG labels)
         logger.info("process_photo_batch: rendering and sending card")
-        html = renderer.render_barcodes_html(barcode_results, photo_count=len(photo_items))
+        
+        # Добавляем зеленую галочку если GG найдена
+        html = "✅ <b>GG лейбла найдена</b>\n\n"
+        html += renderer.render_barcodes_html(barcode_results, photo_count=len(photo_items))
         if is_debug and all_timelines:
             lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in all_timelines]
             html += "\n\n<code>" + " | ".join(lines) + "</code>"
