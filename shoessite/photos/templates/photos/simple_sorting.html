@@ -97,21 +97,24 @@
             position: absolute;
             top: 8px;
             right: 8px;
-            background: #2563eb;
-            color: white;
+            background: rgba(255, 255, 255, 0.9);
+            color: #2563eb;
             width: 28px;
             height: 28px;
             border-radius: 50%;
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             font-size: 16px;
             font-weight: bold;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border: 2px solid #d1d5db;
         }
         
         .photo-card.selected .select-badge {
-            display: flex;
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
         }
         
         .empty-state {
@@ -131,14 +134,17 @@
     <div class="header">
         <h1>📦 Сортировка фото</h1>
         <p style="color: #6b7280; font-size: 13px; margin: 8px 0;">
-            💡 Кликай фото чтобы выбрать (до 15 штук). Cmd+клик для нескольких, Shift+клик для диапазона
+            💡 Кликай фото чтобы выбрать (до 15 штук). Shift+клик для диапазона. Кружочки всегда видны.
         </p>
         <div class="toolbar">
             <button class="btn btn-primary" onclick="createCardFromSelected()" id="create-btn" disabled>
                 ✅ Создать карточку из <span id="selected-count">0</span> фото
             </button>
             <button class="btn btn-secondary" onclick="deselectAll()" id="deselect-btn" disabled>
-                ↩️ Отменить выбор
+                ↩️ Снять выделение
+            </button>
+            <button class="btn btn-secondary" onclick="undoLastSend()" id="undo-btn" disabled>
+                ⏪ Вернуть прошлую отправку
             </button>
             <button class="btn btn-secondary" onclick="autoSelect()">
                 🤖 Автовыбор первого GG
@@ -165,6 +171,7 @@
     <script>
         let photos = {{ photos_json|safe }};
         let selectedPhotos = new Set();
+        let lastSentPhotos = [];  // История для отмены
         
         function render() {
             const gallery = document.getElementById('gallery');
@@ -216,12 +223,11 @@
                     alert(`⚠️ Максимум ${MAX_SELECTION} фото за раз. Выбрано будет ${MAX_SELECTION}.`);
                 }
                 
-                selectedPhotos.clear();
                 for (let i = start; i < Math.min(end + 1, start + MAX_SELECTION); i++) {
                     selectedPhotos.add(allIds[i]);
                 }
-            } else if (e.metaKey || e.ctrlKey) {
-                // Cmd/Ctrl+клик - добавить к выбранным
+            } else {
+                // Обычный клик - toggle (как в Apple Photos)
                 if (selectedPhotos.has(photoId)) {
                     selectedPhotos.delete(photoId);
                 } else {
@@ -229,14 +235,6 @@
                         alert(`⚠️ Максимум ${MAX_SELECTION} фото за раз!`);
                         return;
                     }
-                    selectedPhotos.add(photoId);
-                }
-            } else {
-                // Обычный клик - выбрать только это
-                if (selectedPhotos.has(photoId) && selectedPhotos.size === 1) {
-                    selectedPhotos.clear();
-                } else {
-                    selectedPhotos.clear();
                     selectedPhotos.add(photoId);
                 }
             }
@@ -271,11 +269,23 @@
             render();
         }
         
+        function undoLastSend() {
+            if (lastSentPhotos.length === 0) return;
+            
+            // Возвращаем фото обратно
+            photos.push(...lastSentPhotos);
+            lastSentPhotos = [];
+            
+            document.getElementById('undo-btn').disabled = true;
+            render();
+        }
+        
         function updateUI() {
             const count = selectedPhotos.size;
             document.getElementById('selected-count').textContent = count;
             document.getElementById('create-btn').disabled = count === 0;
             document.getElementById('deselect-btn').disabled = count === 0;
+            document.getElementById('undo-btn').disabled = lastSentPhotos.length === 0;
             document.getElementById('total-count').textContent = photos.length;
         }
         
