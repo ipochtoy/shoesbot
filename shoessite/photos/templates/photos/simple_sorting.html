@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Сортировка фото</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, sans-serif; background: #f5f7fa; }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        h1 { margin-bottom: 15px; }
+        
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+        
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: #10b981; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #059669; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .btn-secondary:hover:not(:disabled) { background: #4b5563; }
+        .btn-danger { background: #ef4444; color: white; }
+        
+        .stats {
+            margin-left: auto;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .photo-gallery {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+        
+        .photo-card {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 4px solid transparent;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .photo-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+        
+        .photo-card.selected {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3);
+        }
+        
+        .photo-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .photo-label {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(0,0,0,0.75);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .select-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #2563eb;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        
+        .photo-card.selected .select-badge {
+            display: flex;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+        
+        .empty-state img {
+            width: 120px;
+            opacity: 0.3;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📦 Сортировка фото</h1>
+        <div class="toolbar">
+            <button class="btn btn-primary" onclick="createCardFromSelected()" id="create-btn" disabled>
+                ✅ Создать карточку (<span id="selected-count">0</span>)
+            </button>
+            <button class="btn btn-secondary" onclick="deselectAll()" id="deselect-btn" disabled>
+                ↩️ Отменить выбор
+            </button>
+            <button class="btn btn-secondary" onclick="autoSelect()">
+                🤖 Автовыбор по GG
+            </button>
+            <button class="btn btn-danger" onclick="clearBuffer()">
+                🗑️ Очистить всё
+            </button>
+            <div class="stats">
+                Всего фото: <strong id="total-count">{{ photos.count }}</strong>
+            </div>
+        </div>
+    </div>
+    
+    <div class="photo-gallery" id="gallery">
+        <!-- Фото будут здесь -->
+    </div>
+    
+    <div class="empty-state" id="empty-state" style="display: none;">
+        <div style="font-size: 48px;">📦</div>
+        <h2>Нет фото</h2>
+        <p>Отправь фото в буферного бота</p>
+    </div>
+    
+    <script>
+        let photos = {{ photos_json|safe }};
+        let selectedPhotos = new Set();
+        
+        function render() {
+            const gallery = document.getElementById('gallery');
+            const emptyState = document.getElementById('empty-state');
+            
+            if (photos.length === 0) {
+                gallery.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+            
+            gallery.style.display = 'grid';
+            emptyState.style.display = 'none';
+            gallery.innerHTML = '';
+            
+            // Сортируем по ID (порядок загрузки)
+            const sortedPhotos = [...photos].sort((a, b) => a.id - b.id);
+            
+            sortedPhotos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = `photo-card ${selectedPhotos.has(photo.id) ? 'selected' : ''}`;
+                card.onclick = (e) => toggleSelect(e, photo.id);
+                
+                card.innerHTML = `
+                    <img src="${photo.image_url}" alt="Фото ${photo.id}">
+                    ${photo.gg_label ? `<div class="photo-label">${photo.gg_label}</div>` : ''}
+                    <div class="select-badge">✓</div>
+                `;
+                
+                gallery.appendChild(card);
+            });
+            
+            // Обновляем счетчики и кнопки
+            updateUI();
+        }
+        
+        function toggleSelect(e, photoId) {
+            if (e.shiftKey && selectedPhotos.size > 0) {
+                // Shift+клик - выбрать диапазон
+                const lastSelected = Array.from(selectedPhotos).pop();
+                const allIds = photos.map(p => p.id);
+                const start = Math.min(allIds.indexOf(photoId), allIds.indexOf(lastSelected));
+                const end = Math.max(allIds.indexOf(photoId), allIds.indexOf(lastSelected));
+                
+                for (let i = start; i <= end; i++) {
+                    selectedPhotos.add(allIds[i]);
+                }
+            } else if (e.metaKey || e.ctrlKey) {
+                // Cmd/Ctrl+клик - добавить к выбранным
+                if (selectedPhotos.has(photoId)) {
+                    selectedPhotos.delete(photoId);
+                } else {
+                    selectedPhotos.add(photoId);
+                }
+            } else {
+                // Обычный клик - выбрать только это
+                if (selectedPhotos.has(photoId) && selectedPhotos.size === 1) {
+                    selectedPhotos.clear();
+                } else {
+                    selectedPhotos.clear();
+                    selectedPhotos.add(photoId);
+                }
+            }
+            
+            render();
+        }
+        
+        function deselectAll() {
+            selectedPhotos.clear();
+            render();
+        }
+        
+        function autoSelect() {
+            // Выбираем все фото с одинаковым GG лейблом
+            if (photos.length === 0) return;
+            
+            // Находим первый GG
+            const firstWithGG = photos.find(p => p.gg_label);
+            if (!firstWithGG) {
+                alert('Нет фото с GG лейблами. Сначала распознай GG или выбирай вручную.');
+                return;
+            }
+            
+            // Выбираем все с таким же GG
+            selectedPhotos.clear();
+            photos.forEach(p => {
+                if (p.gg_label === firstWithGG.gg_label) {
+                    selectedPhotos.add(p.id);
+                }
+            });
+            
+            render();
+        }
+        
+        function updateUI() {
+            const count = selectedPhotos.size;
+            document.getElementById('selected-count').textContent = count;
+            document.getElementById('create-btn').disabled = count === 0;
+            document.getElementById('deselect-btn').disabled = count === 0;
+            document.getElementById('total-count').textContent = photos.length;
+        }
+        
+        async function createCardFromSelected() {
+            if (selectedPhotos.size === 0) return;
+            
+            const btn = document.getElementById('create-btn');
+            btn.disabled = true;
+            btn.textContent = `⏳ Создаю карточку из ${selectedPhotos.size} фото...`;
+            
+            try {
+                // Создаем временную группу
+                const tempGroupId = Date.now();
+                
+                // Присваиваем выбранным фото эту группу
+                for (let photoId of selectedPhotos) {
+                    await fetch(`/photos/api/update-photo-group/${photoId}/`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ group_id: tempGroupId })
+                    });
+                }
+                
+                // Отправляем группу в обработку
+                const response = await fetch(`/photos/api/send-group-to-bot/${tempGroupId}/`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    btn.textContent = `✅ Карточка создана!`;
+                    
+                    // Удаляем фото из списка
+                    photos = photos.filter(p => !selectedPhotos.has(p.id));
+                    selectedPhotos.clear();
+                    
+                    setTimeout(() => {
+                        btn.textContent = '✅ Создать карточку (0)';
+                        btn.disabled = true;
+                        render();
+                    }, 1000);
+                } else {
+                    btn.textContent = '❌ Ошибка';
+                    setTimeout(() => {
+                        btn.textContent = `✅ Создать карточку (${selectedPhotos.size})`;
+                        btn.disabled = false;
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                btn.textContent = '❌ Ошибка';
+                setTimeout(() => {
+                    btn.textContent = `✅ Создать карточку (${selectedPhotos.size})`;
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+        
+        async function clearBuffer() {
+            if (!confirm('Удалить ВСЕ фото?')) return;
+            if (!confirm('Точно? Фото будут потеряны!')) return;
+            
+            const response = await fetch('/photos/api/clear-buffer/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                photos = [];
+                selectedPhotos.clear();
+                render();
+            }
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                deselectAll();
+            } else if (e.key === 'Enter' && selectedPhotos.size > 0) {
+                createCardFromSelected();
+            } else if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+                e.preventDefault();
+                photos.forEach(p => selectedPhotos.add(p.id));
+                render();
+            }
+        });
+        
+        render();
+    </script>
+</body>
+</html>
+

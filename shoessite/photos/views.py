@@ -2235,8 +2235,8 @@ def add_barcode_manually(request, card_id):
 
 @staff_member_required
 def sorting_view(request):
-    """Страница сортировки фото."""
-    photos = PhotoBuffer.objects.filter(processed=False).order_by('group_id', 'group_order', 'uploaded_at')
+    """Страница сортировки фото (простой интерфейс)."""
+    photos = PhotoBuffer.objects.filter(processed=False).order_by('id')
     
     # Конвертим в JSON для JS
     photos_data = []
@@ -2249,7 +2249,7 @@ def sorting_view(request):
             'group_id': p.group_id,
         })
     
-    return render(request, 'photos/sorting.html', {
+    return render(request, 'photos/simple_sorting.html', {
         'photos': photos,
         'photos_json': json.dumps(photos_data)
     })
