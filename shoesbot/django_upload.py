@@ -67,6 +67,23 @@ async def upload_batch_to_django(
                 if resp.status == 200:
                     result = await resp.json()
                     logger.info(f"django_upload: uploaded batch {correlation_id}: {result}")
+                    
+                    # Проверяем результат Pochtoy и отправляем в чат
+                    pochtoy_msg = result.get('pochtoy_message')
+                    if pochtoy_msg:
+                        try:
+                            # Используем requests синхронно (т.к. telegram-bot async сложнее)
+                            import requests
+                            bot_token = os.getenv('BOT_TOKEN')
+                            telegram_url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
+                            requests.post(telegram_url, json={
+                                'chat_id': chat_id,
+                                'text': f"📡 Pochtoy:\n{pochtoy_msg}"
+                            }, timeout=5)
+                            logger.info(f"Sent Pochtoy message to chat: {pochtoy_msg}")
+                        except Exception as e:
+                            logger.error(f"Failed to send Pochtoy message: {e}")
+                    
                     return True
                 else:
                     text = await resp.text()
