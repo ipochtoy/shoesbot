@@ -273,10 +273,12 @@
                 card.className = `photo-card ${selectedPhotos.has(photo.id) ? 'selected' : ''}`;
                 card.onclick = (e) => toggleSelect(e, photo.id);
                 
+                const isSelected = selectedPhotos.has(photo.id);
+                
                 card.innerHTML = `
                     <img src="${photo.image_url}" alt="Фото ${photo.id}">
                     ${photo.gg_label ? `<div class="photo-label">${photo.gg_label}</div>` : ''}
-                    <div class="select-badge">✓</div>
+                    <div class="select-badge">${isSelected ? '✓' : ''}</div>
                     <div class="photo-actions">
                         <button class="photo-action-btn" onclick="event.stopPropagation(); viewPhoto('${photo.image_url}')">🔍 Увеличить</button>
                         <button class="photo-action-btn" onclick="event.stopPropagation(); deletePhoto(${photo.id})" style="background: rgba(239, 68, 68, 0.9);">🗑️ Удалить</button>

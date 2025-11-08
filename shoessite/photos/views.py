@@ -2526,10 +2526,12 @@ def get_last_card(request):
         if not last_card:
             return JsonResponse({'correlation_id': None})
         
+        photos_count = last_card.photos.all().count()
+        
         return JsonResponse({
             'correlation_id': last_card.correlation_id,
             'title': last_card.title,
-            'photos_count': last_card.photos.count(),
+            'photos_count': photos_count,
             'uploaded_at': last_card.uploaded_at.isoformat()
         })
     except Exception as e:
