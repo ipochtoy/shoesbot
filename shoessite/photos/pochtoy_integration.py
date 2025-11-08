@@ -80,17 +80,46 @@ def send_card_to_pochtoy(card) -> Optional[Dict]:
         print(f"Pochtoy API response: {response.status_code}")
         print(f"Response: {response.text[:500]}")
         
-        if response.status_code in [200, 201]:
-            return {
-                'success': True,
-                'response': response.json() if response.text else {},
-                'images_sent': len(images),
-                'trackings_sent': len(trackings)
-            }
+            # Проверяем статус код
+        if response.status_code == 400:
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('message', 'Неизвестная ошибка')
+                return {
+                    'success': False,
+                    'error': error_msg
+                }
+            except:
+                return {
+                    'success': False,
+                    'error': response.text[:200]
+                }
+        elif response.status_code in [200, 201, 202]:
+            try:
+                result = response.json()
+                if result.get('status') == 'ok':
+                    return {
+                        'success': True,
+                        'message': 'Товар успешно добавлен',
+                        'images_sent': len(images),
+                        'trackings_sent': len(trackings)
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'error': result.get('message', 'Ошибка от Pochtoy')
+                    }
+            except:
+                return {
+                    'success': True,
+                    'message': 'Товар успешно добавлен',
+                    'images_sent': len(images),
+                    'trackings_sent': len(trackings)
+                }
         else:
             return {
                 'success': False,
-                'error': f'API error: {response.status_code}',
+                'error': f'HTTP error: {response.status_code}',
                 'response': response.text[:500]
             }
             
@@ -153,16 +182,55 @@ def send_buffer_group_to_pochtoy(group_photos: List) -> Optional[Dict]:
         
         response = requests.put(POCHTOY_API_URL, json=payload, headers=headers, timeout=60)
         
-        if response.status_code in [200, 201]:
-            return {
-                'success': True,
-                'images_sent': len(images),
-                'trackings_sent': len(trackings)
-            }
+        print(f"Pochtoy response status: {response.status_code}")
+        print(f"Pochtoy response body: {response.text}")
+        
+        # Проверяем статус код
+        if response.status_code == 400:
+            # Ошибка от Pochtoy
+            try:
+                error_data = response.json()
+                error_msg = error_data.get('message', 'Неизвестная ошибка')
+                return {
+                    'success': False,
+                    'error': error_msg,
+                    'status_code': 400
+                }
+            except:
+                return {
+                    'success': False,
+                    'error': response.text[:200],
+                    'status_code': 400
+                }
+        elif response.status_code in [200, 201, 202]:
+            # Успех
+            try:
+                result = response.json()
+                if result.get('status') == 'ok':
+                    return {
+                        'success': True,
+                        'message': 'Товар успешно добавлен',
+                        'images_sent': len(images),
+                        'trackings_sent': len(trackings)
+                    }
+                else:
+                    # Статус не ok
+                    return {
+                        'success': False,
+                        'error': result.get('message', 'Неизвестная ошибка')
+                    }
+            except:
+                # Если JSON невалидный, но статус 200 - считаем успехом
+                return {
+                    'success': True,
+                    'message': 'Товар успешно добавлен',
+                    'images_sent': len(images),
+                    'trackings_sent': len(trackings)
+                }
         else:
             return {
                 'success': False,
-                'error': f'API error: {response.status_code}'
+                'error': f'HTTP error: {response.status_code}'
             }
             
     except Exception as e:
