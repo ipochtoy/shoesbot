@@ -340,8 +340,15 @@ If no codes at all, return "NONE"'''
                 logger.error(f"OpenAI emergency GG detection failed: {e}")
         
         if not gg_labels:
-            # GG лейбла не найдена - просим догрузить
+            # GG лейбла не найдена - сохраняем фото и просим догрузить
             logger.warning(f"process_photo_batch: NO GG LABEL FOUND for {corr}")
+            
+            # Сохраняем эти фото как "ожидающие GG"
+            PENDING_WITHOUT_GG[chat_id] = {
+                'photos': photo_items,
+                'message_ids': reg.copy()
+            }
+            logger.info(f"Saved {len(photo_items)} photos to PENDING_WITHOUT_GG for chat {chat_id}")
             
             error_msg = "❌ <b>GG лейбла не найдена!</b>\n\n"
             error_msg += "Не могу создать карточку без GG кода.\n\n"
@@ -350,7 +357,8 @@ If no codes at all, return "NONE"'''
             error_msg += "  • GG681\n"
             error_msg += "  • GG700\n"
             error_msg += "  • Q2622911\n\n"
-            error_msg += "После получения фото лейбы я создам карточку товара."
+            error_msg += f"У меня уже есть <b>{len(photo_items)} фото</b> товара. "
+            error_msg += "После получения фото лейбы я объединю все и создам полную карточку."
             
             m_error = await send_message_ret(context.bot, chat_id, error_msg, parse_mode='HTML')
             if m_error:
@@ -360,14 +368,48 @@ If no codes at all, return "NONE"'''
             logger.info("process_photo_batch: STOPPED - waiting for GG label photo")
             return
         
-        # GG найдена - продолжаем как обычно
+        # GG найдена - проверяем есть ли ожидающие фото
         logger.info(f"process_photo_batch: GG labels found: {[g.data for g in gg_labels]}")
         
-        # Card (includes both regular barcodes and GG labels)
-        logger.info("process_photo_batch: rendering and sending card")
+        # Объединяем с ожидающими фото если есть
+        all_photos = list(photo_items)
+        old_message_ids = []
         
-        # Добавляем зеленую галочку если GG найдена
+        if chat_id in PENDING_WITHOUT_GG:
+            pending = PENDING_WITHOUT_GG.pop(chat_id)
+            old_photos = pending['photos']
+            old_message_ids = pending['message_ids']
+            
+            logger.info(f"Found pending photos: {len(old_photos)}. Merging with current {len(photo_items)}")
+            
+            # Добавляем старые фото в начало
+            all_photos = list(old_photos) + all_photos
+            
+            # Объединяем message_ids для удаления старых сообщений
+            reg.extend(old_message_ids)
+            
+            # Перезапускаем распознавание на всех фото (старые + новые)
+            logger.info("Re-running barcode detection on all photos...")
+            all_barcode_results = []
+            tasks = []
+            for idx, item in enumerate(all_photos):
+                tasks.append(process_single_photo(idx, item, is_debug))
+            
+            photo_results = await asyncio.gather(*tasks)
+            for pr in photo_results:
+                all_barcode_results.extend(pr['results'])
+            
+            # Используем объединенные результаты
+            barcode_results = all_barcode_results
+            photo_items = all_photos
+        
+        # Card (includes both regular barcodes and GG labels)
+        logger.info(f"process_photo_batch: rendering card with {len(photo_items)} total photos")
+        
+        # Добавляем зеленую галочку и информацию
         html = "✅ <b>GG лейбла найдена</b>\n\n"
+        if len(old_message_ids) > 0:
+            html += f"📦 Объединено фото: {len(photo_items)}\n\n"
         html += renderer.render_barcodes_html(barcode_results, photo_count=len(photo_items))
         if is_debug and all_timelines:
             lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in all_timelines]
