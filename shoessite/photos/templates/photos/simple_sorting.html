@@ -392,13 +392,20 @@
                 console.log('Delete response:', data);
                 
                 if (data.success) {
-                    alert(`✅ Карточка отменена!\n\nУдалено: ${data.photos_deleted} фото\n\nЕсли это были фото из буфера - отправь их заново.`);
+                    const returned = data.returned_to_buffer || 0;
+                    
+                    if (returned > 0) {
+                        alert(`✅ Отменено!\n\nКарточка удалена\nВозвращено в буфер: ${returned} фото`);
+                        // Перезагружаем страницу чтобы показать вернувшиеся фото
+                        location.reload();
+                    } else {
+                        alert(`✅ Карточка удалена!\n\nУдалено: ${data.photos_deleted} фото\n\nЭто была карточка из Telegram (не из буфера).`);
+                        btn.textContent = '⏪ Вернуть прошлую отправку';
+                        btn.disabled = false;
+                    }
                     
                     lastSentPhotos = [];
                     lastCorrelationId = null;
-                    
-                    btn.textContent = '⏪ Вернуть прошлую отправку';
-                    btn.disabled = false;
                 } else {
                     alert(`❌ Ошибка: ${data.error}`);
                     btn.disabled = false;
