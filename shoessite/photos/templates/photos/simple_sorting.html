@@ -244,7 +244,8 @@
     <script>
         let photos = {{ photos_json|safe }};
         let selectedPhotos = new Set();
-        let lastSentPhotos = [];  // История для отмены
+        let lastSentPhotos = [];  // Фото последней отправки
+        let lastCorrelationId = null;  // ID последней карточки
         
         function render() {
             console.time('render');
@@ -355,22 +356,49 @@
             render();
         }
         
-        function undoLastSend() {
-            if (lastSentPhotos.length === 0) {
-                alert('Нет фото для возврата');
+        async function undoLastSend() {
+            if (lastSentPhotos.length === 0 || !lastCorrelationId) {
+                alert('Нет карточки для отмены');
                 return;
             }
             
-            console.log('Undoing last send, returning photos:', lastSentPhotos.length);
+            const btn = document.getElementById('undo-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Отменяю...';
             
-            // Возвращаем фото обратно
-            photos.push(...lastSentPhotos);
-            lastSentPhotos = [];
-            
-            alert(`✅ Возвращено ${photos.length - (photos.length - lastSentPhotos.length)} фото`);
-            
-            updateUI();
-            render();
+            try {
+                console.log('Deleting card:', lastCorrelationId);
+                
+                // Удаляем карточку из Django
+                const response = await fetch(`/photos/api/delete-card-by-correlation/${lastCorrelationId}/`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                console.log('Delete response:', data);
+                
+                if (data.success) {
+                    // Возвращаем фото обратно в буфер
+                    photos.push(...lastSentPhotos);
+                    
+                    alert(`✅ Отменено!\n\nКарточка удалена\nВозвращено ${lastSentPhotos.length} фото`);
+                    
+                    lastSentPhotos = [];
+                    lastCorrelationId = null;
+                    
+                    btn.textContent = '⏪ Вернуть прошлую отправку';
+                    render();
+                } else {
+                    alert(`❌ Ошибка удаления карточки: ${data.error}`);
+                    btn.disabled = false;
+                    btn.textContent = '⏪ Вернуть прошлую отправку';
+                }
+            } catch (error) {
+                console.error('Undo error:', error);
+                alert(`❌ Ошибка: ${error.message}`);
+                btn.disabled = false;
+                btn.textContent = '⏪ Вернуть прошлую отправку';
+            }
         }
         
         function updateUI() {
@@ -378,7 +406,7 @@
             document.getElementById('selected-count').textContent = count;
             document.getElementById('create-btn').disabled = count === 0;
             document.getElementById('deselect-btn').disabled = count === 0;
-            document.getElementById('undo-btn').disabled = lastSentPhotos.length === 0;
+            document.getElementById('undo-btn').disabled = !lastCorrelationId || lastSentPhotos.length === 0;
             document.getElementById('total-count').textContent = photos.length;
         }
         
@@ -413,6 +441,9 @@
                 if (data.success) {
                     // Сохраняем для возможности отмены
                     lastSentPhotos = photos.filter(p => selectedPhotos.has(p.id));
+                    lastCorrelationId = data.correlation_id;
+                    
+                    console.log('Saved for undo:', lastSentPhotos.length, 'photos, correlation:', lastCorrelationId);
                     
                     btn.textContent = `✅ Карточка создана!`;
                     
