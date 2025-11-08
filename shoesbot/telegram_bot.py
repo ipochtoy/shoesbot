@@ -288,23 +288,23 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                                         'content': [
                                             {
                                                 'type': 'text',
-                                                'text': '''Find ALL codes on product tags/labels:
+                                                'text': '''Find ALL codes on this product:
 
-GG codes: GG followed by 2-4 digits (GG727, GG681)
-Q codes: Q followed by 4-10 digits (Q2622988, Q747)
+1. GG code - LARGE BLACK TEXT on yellow sticker (like GG727, GG681)
+2. Q code - numbers UNDER or NEAR the barcode lines (like Q2622988, Q747)
 
-Codes can be:
-- On yellow stickers
-- On white labels  
-- On barcodes
-- In corners
-- Small or large text
+IMPORTANT:
+- Q code is usually 7-10 digits starting with Q
+- Look UNDER the barcode stripes
+- Q code can be small text
+- Check EVERY corner and label
 
 Return ALL codes found, one per line:
 GG727
 Q2622988
 
-If no codes found, return "NONE"'''
+If you find only GG, still return it.
+If no codes at all, return "NONE"'''
                                             },
                                             {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
                                         ]
