@@ -239,3 +239,57 @@ def send_buffer_group_to_pochtoy(group_photos: List) -> Optional[Dict]:
             'error': str(e)
         }
 
+
+def delete_from_pochtoy(trackings: List[str]) -> Dict:
+    """
+    Удаляет товар из Pochtoy по трекингам.
+    
+    Args:
+        trackings: Список трекингов ["GG1100", "197613340718", ...]
+    
+    Returns:
+        Result dict
+    """
+    try:
+        POCHTOY_DELETE_URL = 'https://pochtoy-test.pochtoy3.ru/api/garage/delete'
+        
+        if not trackings:
+            return {'success': False, 'error': 'No trackings'}
+        
+        payload = {'trackings': trackings}
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {POCHTOY_API_TOKEN}'
+        }
+        
+        print(f"Deleting from Pochtoy: {trackings}")
+        
+        # POST метод (не DELETE)
+        response = requests.post(POCHTOY_DELETE_URL, json=payload, headers=headers, timeout=30)
+        
+        print(f"Pochtoy DELETE response: {response.status_code}")
+        print(f"Response: {response.text}")
+        
+        if response.status_code == 400:
+            try:
+                error_data = response.json()
+                return {'success': False, 'error': error_data.get('message', 'Ошибка')}
+            except:
+                return {'success': False, 'error': response.text[:200]}
+                
+        elif response.status_code in [200, 201, 204]:
+            try:
+                result = response.json()
+                if result.get('status') == 'ok':
+                    return {'success': True, 'message': 'Удалено из Pochtoy'}
+                else:
+                    return {'success': False, 'error': result.get('message', 'Ошибка')}
+            except:
+                return {'success': True, 'message': 'Удалено из Pochtoy'}
+        else:
+            return {'success': False, 'error': f'HTTP {response.status_code}'}
+            
+    except Exception as e:
+        print(f"Pochtoy delete error: {e}")
+        return {'success': False, 'error': str(e)}
+
