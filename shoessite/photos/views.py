@@ -118,19 +118,27 @@ def upload_batch(request):
                 barcode_count += 1
         
         # Автоматически отправляем в Pochtoy API
+        pochtoy_message = None
         try:
             from .pochtoy_integration import send_card_to_pochtoy
             pochtoy_result = send_card_to_pochtoy(batch)
             print(f"Pochtoy auto-send result: {pochtoy_result}")
+            
+            if pochtoy_result:
+                if pochtoy_result.get('success'):
+                    pochtoy_message = f"✅ {pochtoy_result.get('message', 'Товар успешно добавлен')}"
+                else:
+                    pochtoy_message = f"❌ Ошибка Pochtoy: {pochtoy_result.get('error', 'Неизвестная ошибка')}"
         except Exception as e:
             print(f"Pochtoy auto-send error: {e}")
-            # Не падаем если Pochtoy недоступен
+            pochtoy_message = f"❌ Pochtoy недоступен: {str(e)}"
         
         return JsonResponse({
             'success': True,
             'correlation_id': correlation_id,
             'photos_saved': len(photo_objects),
             'barcodes_saved': barcode_count,
+            'pochtoy_message': pochtoy_message,  # Для Telegram бота
         })
         
     except Exception as e:
