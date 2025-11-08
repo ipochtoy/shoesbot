@@ -283,8 +283,8 @@
                     ${photo.gg_label ? `<div class="photo-label">${photo.gg_label}</div>` : ''}
                     <div class="select-badge">${isSelected ? '✓' : ''}</div>
                     <div class="photo-actions">
-                        <button class="photo-action-btn" onclick="event.stopPropagation(); viewPhoto('${photo.image_url}')">🔍 Увеличить</button>
-                        <button class="photo-action-btn" onclick="event.stopPropagation(); deletePhoto(${photo.id})" style="background: rgba(239, 68, 68, 0.9);">🗑️ Удалить</button>
+                        <button class="photo-action-btn" onclick="event.stopPropagation(); viewPhoto('${photo.image_url}')">🔍</button>
+                        <button class="photo-action-btn" onclick="event.stopPropagation(); deletePhoto(${photo.id})" style="background: rgba(239, 68, 68, 0.9);">🗑️</button>
                     </div>
                 `;
                 

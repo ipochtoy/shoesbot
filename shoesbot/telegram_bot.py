@@ -253,7 +253,11 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             reg.extend([m.message_id for m in mg])
         await asyncio.sleep(0.2)  # Баланс между скоростью и стабильностью
         
-        # Проверяем наличие GG лейблов
+        # Проверяем наличие GG лейблов (GG текст + Q баркод)
+        gg_text_codes = [r for r in barcode_results if r.symbology == 'GG_LABEL' and r.data.startswith('GG')]
+        q_barcode_codes = [r for r in barcode_results if r.symbology == 'GG_LABEL' and r.data.startswith('Q')]
+        
+        has_gg_pair = len(gg_text_codes) > 0 and len(q_barcode_codes) > 0
         gg_labels = [r for r in barcode_results if r.symbology == 'GG_LABEL']
         
         # Если не нашли - пробуем OpenAI на ВСЕХ фото
