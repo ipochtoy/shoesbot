@@ -396,7 +396,7 @@ If no codes at all, return "NONE"'''
             all_barcode_results = []
             tasks = []
             for idx, item in enumerate(all_photos):
-                tasks.append(process_single_photo(idx, item, is_debug))
+                tasks.append(process_single_photo(idx, item))
             
             photo_results = await asyncio.gather(*tasks)
             for pr in photo_results:
