@@ -2517,6 +2517,29 @@ def delete_card_by_correlation(request, correlation_id):
 
 
 @csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_buffer_photo(request, photo_id):
+    """Удалить одно фото из буфера."""
+    try:
+        import os
+        photo = PhotoBuffer.objects.filter(id=photo_id).first()
+        
+        if not photo:
+            return JsonResponse({'error': 'Photo not found'}, status=404)
+        
+        # Удаляем файл
+        if photo.image and os.path.exists(photo.image.path):
+            os.remove(photo.image.path)
+        
+        # Удаляем запись
+        photo.delete()
+        
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def buffer_upload(request):
     """API для буферного бота - сохраняет фото без обработки."""
