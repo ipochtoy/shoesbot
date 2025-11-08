@@ -199,37 +199,28 @@
             const existingGroupIds = Object.keys(grouped).filter(g => g !== 'ungrouped').map(g => parseInt(g));
             const maxGroupId = existingGroupIds.length > 0 ? Math.max(...existingGroupIds) : 0;
             
-            // 1. Сначала 5 пустых групп СВЕРХУ (куда перетаскивать)
+            // 1. СЛЕВА - Несортированные (всегда первая колонка)
+            if (grouped['ungrouped']) {
+                const div = createGroupElement('ungrouped', grouped['ungrouped'], '📥 Несортированные (выбирай и тащи →)');
+                div.classList.add('unsorted');
+                container.appendChild(div);
+            }
+            
+            // 2. В СЕРЕДИНЕ - Существующие группы с фото
+            Object.keys(grouped).sort((a, b) => parseInt(a) - parseInt(b)).forEach(gid => {
+                if (gid === 'ungrouped') return;
+                const groupPhotos = grouped[gid];
+                const ggLabels = [...new Set(groupPhotos.filter(p => p.gg_label).map(p => p.gg_label))];
+                const label = `📦 Группа ${gid}` + (ggLabels.length > 0 ? ` [${ggLabels.join(', ')}]` : '');
+                container.appendChild(createGroupElement(gid, groupPhotos, label));
+            });
+            
+            // 3. СПРАВА - Пустые группы для новых товаров
             for (let i = 1; i <= 5; i++) {
                 const gid = maxGroupId + i;
                 if (!grouped[gid]) {
-                    const emptyDiv = createGroupElement(gid, [], `📦 Группа ${gid} ← Перетаскивай сюда`);
-                    container.appendChild(emptyDiv);
+                    container.appendChild(createGroupElement(gid, [], `📦 Группа ${gid}`));
                 }
-            }
-            
-            // 2. Потом существующие группы с фото
-            Object.keys(grouped).sort((a, b) => {
-                if (a === 'ungrouped') return 1;
-                if (b === 'ungrouped') return -1;
-                return parseInt(a) - parseInt(b);
-            }).forEach(gid => {
-                if (gid === 'ungrouped') return;
-                
-                const groupPhotos = grouped[gid];
-                const ggLabels = [...new Set(groupPhotos.filter(p => p.gg_label).map(p => p.gg_label))];
-                const label = `Группа ${gid}` + (ggLabels.length > 0 ? ` [${ggLabels.join(', ')}]` : '');
-                
-                const groupDiv = createGroupElement(gid, groupPhotos, label);
-                container.appendChild(groupDiv);
-            });
-            
-            // 3. В самом низу несортированные
-            if (grouped['ungrouped']) {
-                const groupDiv = createGroupElement('ungrouped', grouped['ungrouped'], '📥 Несортированные (тащи отсюда вверх в группы)');
-                groupDiv.style.marginTop = '30px';
-                groupDiv.style.borderTop = '3px solid #dc2626';
-                container.appendChild(groupDiv);
             }
         }
         
