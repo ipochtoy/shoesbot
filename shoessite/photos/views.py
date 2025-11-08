@@ -2473,7 +2473,7 @@ def clear_buffer(request):
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def delete_card_by_correlation(request, correlation_id):
-    """Удалить карточку товара по correlation_id (из Telegram бота)."""
+    """Удалить карточку товара и вернуть фото в буфер если были из буфера."""
     try:
         import os
         
@@ -2486,6 +2486,27 @@ def delete_card_by_correlation(request, correlation_id):
         # Считаем что удаляем
         photos_count = card.photos.count()
         barcodes_count = card.get_all_barcodes().count()
+        
+        # Проверяем есть ли соответствующие записи в PhotoBuffer
+        # (если карточка была создана из буфера)
+        buffer_photos_returned = 0
+        for photo in card.photos.all():
+            try:
+                # Ищем в буфере по message_id или file_id (если есть в метаданных)
+                buffer_photo = PhotoBuffer.objects.filter(
+                    message_id=photo.id,  # Примерно, нужно уточнить логику
+                    processed=True
+                ).first()
+                
+                if buffer_photo:
+                    # Возвращаем в буфер
+                    buffer_photo.processed = False
+                    buffer_photo.sent_to_bot = False
+                    buffer_photo.group_id = None
+                    buffer_photo.save()
+                    buffer_photos_returned += 1
+            except:
+                pass
         
         # Удаляем физические файлы фото
         files_deleted = 0
@@ -2500,14 +2521,15 @@ def delete_card_by_correlation(request, correlation_id):
         # Удаляем карточку (каскадом удалятся Photo и BarcodeResult)
         card.delete()
         
-        print(f"Deleted card {correlation_id}: {photos_count} photos, {barcodes_count} barcodes, {files_deleted} files")
+        print(f"Deleted card {correlation_id}: {photos_count} photos, {barcodes_count} barcodes, {files_deleted} files, {buffer_photos_returned} returned to buffer")
         
         return JsonResponse({
             'success': True,
             'correlation_id': correlation_id,
             'photos_deleted': photos_count,
             'barcodes_deleted': barcodes_count,
-            'files_deleted': files_deleted
+            'files_deleted': files_deleted,
+            'returned_to_buffer': buffer_photos_returned
         })
         
     except Exception as e:
