@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('api/upload-batch/', views.upload_batch, name='upload_batch'),
     path('api/buffer-upload/', views.buffer_upload, name='buffer_upload'),
+    path('api/pochtoy-webhook/', views.pochtoy_webhook, name='pochtoy_webhook'),
     path('sorting/', views.sorting_view, name='sorting_view'),
     path('api/update-photo-group/<int:photo_id>/', views.update_photo_group, name='update_photo_group'),
     path('api/send-group-to-bot/<int:group_id>/', views.send_group_to_bot, name='send_group_to_bot'),
