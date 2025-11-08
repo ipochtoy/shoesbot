@@ -2517,6 +2517,26 @@ def delete_card_by_correlation(request, correlation_id):
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+def get_last_card(request):
+    """Получить последнюю созданную карточку."""
+    try:
+        last_card = PhotoBatch.objects.order_by('-uploaded_at').first()
+        
+        if not last_card:
+            return JsonResponse({'correlation_id': None})
+        
+        return JsonResponse({
+            'correlation_id': last_card.correlation_id,
+            'title': last_card.title,
+            'photos_count': last_card.photos.count(),
+            'uploaded_at': last_card.uploaded_at.isoformat()
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
 @require_http_methods(["DELETE"])
 def delete_buffer_photo(request, photo_id):
     """Удалить одно фото из буфера."""

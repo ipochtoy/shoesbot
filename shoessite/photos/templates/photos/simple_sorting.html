@@ -357,20 +357,32 @@
         }
         
         async function undoLastSend() {
-            if (lastSentPhotos.length === 0 || !lastCorrelationId) {
-                alert('Нет карточки для отмены');
-                return;
-            }
-            
             const btn = document.getElementById('undo-btn');
             btn.disabled = true;
             btn.textContent = '⏳ Отменяю...';
             
             try {
-                console.log('Deleting card:', lastCorrelationId);
+                // Если есть сохраненный correlation_id - используем его
+                let corrId = lastCorrelationId;
+                
+                // Если нет - получаем последнюю карточку из Django
+                if (!corrId) {
+                    const lastCardResp = await fetch('/photos/api/get-last-card/');
+                    const lastCardData = await lastCardResp.json();
+                    if (lastCardData.correlation_id) {
+                        corrId = lastCardData.correlation_id;
+                    } else {
+                        alert('Нет карточек для отмены');
+                        btn.disabled = false;
+                        btn.textContent = '⏪ Вернуть прошлую отправку';
+                        return;
+                    }
+                }
+                
+                console.log('Deleting card:', corrId);
                 
                 // Удаляем карточку из Django
-                const response = await fetch(`/photos/api/delete-card-by-correlation/${lastCorrelationId}/`, {
+                const response = await fetch(`/photos/api/delete-card-by-correlation/${corrId}/`, {
                     method: 'DELETE'
                 });
                 
@@ -378,18 +390,15 @@
                 console.log('Delete response:', data);
                 
                 if (data.success) {
-                    // Возвращаем фото обратно в буфер
-                    photos.push(...lastSentPhotos);
-                    
-                    alert(`✅ Отменено!\n\nКарточка удалена\nВозвращено ${lastSentPhotos.length} фото`);
+                    alert(`✅ Карточка отменена!\n\nУдалено: ${data.photos_deleted} фото\n\nЕсли это были фото из буфера - отправь их заново.`);
                     
                     lastSentPhotos = [];
                     lastCorrelationId = null;
                     
                     btn.textContent = '⏪ Вернуть прошлую отправку';
-                    render();
+                    btn.disabled = false;
                 } else {
-                    alert(`❌ Ошибка удаления карточки: ${data.error}`);
+                    alert(`❌ Ошибка: ${data.error}`);
                     btn.disabled = false;
                     btn.textContent = '⏪ Вернуть прошлую отправку';
                 }
@@ -406,7 +415,8 @@
             document.getElementById('selected-count').textContent = count;
             document.getElementById('create-btn').disabled = count === 0;
             document.getElementById('deselect-btn').disabled = count === 0;
-            document.getElementById('undo-btn').disabled = !lastCorrelationId || lastSentPhotos.length === 0;
+            // Undo всегда доступен - проверяем карточки при клике
+            document.getElementById('undo-btn').disabled = false;
             document.getElementById('total-count').textContent = photos.length;
         }
         
