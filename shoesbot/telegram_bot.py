@@ -24,7 +24,7 @@ from shoesbot.pipeline import DecoderPipeline
 from shoesbot.decoders.zbar_decoder import ZBarDecoder
 from shoesbot.decoders.cv_qr_decoder import OpenCvQrDecoder
 from shoesbot.decoders.vision_decoder import VisionDecoder
-from shoesbot.decoders.gg_label_decoder import GGLabelDecoder
+from shoesbot.decoders.gg_label_decoder_improved import ImprovedGGLabelDecoder
 from shoesbot.renderers.card_renderer import CardRenderer
 from shoesbot.logging_setup import logger
 from shoesbot.diagnostics import system_info
@@ -36,7 +36,7 @@ from shoesbot.django_upload import upload_batch_to_django
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
 
-pipeline = DecoderPipeline([ZBarDecoder(), OpenCvQrDecoder(), VisionDecoder(), GGLabelDecoder()])
+pipeline = DecoderPipeline([ZBarDecoder(), OpenCvQrDecoder(), VisionDecoder(), ImprovedGGLabelDecoder()])
 renderer = CardRenderer(templates_dir=os.path.join(os.path.dirname(__file__), "..", "templates"))
 
 DEBUG_DEFAULT = os.getenv("DEBUG", "0") in ("1", "true", "True")
@@ -220,17 +220,19 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                 logger.warning(f"process_photo_batch: failed to delete message {item.message_id}: {e}")
         
         # Split results: GG from OCR decoder AND Q-codes from ZBar (CODE39/Q codes are our GG labels)
-        gg_from_ocr = [r for r in all_results if r.source == "gg-label"]
+        # GG codes from OCR (text like "GG727", "G2548") - source contains "gg-label"
+        gg_from_ocr = [r for r in all_results if "gg-label" in r.source and r.data.startswith("GG")]
+        # Q codes from any decoder (CODE39 barcodes starting with "Q")
         gg_from_q = [r for r in all_results if r.symbology == "CODE39" and r.data.startswith("Q")]
         gg_results = gg_from_ocr + gg_from_q
-        
+
         # Regular barcodes (excluding Q codes which are GG)
-        regular_barcodes = [r for r in all_results if r.source != "gg-label" and not (r.symbology == "CODE39" and r.data.startswith("Q"))]
-        
+        regular_barcodes = [r for r in all_results if "gg-label" not in r.source and not (r.symbology == "CODE39" and r.data.startswith("Q"))]
+
         # All barcodes for card (regular + GG labels)
         barcode_results = regular_barcodes + gg_results
-        
-        logger.info(f"GG labels: {len(gg_results)} ({len(gg_from_ocr)} from OCR, {len(gg_from_q)} from Q-codes)")
+
+        logger.info(f"GG labels: {len(gg_results)} ({len(gg_from_ocr)} GG text codes, {len(gg_from_q)} Q barcodes)")
         logger.info(f"Regular barcodes: {len(regular_barcodes)}")
         logger.info(f"Total for card: {len(barcode_results)}")
         
@@ -257,15 +259,21 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         await asyncio.sleep(0.2)  # Баланс между скоростью и стабильностью
         
         # Проверяем наличие GG лейблов (GG текст + Q баркод)
-        gg_text_codes = [r for r in barcode_results if r.symbology == 'GG_LABEL' and r.data.startswith('GG')]
-        q_barcode_codes = [r for r in barcode_results if r.symbology == 'GG_LABEL' and r.data.startswith('Q')]
-        
-        has_gg_pair = len(gg_text_codes) > 0 and len(q_barcode_codes) > 0
-        gg_labels = [r for r in barcode_results if r.symbology == 'GG_LABEL']
-        
-        # Если не нашли - пробуем OpenAI на ВСЕХ фото
-        if not gg_labels:
-            logger.info("Trying OpenAI on all photos for GG/Q detection...")
+        # На лейбе должны быть ОБА кода: GG текст и Q штрихкод
+        has_gg_text = len(gg_from_ocr) > 0
+        has_q_code = len(gg_from_q) > 0
+        has_complete_pair = has_gg_text and has_q_code
+
+        gg_labels = gg_results  # Все GG коды (и текст и Q)
+
+        # Emergency OpenAI detection если НЕТ полной пары (или вообще нет кодов, или не хватает одного из двух)
+        if not has_complete_pair:
+            missing = []
+            if not has_gg_text:
+                missing.append("GG text")
+            if not has_q_code:
+                missing.append("Q code")
+            logger.warning(f"Incomplete GG label pair! Missing: {', '.join(missing)}. Trying OpenAI emergency detection...")
             try:
                 import base64
                 import requests as sync_requests
@@ -341,35 +349,50 @@ If no codes at all, return "NONE"'''
                             continue
             except Exception as e:
                 logger.error(f"OpenAI emergency GG detection failed: {e}")
-        
+
+            # Пересчитываем после emergency detection
+            gg_from_ocr = [r for r in gg_labels if r.data.startswith("GG")]
+            gg_from_q = [r for r in gg_labels if r.data.startswith("Q")]
+            has_gg_text = len(gg_from_ocr) > 0
+            has_q_code = len(gg_from_q) > 0
+            has_complete_pair = has_gg_text and has_q_code
+
+            if has_complete_pair:
+                logger.info(f"OpenAI emergency SUCCESS! Found complete pair: GG={[r.data for r in gg_from_ocr]}, Q={[r.data for r in gg_from_q]}")
+
         if not gg_labels:
-            # GG лейбла не найдена - сохраняем фото и просим догрузить
+            # GG лейбла не найдена вообще - сохраняем фото и просим догрузить
             logger.warning(f"process_photo_batch: NO GG LABEL FOUND for {corr}")
-            
+
             # Сохраняем эти фото как "ожидающие GG"
             PENDING_WITHOUT_GG[chat_id] = {
                 'photos': photo_items,
                 'message_ids': reg.copy()
             }
             logger.info(f"Saved {len(photo_items)} photos to PENDING_WITHOUT_GG for chat {chat_id}")
-            
+
             error_msg = "❌ <b>GG лейбла не найдена!</b>\n\n"
             error_msg += "Не могу создать карточку без GG кода.\n\n"
             error_msg += "📸 <b>Отправь фото лейбы (желтый стикер с GG кодом)</b>\n\n"
             error_msg += "Код обычно выглядит как:\n"
-            error_msg += "  • GG681\n"
+            error_msg += "  • GG681 (большой черный текст)\n"
             error_msg += "  • GG700\n"
-            error_msg += "  • Q2622911\n\n"
+            error_msg += "  • Q2622911 (штрихкод под полосками)\n\n"
             error_msg += f"У меня уже есть <b>{len(photo_items)} фото</b> товара. "
             error_msg += "После получения фото лейбы я объединю все и создам полную карточку."
-            
+
             m_error = await send_message_ret(context.bot, chat_id, error_msg, parse_mode='HTML')
             if m_error:
                 reg.append(m_error.message_id)
-            
+
             # НЕ создаем карточку и НЕ загружаем в Django
             logger.info("process_photo_batch: STOPPED - waiting for GG label photo")
             return
+        elif not has_complete_pair:
+            # Нашли что-то, но не полную пару - всё равно продолжаем, но логируем предупреждение
+            logger.warning(f"process_photo_batch: INCOMPLETE GG pair for {corr}: has_gg_text={has_gg_text}, has_q_code={has_q_code}")
+            logger.warning(f"Found codes: GG={[r.data for r in gg_from_ocr]}, Q={[r.data for r in gg_from_q]}")
+            logger.info("Continuing anyway - will create card with available codes")
         
         # GG найдена - проверяем есть ли ожидающие фото
         logger.info(f"process_photo_batch: GG labels found: {[g.data for g in gg_labels]}")

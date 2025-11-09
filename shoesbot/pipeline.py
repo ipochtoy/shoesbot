@@ -12,7 +12,7 @@ class DecoderPipeline:
         # Quick decoders that are fast (ZBar, OpenCV)
         self.quick_decoders = [d for d in decoders if d.name in ("zbar", "opencv-qr")]
         # Slow decoders that can be skipped (Vision, GG)
-        self.slow_decoders = [d for d in decoders if d.name in ("vision-ocr", "gg-label")]
+        self.slow_decoders = [d for d in decoders if d.name in ("vision-ocr", "gg-label", "gg-label-improved")]
 
     def run(self, image: Image.Image, image_bytes: bytes) -> List[Barcode]:
         results: List[Barcode] = []
