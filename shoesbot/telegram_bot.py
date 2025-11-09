@@ -200,16 +200,7 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             all_results.extend(results)
             all_timelines.extend(timeline)
         
-        # Notify admin if needed
-        admin_id = get_admin_id()
-        had_error = any(t.get('error') for t in all_timelines)
-        if admin_id and (len(all_results) == 0 or had_error):
-            lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" + (f" (err={t['error']})" if t['error'] else "") for t in all_timelines]
-            summary = "\n".join(lines)
-            try:
-                await context.bot.send_message(admin_id, f"[{corr}] chat={chat_id} results={len(all_results)} photos={len(photo_items)}\n" + summary)
-            except Exception:
-                pass
+        # Don't send diagnostic messages to chat (only log them)
         
         # Delete original messages
         logger.info(f"process_photo_batch: deleting {len(photo_items)} original messages")
@@ -449,13 +440,22 @@ If no codes at all, return "NONE"'''
         # Upload to Django in background
         message_ids_list = [item.message_id for item in photo_items]
         try:
-            await upload_batch_to_django(corr, chat_id, message_ids_list, photo_items, all_results)
+            upload_success = await upload_batch_to_django(corr, chat_id, message_ids_list, photo_items, all_results)
+            if not upload_success:
+                # Django upload failed
+                await context.bot.send_message(chat_id, "❌❌❌\n\nОшибка загрузки в Django")
         except Exception as e:
             logger.error(f"process_photo_batch: django upload error: {e}")
+            await context.bot.send_message(chat_id, "❌❌❌\n\nОшибка загрузки в Django")
         
         logger.info("process_photo_batch: done")
     except Exception as e:
         logger.error(f"process_photo_batch: error: {e}", exc_info=True)
+        # Notify user about critical error
+        try:
+            await context.bot.send_message(chat_id, f"❌❌❌\n\nКритическая ошибка обработки:\n{str(e)[:200]}")
+        except:
+            pass
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -583,10 +583,10 @@ async def on_delete_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         deleted_info = f"Карточка удалена ({result.get('photos_deleted', 0)} фото)"
                     else:
                         logger.warning(f"Django delete failed: {resp.status}")
-                        deleted_info = "Ошибка удаления карточки из Django"
+                        deleted_info = "❌❌❌ Ошибка удаления карточки из Django"
         except Exception as django_err:
             logger.error(f"Django delete error: {django_err}")
-            deleted_info = "Django недоступен"
+            deleted_info = "❌❌❌ Django недоступен"
         
         # Delete in reverse order (from last to first)
         for mid in sorted(set(ids), reverse=True):

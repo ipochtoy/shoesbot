@@ -128,10 +128,10 @@ def upload_batch(request):
                 if pochtoy_result.get('success'):
                     pochtoy_message = f"✅ {pochtoy_result.get('message', 'Товар успешно добавлен')}"
                 else:
-                    pochtoy_message = f"❌ Ошибка Pochtoy: {pochtoy_result.get('error', 'Неизвестная ошибка')}"
+                    pochtoy_message = f"❌❌❌\n\nОшибка Pochtoy:\n{pochtoy_result.get('error', 'Неизвестная ошибка')}"
         except Exception as e:
             print(f"Pochtoy auto-send error: {e}")
-            pochtoy_message = f"❌ Pochtoy недоступен: {str(e)}"
+            pochtoy_message = f"❌❌❌\n\nPochtoy недоступен:\n{str(e)}"
         
         return JsonResponse({
             'success': True,

@@ -44,9 +44,9 @@ async def reprocess_buffer(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     found = data.get('found_count', 0)
                     await update.message.reply_text(f"✅ Готово! Распознано GG лейблов: {found}\n\nТеперь открой /photos/sorting/ и жми 'Автогруппировка'")
                 else:
-                    await update.message.reply_text(f"❌ Ошибка: {resp.status}")
+                    await update.message.reply_text(f"❌❌❌\n\nОшибка распознавания: HTTP {resp.status}")
     except Exception as e:
-        await update.message.reply_text(f"❌ Ошибка: {e}")
+        await update.message.reply_text(f"❌❌❌\n\nОшибка: {e}")
 
 
 async def send_report(context, chat_id):
@@ -166,6 +166,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         photo_stats['errors'] += 1
         import traceback
         traceback.print_exc()
+        # Notify user about critical error
+        try:
+            await update.message.reply_text(f"❌❌❌\n\nОшибка загрузки фото:\n{str(e)[:200]}")
+        except:
+            pass
 
 
 def main():
