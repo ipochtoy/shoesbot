@@ -27,7 +27,7 @@ class GGLabelDecoder(Decoder):
         # Preprocess: upscale small images and boost contrast for better OCR
         try:
             proc_img = image
-            max_w = 1600
+            max_w = 1200  # Reduced from 1600 for speed
             if image.width < max_w:
                 ratio = max_w / float(image.width)
                 new_size = (int(image.width * ratio), int(image.height * ratio))
@@ -53,7 +53,7 @@ class GGLabelDecoder(Decoder):
                         "features": [{"type": "TEXT_DETECTION"}]
                     }]
                 }
-                resp = requests.post(url, json=payload, timeout=8)  # Баланс между скоростью и надежностью
+                resp = requests.post(url, json=payload, timeout=5)  # Reduced for speed
                 logger.info(f"gg-label: Vision REST status={resp.status_code}")
                 if resp.ok:
                     data = resp.json()

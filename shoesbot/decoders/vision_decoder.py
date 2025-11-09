@@ -23,7 +23,7 @@ class VisionDecoder(Decoder):
                         "features": [{"type": "TEXT_DETECTION"}]
                     }]
                 }
-                resp = requests.post(url, json=payload, timeout=10)
+                resp = requests.post(url, json=payload, timeout=5)
                 if resp.ok:
                     data = resp.json()
                     if "responses" in data and data["responses"]:

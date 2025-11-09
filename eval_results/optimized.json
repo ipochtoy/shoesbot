@@ -1,0 +1,759 @@
+{
+  "summary": {
+    "total_images": 20,
+    "successful": 20,
+    "avg_time_ms": 2768.65,
+    "total_gg": 3,
+    "total_q": 2,
+    "total_barcodes": 6,
+    "images_with_gg": 3,
+    "images_with_q": 2,
+    "images_with_both": 1
+  },
+  "decoder_stats": {
+    "zbar": {
+      "count": 8,
+      "time": 937,
+      "runs": 20
+    },
+    "opencv-qr": {
+      "count": 0,
+      "time": 990,
+      "runs": 20
+    },
+    "vision-ocr": {
+      "count": 0,
+      "time": 7798,
+      "runs": 20
+    },
+    "gg-label": {
+      "count": 3,
+      "time": 45616,
+      "runs": 20
+    }
+  },
+  "results": [
+    {
+      "image": "1b455377_0.jpg",
+      "total_time_ms": 1982,
+      "total_results": 1,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [
+        "011334478137"
+      ],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 29,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 32,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 342,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 1578,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "1b455377_1.jpg",
+      "total_time_ms": 2041,
+      "total_results": 1,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [
+        "011334478137"
+      ],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 47,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 110,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 336,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 1547,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "1b455377_2.jpg",
+      "total_time_ms": 2213,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 33,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 28,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 405,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 1744,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "1b455377_3.jpg",
+      "total_time_ms": 1961,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 24,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 24,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 277,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 1634,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "58f12b6b_0.jpg",
+      "total_time_ms": 2365,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 42,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 39,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 346,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 1937,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "58f12b6b_1.jpg",
+      "total_time_ms": 2875,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 64,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 116,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 466,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2228,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "58f12b6b_2.jpg",
+      "total_time_ms": 2786,
+      "total_results": 1,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [
+        "197232776299"
+      ],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 37,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 27,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 349,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2371,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "58f12b6b_3.jpg",
+      "total_time_ms": 3149,
+      "total_results": 2,
+      "gg_labels": [
+        "GG737"
+      ],
+      "q_codes": [
+        "Q2622998"
+      ],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 55,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 29,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 389,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 1,
+          "ms": 2673,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "7eb2903b_0.jpg",
+      "total_time_ms": 2536,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 46,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 37,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 327,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2125,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "7eb2903b_1.jpg",
+      "total_time_ms": 2798,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 46,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 60,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 293,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2397,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "7eb2903b_2.jpg",
+      "total_time_ms": 2853,
+      "total_results": 1,
+      "gg_labels": [
+        "GG740"
+      ],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 56,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 49,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 439,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 1,
+          "ms": 2307,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "85c6f712_0.jpg",
+      "total_time_ms": 2798,
+      "total_results": 1,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [
+        "1560000221181QB4M"
+      ],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 51,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 32,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 458,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2256,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "85c6f712_1.jpg",
+      "total_time_ms": 3456,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 51,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 26,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 438,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2940,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "85c6f712_2.jpg",
+      "total_time_ms": 3062,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 40,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 26,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 429,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2565,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "90742230_0.jpg",
+      "total_time_ms": 2691,
+      "total_results": 1,
+      "gg_labels": [
+        "GG744"
+      ],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 44,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 26,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 369,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 1,
+          "ms": 2250,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "90742230_1.jpg",
+      "total_time_ms": 2700,
+      "total_results": 1,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [
+        "785146640203"
+      ],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 32,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 25,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 350,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2292,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "90742230_3.jpg",
+      "total_time_ms": 2912,
+      "total_results": 1,
+      "gg_labels": [],
+      "q_codes": [
+        "Q2623004"
+      ],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 47,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 66,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 529,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2268,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "b3959dff_1.jpg",
+      "total_time_ms": 2793,
+      "total_results": 1,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [
+        " http://www.zara.com/qr/0415270879814"
+      ],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 1,
+          "ms": 64,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 44,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 429,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2255,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "b3959dff_2.jpg",
+      "total_time_ms": 4444,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 68,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 145,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 486,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 3743,
+          "error": null
+        }
+      ],
+      "success": true
+    },
+    {
+      "image": "b3959dff_3.jpg",
+      "total_time_ms": 2958,
+      "total_results": 0,
+      "gg_labels": [],
+      "q_codes": [],
+      "regular_barcodes": [],
+      "timeline": [
+        {
+          "decoder": "zbar",
+          "count": 0,
+          "ms": 61,
+          "error": null
+        },
+        {
+          "decoder": "opencv-qr",
+          "count": 0,
+          "ms": 49,
+          "error": null
+        },
+        {
+          "decoder": "vision-ocr",
+          "count": 0,
+          "ms": 341,
+          "error": null
+        },
+        {
+          "decoder": "gg-label",
+          "count": 0,
+          "ms": 2506,
+          "error": null
+        }
+      ],
+      "success": true
+    }
+  ]
+}
