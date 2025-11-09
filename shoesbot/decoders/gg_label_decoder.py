@@ -103,26 +103,28 @@ class GGLabelDecoder(Decoder):
         text = text.strip()
         
         # Find GG patterns (GG followed by digits) OR G followed by 4 digits (like G2548)
-        gg_pattern = re.compile(r'\b(GG[-.\s]?(\d+)|G(\d{4}))\b', re.IGNORECASE)
-        matches = gg_pattern.findall(text)
+        gg_pattern = re.compile(r'\bGG[-.\s]?(\d{2,7})\b', re.IGNORECASE)
+        g_pattern = re.compile(r'\bG(\d{4})\b', re.IGNORECASE)
+        q_pattern = re.compile(r'\bQ[-.\s]?(\d{4,10})\b', re.IGNORECASE)
         
         out = []
         seen = set()
-        for match in matches:
-            # match format: (full_match, GG_num, G_num)
-            if match[1]:  # GG pattern matched
-                num = match[1]
-                label = f"GG{num}"
-            elif match[2]:  # G + 4 digits pattern matched
-                num = match[2]
-                label = f"G{num}"
-            else:
-                continue
-            
+        
+        def add_label(prefix: str, value: str):
+            label = f"{prefix}{value}".upper()
             if label in seen:
-                continue
+                return
             seen.add(label)
-            out.append(Barcode(symbology="GG", data=label, source=self.name))
+            out.append(Barcode(symbology="GG_LABEL", data=label, source=self.name))
+        
+        for match in gg_pattern.findall(text):
+            add_label("GG", match)
+        
+        for match in g_pattern.findall(text):
+            add_label("G", match)
+        
+        for match in q_pattern.findall(text):
+            add_label("Q", match)
         
         if out:
             logger.debug(f"gg-label: found labels: {[b.data for b in out]}")

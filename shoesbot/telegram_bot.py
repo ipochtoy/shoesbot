@@ -263,8 +263,8 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         has_gg_pair = len(gg_text_codes) > 0 and len(q_barcode_codes) > 0
         gg_labels = [r for r in barcode_results if r.symbology == 'GG_LABEL']
         
-        # Если не нашли - пробуем OpenAI на ВСЕХ фото
-        if not gg_labels:
+        # Если не нашли ИЛИ нет полной пары GG+Q - пробуем OpenAI на ВСЕХ фото
+        if not gg_labels or not has_gg_pair:
             logger.info("Trying OpenAI on all photos for GG/Q detection...")
             try:
                 import base64
@@ -342,6 +342,12 @@ If no codes at all, return "NONE"'''
             except Exception as e:
                 logger.error(f"OpenAI emergency GG detection failed: {e}")
         
+        # Перепроверяем наличие полной пары после OpenAI
+        gg_text_codes = [r for r in barcode_results if r.symbology == 'GG_LABEL' and r.data.startswith('GG')]
+        q_barcode_codes = [r for r in barcode_results if r.symbology == 'GG_LABEL' and r.data.startswith('Q')]
+        has_gg_pair = len(gg_text_codes) > 0 and len(q_barcode_codes) > 0
+        gg_labels = [r for r in barcode_results if r.symbology == 'GG_LABEL']
+        
         if not gg_labels:
             # GG лейбла не найдена - сохраняем фото и просим догрузить
             logger.warning(f"process_photo_batch: NO GG LABEL FOUND for {corr}")
@@ -409,8 +415,19 @@ If no codes at all, return "NONE"'''
         # Card (includes both regular barcodes and GG labels)
         logger.info(f"process_photo_batch: rendering card with {len(photo_items)} total photos")
         
-        # Добавляем зеленую галочку и информацию
-        html = "✅ <b>GG лейбла найдена</b>\n\n"
+        # Добавляем статус распознавания
+        if has_gg_pair:
+            html = "✅ <b>GG лейбла найдена (полная пара)</b>\n"
+            html += f"🏷️ GG: {', '.join([r.data for r in gg_text_codes])}\n"
+            html += f"🔢 Q: {', '.join([r.data for r in q_barcode_codes])}\n\n"
+        else:
+            html = "⚠️ <b>Неполная пара GG/Q</b>\n"
+            if gg_text_codes:
+                html += f"🏷️ GG: {', '.join([r.data for r in gg_text_codes])}\n"
+            if q_barcode_codes:
+                html += f"🔢 Q: {', '.join([r.data for r in q_barcode_codes])}\n"
+            html += "\n"
+        
         if len(old_message_ids) > 0:
             html += f"📦 Объединено фото: {len(photo_items)}\n\n"
         html += renderer.render_barcodes_html(barcode_results, photo_count=len(photo_items))

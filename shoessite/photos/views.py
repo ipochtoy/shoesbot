@@ -2493,7 +2493,8 @@ def delete_card_by_correlation(request, correlation_id):
         
         # Считаем что удаляем
         photos_count = card.photos.count()
-        barcodes_count = card.get_all_barcodes().count()
+        all_barcodes = card.get_all_barcodes()
+        barcodes_count = len(all_barcodes)
         
         # Проверяем есть ли соответствующие записи в PhotoBuffer
         # (если карточка была создана из буфера)
@@ -2502,16 +2503,22 @@ def delete_card_by_correlation(request, correlation_id):
             try:
                 # Ищем в буфере по message_id или file_id (если есть в метаданных)
                 buffer_photo = PhotoBuffer.objects.filter(
-                    message_id=photo.id,  # Примерно, нужно уточнить логику
-                    processed=True
+                    file_id=photo.file_id
                 ).first()
+                
+                if not buffer_photo:
+                    buffer_photo = PhotoBuffer.objects.filter(
+                        message_id=photo.message_id
+                    ).first()
                 
                 if buffer_photo:
                     # Возвращаем в буфер
                     buffer_photo.processed = False
                     buffer_photo.sent_to_bot = False
+                    # Возвращаем в исходную группу если была, иначе оставляем как есть
                     buffer_photo.group_id = None
-                    buffer_photo.save()
+                    buffer_photo.group_order = 0
+                    buffer_photo.save(update_fields=['processed', 'sent_to_bot', 'group_id', 'group_order'])
                     buffer_photos_returned += 1
             except:
                 pass
@@ -2533,7 +2540,7 @@ def delete_card_by_correlation(request, correlation_id):
             # Собираем все трекинги
             trackings = []
             trackings.extend(card.get_gg_labels())
-            for bc in card.get_all_barcodes():
+            for bc in all_barcodes:
                 if bc.data not in trackings:
                     trackings.append(bc.data)
             

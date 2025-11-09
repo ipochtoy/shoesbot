@@ -3,12 +3,12 @@
 
 cd "$(dirname "$0")"
 
-PACKAGE_NAME="watchbot_package_$(date +%Y%m%d).zip"
+PACKAGE_NAME="shoesbot_package_$(date +%Y%m%d).zip"
 
 echo "📦 Создаю пакет для передачи..."
 
 # 1. Создаем временную директорию
-TEMP_DIR="/tmp/watchbot_clean"
+TEMP_DIR="/tmp/shoesbot_clean"
 rm -rf $TEMP_DIR
 mkdir -p $TEMP_DIR
 
@@ -82,7 +82,7 @@ echo "Папка для буфера" > shoessite/media/buffer/.gitkeep
 # 6. Создаем архив
 cd /tmp
 echo "📦 Создаю ZIP архив..."
-zip -r $PACKAGE_NAME watchbot_clean/ -q
+zip -r $PACKAGE_NAME shoesbot_clean/ -q
 
 # 7. Перемещаем в исходную директорию
 mv $PACKAGE_NAME ~/Desktop/

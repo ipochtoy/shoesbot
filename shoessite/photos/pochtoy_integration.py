@@ -56,6 +56,9 @@ def send_card_to_pochtoy(card) -> Optional[Dict]:
             if barcode.data not in trackings:
                 trackings.append(barcode.data)
         
+        # Удаляем дубликаты, сохраняя порядок
+        trackings = list(dict.fromkeys(trackings))
+        
         # 3. Формируем payload
         payload = {
             'images': images,
@@ -169,6 +172,9 @@ def send_buffer_group_to_pochtoy(group_photos: List) -> Optional[Dict]:
             if photo.barcode and photo.barcode not in trackings:
                 trackings.append(photo.barcode)
         
+        # Удаляем дубликаты
+        trackings = list(dict.fromkeys(trackings))
+        
         # Отправляем
         payload = {
             'images': images,
@@ -256,6 +262,7 @@ def delete_from_pochtoy(trackings: List[str]) -> Dict:
         if not trackings:
             return {'success': False, 'error': 'No trackings'}
         
+        trackings = list(dict.fromkeys(trackings))
         payload = {'trackings': trackings}
         headers = {
             'Content-Type': 'application/json',
