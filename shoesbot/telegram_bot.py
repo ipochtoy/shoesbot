@@ -100,20 +100,24 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             except Exception as e:
                 logger.debug(f"Failed to update progress: {e}")
         
-        # Параллельная обработка всех фото одновременно
+        # Параллельная обработка всех фото одновременно с progress bar
+        processed_count = 0
+        total_count = len(photo_items)
+
         async def process_single_photo(idx: int, item) -> tuple:
             """Обработать одно фото и вернуть результаты."""
-            logger.info(f"process_photo_batch: processing item {idx+1}/{len(photo_items)}")
-            
+            nonlocal processed_count
+            logger.info(f"process_photo_batch: processing item {idx+1}/{total_count}")
+
             t0 = perf_counter()
             buf = BytesIO()
             await item.file_obj.download_to_memory(out=buf)
             download_ms = int((perf_counter() - t0) * 1000)
-            
+
             raw = buf.getvalue()
             buf.seek(0)
             img = Image.open(buf).convert("RGB")
-            
+
             # Use smart parallel or regular parallel decoders
             if USE_PARALLEL_DECODERS:
                 if USE_SMART_SKIP:
@@ -122,7 +126,7 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                     results, timeline = await pipeline.run_parallel_debug(img, raw)
             else:
                 results, timeline = pipeline.run_debug(img, raw)
-            
+
             append_event({
                 'corr': corr,
                 'chat_id': chat_id,
@@ -131,7 +135,20 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                 'timeline': timeline,
                 'size_bytes': len(raw),
             })
-            
+
+            # Update progress
+            processed_count += 1
+            if status_msg and total_count > 1:
+                try:
+                    progress_pct = int((processed_count / total_count) * 100)
+                    progress_bar = "█" * (progress_pct // 10) + "░" * (10 - progress_pct // 10)
+                    await status_msg.edit_text(
+                        f"🔍 Обработка фото: {processed_count}/{total_count}\n"
+                        f"[{progress_bar}] {progress_pct}%"
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to update progress: {e}")
+
             return results, timeline, idx
         
         # Запускаем обработку всех фото параллельно
@@ -443,9 +460,10 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 # Продолжаем без статуса
             
             async def delayed_process():
-                # Ждем полный timeout буфера + небольшой запас для сбора фото
-                wait_time = config.BUFFER_WAIT_TIME
-                logger.info(f"delayed_process: sleeping {wait_time}s for chat={chat_id}")
+                # Адаптивный timeout - больше фото = дольше ждем
+                current_count = len(photo_batch) if photo_batch else 1
+                wait_time = config.get_adaptive_buffer_timeout(current_count)
+                logger.info(f"delayed_process: adaptive timeout={wait_time}s for {current_count} photo(s), chat={chat_id}")
                 await asyncio.sleep(wait_time)
                 logger.info(f"delayed_process: flushing buffer for chat={chat_id}")
                 

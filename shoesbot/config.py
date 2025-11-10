@@ -45,6 +45,25 @@ class BotConfig:
         """Calculate exponential backoff delay for retry attempt."""
         return self.RETRY_DELAY_BASE * (2 ** attempt)
 
+    def get_adaptive_buffer_timeout(self, current_count: int) -> float:
+        """
+        Calculate adaptive buffer timeout based on current photo count.
+
+        Strategy:
+        - 1 photo: 2.0s (quick single photo)
+        - 2-3 photos: 3.0s (normal batch)
+        - 4-5 photos: 4.0s (medium batch)
+        - 6+ photos: 5.0s (large batch, wait for more)
+        """
+        if current_count == 1:
+            return 2.0
+        elif current_count <= 3:
+            return 3.0
+        elif current_count <= 5:
+            return 4.0
+        else:
+            return 5.0
+
 
 # Global config instance
 config = BotConfig()
