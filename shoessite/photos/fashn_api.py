@@ -4,17 +4,30 @@ import requests
 import time
 from typing import Optional
 
-# Загружаем .env
+# Загружаем .env из корня проекта
 try:
     from dotenv import load_dotenv
-    env_path = '/Users/dzianismazol/Projects/shoesbot/.env'
+    # Загружаем из корня проекта (где находится .env)
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    env_path = os.path.join(project_root, '.env')
     if os.path.exists(env_path):
         load_dotenv(env_path)
+        print(f"✅ Loaded .env from: {env_path}")
+    else:
+        print(f"⚠️ .env not found at: {env_path}, using system environment")
+        load_dotenv()  # Try to load from current directory or parent
 except ImportError:
+    print("⚠️ python-dotenv not installed, using system environment only")
     pass
 
 FASHN_API_KEY = os.getenv('FASHN_API_KEY')
 FASHN_API_URL = 'https://api.fashn.ai/v1'
+
+# Debug: проверяем API key при импорте
+if FASHN_API_KEY:
+    print(f"✅ FASHN_API_KEY loaded: ***{FASHN_API_KEY[-4:]}")
+else:
+    print("❌ FASHN_API_KEY not set! Check your .env file")
 
 
 def generate_model_with_product(
@@ -161,27 +174,34 @@ def generate_model_with_product(
 def change_background(image_url: str, background_prompt: str = "studio background") -> Optional[str]:
     """
     Меняет фон через FASHN Background Change.
-    
+
     Args:
         image_url: Публичный URL изображения
         background_prompt: Описание фона
-    
+
     Returns:
         URL обработанного изображения
     """
+    import sys
     log_file = '/tmp/fashn_bg_change.log'
-    
+
     def log(msg):
-        with open(log_file, 'a') as f:
-            f.write(f"{msg}\n")
-        print(msg)
-    
+        try:
+            with open(log_file, 'a') as f:
+                f.write(f"{msg}\n")
+        except:
+            pass
+        print(msg, file=sys.stderr)
+        sys.stderr.flush()
+
     log(f"\n{'='*70}")
     log(f"FASHN Background Change")
     log(f"Image: {image_url}")
     log(f"Prompt: {background_prompt}")
-    
+    log(f"API Key: {'***' + FASHN_API_KEY[-4:] if FASHN_API_KEY else 'NOT SET'}")
+
     if not FASHN_API_KEY:
+        log("❌ FASHN_API_KEY not set - returning None")
         return None
     
     try:
@@ -189,51 +209,84 @@ def change_background(image_url: str, background_prompt: str = "studio backgroun
             'Authorization': f'Bearer {FASHN_API_KEY}',
             'Content-Type': 'application/json',
         }
-        
+
+        payload = {
+            'model_name': 'background-change',
+            'inputs': {
+                'image': image_url,
+                'prompt': background_prompt,
+                'output_format': 'jpeg'
+            }
+        }
+
+        log(f"\nStep 1: Submitting to FASHN API...")
+        log(f"URL: {FASHN_API_URL}/run")
+        log(f"Payload: {payload}")
+
         response = requests.post(
             f'{FASHN_API_URL}/run',
             headers=headers,
-            json={
-                'model_name': 'background-change',
-                'inputs': {
-                    'image': image_url,
-                    'prompt': background_prompt,
-                    'output_format': 'jpeg'
-                }
-            },
+            json=payload,
             timeout=30
         )
-        
+
+        log(f"Submit response status: {response.status_code}")
+        log(f"Submit response body: {response.text[:500]}")
+
         if response.status_code != 200:
-            log(f"❌ Submit failed: {response.status_code}")
+            log(f"❌ Submit failed: {response.status_code} - {response.text}")
             return None
-        
-        prediction_id = response.json().get('id')
-        log(f"Prediction ID: {prediction_id}")
-        
+
+        result = response.json()
+        prediction_id = result.get('id')
+
+        if not prediction_id:
+            log(f"❌ No prediction ID in response: {result}")
+            return None
+
+        log(f"✅ Prediction ID: {prediction_id}")
+
         # Poll
+        log("\nStep 2: Polling status...")
         for attempt in range(40):
             time.sleep(2)
-            status_resp = requests.get(f'{FASHN_API_URL}/status/{prediction_id}', headers=headers, timeout=10)
-            status = status_resp.json().get('status')
-            
-            log(f"Attempt {attempt + 1}: {status}")
-            
+
+            status_resp = requests.get(
+                f'{FASHN_API_URL}/status/{prediction_id}',
+                headers=headers,
+                timeout=10
+            )
+
+            if status_resp.status_code != 200:
+                log(f"❌ Status check failed: {status_resp.status_code}")
+                continue
+
+            status_data = status_resp.json()
+            status = status_data.get('status')
+
+            log(f"Attempt {attempt + 1}: status={status}")
+
             if status == 'completed':
-                output = status_resp.json().get('output', [])
+                output = status_data.get('output', [])
                 if output:
-                    log(f"✅ Done: {output[0]}")
-                    return output[0]
-                return None
+                    result_url = output[0]
+                    log(f"✅ Completed! Result URL: {result_url}")
+                    return result_url
+                else:
+                    log(f"❌ Completed but no output: {status_data}")
+                    return None
             elif status == 'failed':
-                log(f"❌ Failed")
+                error = status_data.get('error', 'Unknown error')
+                log(f"❌ Generation failed: {error}")
                 return None
-        
-        log("❌ Timeout")
+
+        log("❌ Timeout after 40 attempts (80 seconds)")
         return None
-        
+
     except Exception as e:
         log(f"❌ Exception: {e}")
+        import traceback
+        log(traceback.format_exc())
         return None
 
 
