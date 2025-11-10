@@ -17,6 +17,7 @@ async def upload_batch_to_django(
     message_ids: list,
     photo_items: list,
     all_results: list,
+    barcode_to_photo_map: list = None,
 ) -> bool:
     """Upload photo batch to Django API."""
     if not DJANGO_API_URL:
@@ -41,14 +42,25 @@ async def upload_batch_to_django(
         
         # Prepare barcodes
         barcodes_data = []
-        for result in all_results:
-            # Find which photo this barcode came from (simplified - assume first photo for now)
-            barcodes_data.append({
-                'photo_index': 0,  # TODO: track which photo each barcode came from
-                'symbology': result.symbology,
-                'data': result.data,
-                'source': result.source,
-            })
+
+        # Use barcode_to_photo_map if available, otherwise fall back to old behavior
+        if barcode_to_photo_map:
+            for barcode, photo_idx in barcode_to_photo_map:
+                barcodes_data.append({
+                    'photo_index': photo_idx,
+                    'symbology': barcode.symbology,
+                    'data': barcode.data,
+                    'source': barcode.source,
+                })
+        else:
+            # Fallback: assume all barcodes from first photo
+            for result in all_results:
+                barcodes_data.append({
+                    'photo_index': 0,
+                    'symbology': result.symbology,
+                    'data': result.data,
+                    'source': result.source,
+                })
         
         payload = {
             'correlation_id': correlation_id,

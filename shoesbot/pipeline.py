@@ -5,6 +5,7 @@ import asyncio
 from PIL import Image
 from shoesbot.models import Barcode
 from shoesbot.decoders.base import Decoder
+from shoesbot.logging_setup import logger
 
 class DecoderPipeline:
     def __init__(self, decoders: Sequence[Decoder]):
@@ -49,6 +50,7 @@ class DecoderPipeline:
                     count += 1
             except Exception as e:
                 error = repr(e)
+                logger.warning(f"Decoder {getattr(d, 'name', d.__class__.__name__)} failed: {error}")
             dt = int((perf_counter() - t0) * 1000)
             timeline.append({
                 'decoder': getattr(d, 'name', d.__class__.__name__),
@@ -69,6 +71,7 @@ class DecoderPipeline:
             except Exception as e:
                 out = []
                 error = repr(e)
+                logger.warning(f"Decoder {getattr(decoder, 'name', decoder.__class__.__name__)} failed: {error}")
             elapsed = perf_counter() - t0
             return out, error, elapsed
         
@@ -150,6 +153,7 @@ class DecoderPipeline:
             except Exception as e:
                 out = []
                 error = repr(e)
+                logger.warning(f"Decoder {getattr(decoder, 'name', decoder.__class__.__name__)} failed: {error}")
             elapsed = perf_counter() - t0
             return out, error, elapsed
         

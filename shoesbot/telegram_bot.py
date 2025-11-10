@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from time import perf_counter
 from PIL import Image
 from telegram import Update, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from typing import Optional
 from telegram.request import HTTPXRequest
@@ -32,6 +33,8 @@ from shoesbot.metrics import append_event, summarize
 from shoesbot.admin import get_admin_id, set_admin_id
 from shoesbot.photo_buffer import buffer as photo_buffer
 from shoesbot.django_upload import upload_batch_to_django
+from shoesbot.cache_manager import get_cache
+from shoesbot.barcode_database import get_barcode_db
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -76,6 +79,58 @@ async def admin_on(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     s = summarize(500)
     text = f"total={s['total']}, ok={s['ok']}, empty={s['empty']}, per_decoder={s['per_decoder_hits']}"
+    await update.message.reply_text(text)
+
+async def cache_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show Vision API cache statistics."""
+    cache = get_cache()
+    stats = cache.get_stats()
+    text = (
+        f"💾 Vision API Cache Stats:\n"
+        f"━━━━━━━━━━━━━━━━\n"
+        f"✅ Cache hits: {stats['hits']}\n"
+        f"❌ Cache misses: {stats['misses']}\n"
+        f"📊 Hit rate: {stats['hit_rate_percent']}%\n"
+        f"📁 Cached files: {stats['cached_files']}\n"
+        f"🔢 Total requests: {stats['total_requests']}"
+    )
+    await update.message.reply_text(text)
+
+async def barcode_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show barcode database statistics."""
+    db = get_barcode_db()
+    stats = db.get_stats()
+
+    text = "📊 Barcode Database Stats:\n━━━━━━━━━━━━━━━━\n"
+    text += f"🏷️ Unique barcodes: {stats.get('total_unique_barcodes', 0)}\n"
+    text += f"📷 Total scans: {stats.get('total_scans', 0)}\n"
+    text += f"📅 Scanned today: {stats.get('scanned_today', 0)}\n"
+
+    most_scanned = stats.get('most_scanned')
+    if most_scanned:
+        name = most_scanned.get('product_name') or 'Unknown'
+        count = most_scanned.get('scan_count', 0)
+        code = most_scanned.get('barcode', '')
+        text += f"\n🏆 Most scanned:\n{code}\n({name}, {count} times)"
+
+    await update.message.reply_text(text)
+
+async def top_barcodes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show top 10 most scanned barcodes."""
+    db = get_barcode_db()
+    top = db.get_top_barcodes(limit=10)
+
+    if not top:
+        await update.message.reply_text("📊 No barcodes scanned yet")
+        return
+
+    text = "🏆 Top 10 Most Scanned:\n━━━━━━━━━━━━━━━━\n\n"
+    for idx, item in enumerate(top, 1):
+        code = item['barcode']
+        count = item['scan_count']
+        name = item['product_name'] or 'Unknown'
+        text += f"{idx}. {code}\n   {name} ({count}x)\n\n"
+
     await update.message.reply_text(text)
 
 async def safe_send_message(bot, chat_id: int, text: str, parse_mode: str = None, max_retries: int = 3) -> bool:
@@ -145,31 +200,38 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         logger.info(f"process_photo_batch: starting, chat={chat_id}, items={len(photo_items)}")
         is_debug = DEBUG_DEFAULT or (chat_id in DEBUG_CHATS)
         corr = uuid.uuid4().hex[:8]
-        
+
+        # Show typing indicator
+        try:
+            await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
+        except Exception as e:
+            logger.debug(f"Failed to send typing action: {e}")
+
         all_results = []
         all_timelines = []
-        
+        barcode_to_photo_map = []  # List of (barcode, photo_index) tuples
+
         # Обновляем прогресс: начало обработки
         if status_msg:
             try:
                 await status_msg.edit_text(f"🔍 Обработка {len(photo_items)} фото...")
             except Exception as e:
                 logger.debug(f"Failed to update progress: {e}")
-        
+
         # Параллельная обработка всех фото одновременно
         async def process_single_photo(idx: int, item) -> tuple:
             """Обработать одно фото и вернуть результаты."""
             logger.info(f"process_photo_batch: processing item {idx+1}/{len(photo_items)}")
-            
+
             t0 = perf_counter()
             buf = BytesIO()
             await item.file_obj.download_to_memory(out=buf)
             download_ms = int((perf_counter() - t0) * 1000)
-            
+
             raw = buf.getvalue()
             buf.seek(0)
             img = Image.open(buf).convert("RGB")
-            
+
             # Use smart parallel or regular parallel decoders
             if USE_PARALLEL_DECODERS:
                 if USE_SMART_SKIP:
@@ -178,7 +240,7 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                     results, timeline = await pipeline.run_parallel_debug(img, raw)
             else:
                 results, timeline = pipeline.run_debug(img, raw)
-            
+
             append_event({
                 'corr': corr,
                 'chat_id': chat_id,
@@ -187,19 +249,33 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                 'timeline': timeline,
                 'size_bytes': len(raw),
             })
-            
+
             return results, timeline, idx
-        
+
         # Запускаем обработку всех фото параллельно
         tasks = [process_single_photo(idx, item) for idx, item in enumerate(photo_items)]
         photo_results = await asyncio.gather(*tasks)
-        
+
         # Собираем результаты в правильном порядке
         photo_results.sort(key=lambda x: x[2])  # Сортируем по индексу
-        for results, timeline, _ in photo_results:
+        for results, timeline, photo_idx in photo_results:
             all_results.extend(results)
             all_timelines.extend(timeline)
-        
+            # Track which photo each barcode came from
+            for barcode in results:
+                barcode_to_photo_map.append((barcode, photo_idx))
+
+        # Record all barcodes in database
+        db = get_barcode_db()
+        new_barcodes = []
+        repeat_barcodes = []
+        for barcode in all_results:
+            info = db.record_scan(barcode.data, barcode.symbology, chat_id, barcode.source)
+            if info.get('is_new'):
+                new_barcodes.append(barcode.data)
+            else:
+                repeat_barcodes.append((barcode.data, info.get('scan_count', 0)))
+
         # Don't send diagnostic messages to chat (only log them)
         
         # Delete original messages
@@ -241,6 +317,13 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         
         # Send photo album
         logger.info(f"process_photo_batch: sending media group with {len(photo_items)} photos")
+
+        # Show upload_photo indicator
+        try:
+            await context.bot.send_chat_action(chat_id=chat_id, action=ChatAction.UPLOAD_PHOTO)
+        except Exception as e:
+            logger.debug(f"Failed to send upload_photo action: {e}")
+
         media_group = [InputMediaPhoto(item.file_id) for item in photo_items]
         mg = await send_media_group_ret(context.bot, chat_id, media_group)
         if mg:
@@ -421,6 +504,20 @@ If no codes at all, return "NONE"'''
         
         if len(old_message_ids) > 0:
             html += f"📦 Объединено фото: {len(photo_items)}\n\n"
+
+        # Add barcode history info
+        if new_barcodes:
+            html += f"🆕 Новые коды: {len(new_barcodes)}\n"
+        if repeat_barcodes:
+            html += f"🔁 Повторные коды: {len(repeat_barcodes)}\n"
+            # Show most frequent repeats
+            top_repeats = sorted(repeat_barcodes, key=lambda x: x[1], reverse=True)[:3]
+            if top_repeats:
+                repeat_info = ", ".join([f"{code[:10]}... ({count}x)" for code, count in top_repeats])
+                html += f"   {repeat_info}\n"
+        if new_barcodes or repeat_barcodes:
+            html += "\n"
+
         html += renderer.render_barcodes_html(barcode_results, photo_count=len(photo_items))
         if is_debug and all_timelines:
             lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in all_timelines]
@@ -440,7 +537,7 @@ If no codes at all, return "NONE"'''
         # Upload to Django in background
         message_ids_list = [item.message_id for item in photo_items]
         try:
-            upload_success = await upload_batch_to_django(corr, chat_id, message_ids_list, photo_items, all_results)
+            upload_success = await upload_batch_to_django(corr, chat_id, message_ids_list, photo_items, all_results, barcode_to_photo_map)
             if not upload_success:
                 # Django upload failed
                 await context.bot.send_message(chat_id, "❌❌❌\n\nОшибка загрузки в Django")
@@ -546,6 +643,9 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("diag", diag))
     app.add_handler(CommandHandler("admin_on", admin_on))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("cache_stats", cache_stats))
+    app.add_handler(CommandHandler("barcode_stats", barcode_stats))
+    app.add_handler(CommandHandler("top_barcodes", top_barcodes))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(CallbackQueryHandler(on_delete_batch, pattern=r"^del:"))
     return app
