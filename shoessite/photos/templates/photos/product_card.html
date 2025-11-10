@@ -426,6 +426,14 @@
             font-size: 11px;
         }
     </style>
+
+    <!-- Alpine.js и Axios -->
+    {% include "photos/base_scripts.html" %}
+
+    <!-- JS Модули -->
+    <script src="{% static 'photos/js/api.js' %}"></script>
+    <script src="{% static 'photos/js/ui.js' %}"></script>
+    <script src="{% static 'photos/js/photo-card.js' %}"></script>
 </head>
 <body>
     <!-- Sidebar -->
@@ -798,7 +806,22 @@
                 }
             }
         });
-        
+
+        // ============================================================
+        // ВАЖНО: СЛЕДУЮЩИЕ ФУНКЦИИ ПЕРЕНЕСЕНЫ В МОДУЛИ И БУДУТ ПЕРЕЗАПИСАНЫ
+        // ============================================================
+        // Функции из photos/static/photos/js/photo-card.js автоматически
+        // перезапишут следующие функции через window.*:
+        // - reprocessPhoto, showAddBarcodeForm, hideAddBarcodeForm, addBarcodeManually
+        // - searchStockPhotos, closeStockPhotos
+        // - uploadPhotosFromComputer, addPhotoFromUrl
+        // - deletePhoto, setMainPhoto, enhancePhoto, rotatePhoto
+        // - searchByBarcode, generateSummary, saveAISummary
+        //
+        // Старые функции ниже оставлены для обратной совместимости,
+        // но будут автоматически заменены модулями при загрузке страницы.
+        // ============================================================
+
         async function reprocessPhoto(photoId) {
             const btn = event.target;
             const photoItem = btn.closest('.photo-item');

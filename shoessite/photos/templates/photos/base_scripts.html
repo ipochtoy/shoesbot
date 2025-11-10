@@ -1,0 +1,15 @@
+<!-- CDN для Alpine.js (15KB) и Axios -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<!-- Базовая конфигурация Axios -->
+<script>
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+axios.defaults.timeout = 150000; // 2.5 минуты для FASHN
+
+// Настройка CSRF токена для Django
+const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+if (csrftoken) {
+    axios.defaults.headers.common['X-CSRFToken'] = csrftoken;
+}
+</script>
