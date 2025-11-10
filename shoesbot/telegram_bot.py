@@ -340,21 +340,39 @@ If no codes at all, return "NONE"'''
         gg_labels = [r for r in barcode_results if r.symbology == 'GG_LABEL']
         
         if not gg_labels:
-            # GG лейбла не найдена - сохраняем фото и просим догрузить
+            # GG лейбла не найдена - создаем карточку с кнопкой "Удалить все"
             logger.warning(f"process_photo_batch: NO GG LABEL FOUND for {corr}")
             
-            # Сохраняем эти фото как "ожидающие GG"
-            PENDING_WITHOUT_GG[chat_id] = {
-                'photos': photo_items,
-                'message_ids': reg.copy()
-            }
-            logger.info(f"Saved {len(photo_items)} photos to PENDING_WITHOUT_GG for chat {chat_id}")
+            # Создаем карточку с предупреждением
+            html = "❌ <b>GG лейбла не найдена!</b>\n\n"
+            html += "Не могу создать карточку без GG кода.\n\n"
+            html += "Чтобы не затруднять процесс, нажми кнопку <b>«Удалить всё»</b> и загрузи заново.\n\n"
+            html += f"📸 У меня уже есть <b>{len(photo_items)} фото</b> товара."
             
-            # Не отправляем техническое сообщение пользователю - только логируем
-            logger.info(f"Waiting for GG label photo for chat {chat_id}, have {len(photo_items)} photos")
+            m_card = await send_message_ret(context.bot, chat_id, html, parse_mode='HTML')
+            if m_card:
+                reg.append(m_card.message_id)
             
-            # НЕ создаем карточку и НЕ загружаем в Django
-            logger.info("process_photo_batch: STOPPED - waiting for GG label photo")
+            # Отправляем фото
+            if photo_items:
+                media_group = []
+                for item in photo_items:
+                    if item.file_obj:
+                        media_group.append(InputMediaPhoto(media=item.file_obj.file_id))
+                
+                if media_group:
+                    sent_msgs = await send_media_group_ret(context.bot, chat_id, media_group)
+                    if sent_msgs:
+                        reg.extend([m.message_id for m in sent_msgs])
+            
+            # Кнопка "Удалить всё"
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton("Удалить всё", callback_data=f"del:{corr}")]])
+            m_end = await send_message_ret(context.bot, chat_id, "PLACE4174", reply_markup=kb)
+            if m_end:
+                reg.append(m_end.message_id)
+            
+            # НЕ загружаем в Django (без GG лейблы карточка не создается)
+            logger.info("process_photo_batch: STOPPED - no GG label, card created with delete button")
             return
         
         # GG найдена - проверяем есть ли ожидающие фото
