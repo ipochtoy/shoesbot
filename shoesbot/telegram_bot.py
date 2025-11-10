@@ -12,6 +12,7 @@ if sys.platform == "darwin":
 import uuid
 import asyncio
 from io import BytesIO
+from datetime import datetime
 from dotenv import load_dotenv
 from time import perf_counter
 from PIL import Image
@@ -32,6 +33,8 @@ from shoesbot.metrics import append_event, summarize
 from shoesbot.admin import get_admin_id, set_admin_id
 from shoesbot.photo_buffer import buffer as photo_buffer
 from shoesbot.django_upload import upload_batch_to_django
+from shoesbot.config import config
+from shoesbot.message_sender import MessageSender
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -78,66 +81,6 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = f"total={s['total']}, ok={s['ok']}, empty={s['empty']}, per_decoder={s['per_decoder_hits']}"
     await update.message.reply_text(text)
 
-async def safe_send_message(bot, chat_id: int, text: str, parse_mode: str = None, max_retries: int = 3) -> bool:
-    """Send message with retry logic. Returns True if successful, False otherwise."""
-    for attempt in range(max_retries):
-        try:
-            if parse_mode:
-                await bot.send_message(chat_id, text, parse_mode=parse_mode)
-            else:
-                await bot.send_message(chat_id, text)
-            return True
-        except Exception as e:
-            if attempt < max_retries - 1:
-                wait_time = 0.5 * (2 ** attempt)  # Exponential backoff: 0.5s, 1s, 2s
-                logger.warning(f"safe_send_message: attempt {attempt+1}/{max_retries} failed, retrying in {wait_time}s: {e}")
-                await asyncio.sleep(wait_time)
-            else:
-                logger.error(f"safe_send_message: failed after {max_retries} attempts: {e}")
-                return False
-    return False
-
-async def safe_send_media_group(bot, chat_id: int, media_group: list, max_retries: int = 3) -> bool:
-    """Send media group with retry logic. Returns True if successful, False otherwise."""
-    for attempt in range(max_retries):
-        try:
-            await bot.send_media_group(chat_id, media_group)
-            return True
-        except Exception as e:
-            if attempt < max_retries - 1:
-                wait_time = 0.5 * (2 ** attempt)  # Exponential backoff: 0.5s, 1s, 2s
-                logger.warning(f"safe_send_media_group: attempt {attempt+1}/{max_retries} failed, retrying in {wait_time}s: {e}")
-                await asyncio.sleep(wait_time)
-            else:
-                logger.error(f"safe_send_media_group: failed after {max_retries} attempts: {e}")
-                return False
-    return False
-
-async def send_message_ret(bot, chat_id: int, text: str, parse_mode: Optional[str] = None, reply_markup=None, max_retries: int = 3):
-    for attempt in range(max_retries):
-        try:
-            return await bot.send_message(chat_id, text, parse_mode=parse_mode, reply_markup=reply_markup)
-        except Exception as e:
-            if attempt < max_retries - 1:
-                wait_time = 0.5 * (2 ** attempt)
-                logger.warning(f"send_message_ret: retry {attempt+1}/{max_retries} in {wait_time}s: {e}")
-                await asyncio.sleep(wait_time)
-            else:
-                logger.error(f"send_message_ret: failed after retries: {e}")
-                return None
-
-async def send_media_group_ret(bot, chat_id: int, media_group: list, max_retries: int = 3):
-    for attempt in range(max_retries):
-        try:
-            return await bot.send_media_group(chat_id, media_group)
-        except Exception as e:
-            if attempt < max_retries - 1:
-                wait_time = 0.5 * (2 ** attempt)
-                logger.warning(f"send_media_group_ret: retry {attempt+1}/{max_retries} in {wait_time}s: {e}")
-                await asyncio.sleep(wait_time)
-            else:
-                logger.error(f"send_media_group_ret: failed after retries: {e}")
-                return []
 
 async def process_photo_batch(chat_id: int, photo_items: list, context: ContextTypes.DEFAULT_TYPE, status_msg=None) -> None:
     """Process a batch of photos."""
@@ -145,6 +88,7 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         logger.info(f"process_photo_batch: starting, chat={chat_id}, items={len(photo_items)}")
         is_debug = DEBUG_DEFAULT or (chat_id in DEBUG_CHATS)
         corr = uuid.uuid4().hex[:8]
+        sender = MessageSender(context.bot)
         
         all_results = []
         all_timelines = []
@@ -240,23 +184,27 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         # Each message has retry logic, but we continue sequentially
         
         # Prepare registry for this batch
-        SENT_BATCHES[corr] = { 'chat_id': chat_id, 'message_ids': [] }
+        SENT_BATCHES[corr] = {
+            'chat_id': chat_id,
+            'message_ids': [],
+            'timestamp': datetime.now()
+        }
         reg = SENT_BATCHES[corr]['message_ids']
 
         # First PLACE4174
         logger.info("process_photo_batch: sending PLACE4174")
-        m0 = await send_message_ret(context.bot, chat_id, "PLACE4174")
+        m0 = await sender.send_message_ret(chat_id, "PLACE4174")
         if m0:
             reg.append(m0.message_id)
-        await asyncio.sleep(0.2)  # Баланс между скоростью и стабильностью
-        
+        await asyncio.sleep(config.MESSAGE_DELAY)
+
         # Send photo album
         logger.info(f"process_photo_batch: sending media group with {len(photo_items)} photos")
         media_group = [InputMediaPhoto(item.file_id) for item in photo_items]
-        mg = await send_media_group_ret(context.bot, chat_id, media_group)
+        mg = await sender.send_media_group_ret(chat_id, media_group)
         if mg:
             reg.extend([m.message_id for m in mg])
-        await asyncio.sleep(0.2)  # Баланс между скоростью и стабильностью
+        await asyncio.sleep(config.MESSAGE_DELAY)
         
         # Проверяем наличие GG лейблов (GG текст + Q баркод)
         # На лейбе должны быть ОБА кода: GG текст и Q штрихкод
@@ -320,10 +268,10 @@ If no codes at all, return "NONE"'''
                                             {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
                                         ]
                                     }],
-                                    'max_tokens': 50,
-                                    'temperature': 0
+                                    'max_tokens': config.OPENAI_MAX_TOKENS,
+                                    'temperature': config.OPENAI_TEMPERATURE
                                 },
-                                timeout=15
+                                timeout=config.OPENAI_TIMEOUT
                             )
                             
                             if resp.status_code == 200:
@@ -367,7 +315,8 @@ If no codes at all, return "NONE"'''
             # Сохраняем эти фото как "ожидающие GG"
             PENDING_WITHOUT_GG[chat_id] = {
                 'photos': photo_items,
-                'message_ids': reg.copy()
+                'message_ids': reg.copy(),
+                'timestamp': datetime.now()
             }
             logger.info(f"Saved {len(photo_items)} photos to PENDING_WITHOUT_GG for chat {chat_id}")
 
@@ -381,7 +330,7 @@ If no codes at all, return "NONE"'''
             error_msg += f"У меня уже есть <b>{len(photo_items)} фото</b> товара. "
             error_msg += "После получения фото лейбы я объединю все и создам полную карточку."
 
-            m_error = await send_message_ret(context.bot, chat_id, error_msg, parse_mode='HTML')
+            m_error = await sender.send_message_ret(chat_id, error_msg, parse_mode='HTML')
             if m_error:
                 reg.append(m_error.message_id)
 
@@ -440,15 +389,15 @@ If no codes at all, return "NONE"'''
         if is_debug and all_timelines:
             lines = [f"{t['decoder']}: {t['count']} за {t['ms']}ms" for t in all_timelines]
             html += "\n\n<code>" + " | ".join(lines) + "</code>"
-        m_card = await send_message_ret(context.bot, chat_id, html, parse_mode='HTML')
+        m_card = await sender.send_message_ret(chat_id, html, parse_mode='HTML')
         if m_card:
             reg.append(m_card.message_id)
-        await asyncio.sleep(0.2)  # Баланс между скоростью и стабильностью
-        
+        await asyncio.sleep(config.MESSAGE_DELAY)
+
         # Final PLACE4174 - can be closed manually if needed
         logger.info("process_photo_batch: sending final PLACE4174")
         kb = InlineKeyboardMarkup([[InlineKeyboardButton("Удалить всё", callback_data=f"del:{corr}")]])
-        m_end = await send_message_ret(context.bot, chat_id, "PLACE4174", reply_markup=kb)
+        m_end = await sender.send_message_ret(chat_id, "PLACE4174", reply_markup=kb)
         if m_end:
             reg.append(m_end.message_id)
         
@@ -494,8 +443,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 # Продолжаем без статуса
             
             async def delayed_process():
-                # Ждем полный timeout буфера (3.0s) + небольшой запас для сбора до 10 фото
-                wait_time = 3.2
+                # Ждем полный timeout буфера + небольшой запас для сбора фото
+                wait_time = config.BUFFER_WAIT_TIME
                 logger.info(f"delayed_process: sleeping {wait_time}s for chat={chat_id}")
                 await asyncio.sleep(wait_time)
                 logger.info(f"delayed_process: flushing buffer for chat={chat_id}")
@@ -531,18 +480,40 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         logger.error(f"handle_photo: error: {e}", exc_info=True)
 
 
+async def cleanup_memory_task(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """
+    Background task to clean up old entries from memory.
+    Runs every hour to prevent memory leaks.
+    """
+    from shoesbot.helpers import cleanup_old_entries
+
+    logger.info("cleanup_memory_task: starting memory cleanup")
+
+    # Clean up PENDING_WITHOUT_GG
+    pending_removed = cleanup_old_entries(PENDING_WITHOUT_GG, config.PENDING_TTL_HOURS)
+    if pending_removed > 0:
+        logger.info(f"cleanup_memory_task: removed {pending_removed} old entries from PENDING_WITHOUT_GG")
+
+    # Clean up SENT_BATCHES
+    sent_removed = cleanup_old_entries(SENT_BATCHES, config.SENT_BATCHES_TTL_HOURS)
+    if sent_removed > 0:
+        logger.info(f"cleanup_memory_task: removed {sent_removed} old entries from SENT_BATCHES")
+
+    logger.info(f"cleanup_memory_task: completed. Total removed: {pending_removed + sent_removed}")
+
+
 def build_app() -> Application:
     token = BOT_TOKEN
     if not token:
         raise RuntimeError("BOT_TOKEN not set in environment (.env)")
     # Оптимизированные таймауты и пул соединений для быстрой работы
     request = HTTPXRequest(
-        connection_pool_size=20,  # Увеличил размер пула соединений
-        connect_timeout=10.0, 
-        read_timeout=20.0,
-        write_timeout=20.0,
-        pool_timeout=30.0,  # Увеличил таймаут пула
-        media_write_timeout=30.0  # Для загрузки фото
+        connection_pool_size=config.CONNECTION_POOL_SIZE,
+        connect_timeout=config.TELEGRAM_CONNECT_TIMEOUT,
+        read_timeout=config.TELEGRAM_READ_TIMEOUT,
+        write_timeout=config.TELEGRAM_WRITE_TIMEOUT,
+        pool_timeout=config.TELEGRAM_POOL_TIMEOUT,
+        media_write_timeout=config.TELEGRAM_MEDIA_WRITE_TIMEOUT
     )
     app = Application.builder().token(token).request(request).build()
     app.add_handler(CommandHandler("start", start))
@@ -554,6 +525,16 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("stats", stats))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(CallbackQueryHandler(on_delete_batch, pattern=r"^del:"))
+
+    # Schedule memory cleanup task (runs every hour)
+    if app.job_queue:
+        app.job_queue.run_repeating(
+            cleanup_memory_task,
+            interval=config.CLEANUP_INTERVAL_SECONDS,
+            first=config.CLEANUP_INTERVAL_SECONDS  # First run after 1 hour
+        )
+        logger.info(f"Scheduled memory cleanup task (interval: {config.CLEANUP_INTERVAL_SECONDS}s)")
+
     return app
 
 
@@ -581,7 +562,7 @@ async def on_delete_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             async with aiohttp.ClientSession() as session:
                 async with session.delete(
                     f'{django_url}/photos/api/delete-card-by-correlation/{corr}/',
-                    timeout=aiohttp.ClientTimeout(total=10)
+                    timeout=aiohttp.ClientTimeout(total=config.DJANGO_TIMEOUT)
                 ) as resp:
                     if resp.status == 200:
                         result = await resp.json()
