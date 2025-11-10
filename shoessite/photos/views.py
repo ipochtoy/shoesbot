@@ -2106,6 +2106,42 @@ def enhance_photo(request, photo_id):
                 import traceback
                 traceback.print_exc()
                 sys.stderr.flush()
+        elif mode in ['bu_aa', 'bu_bb']:
+            # БУ товары - добавляем логотип, сохраняем оригинальный вид
+            try:
+                from .fashn_api import change_background, download_image_from_url
+                print(f"✅ FASHN БУ обработка: {mode}", file=sys.stderr)
+                sys.stderr.flush()
+                
+                # Публичный URL
+                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
+                product_url = f"{cloudflared_url}{photo.image.url}"
+                
+                # Промпт для БУ - сохраняем оригинал, добавляем только логотип
+                if mode == 'bu_aa':
+                    bg_prompt = "keep original background exactly as shown, preserve all product details and condition, add small AA logo badge in bottom right corner, minimal changes, show product exactly as photographed"
+                else:  # bu_bb
+                    bg_prompt = "keep original background exactly as shown, preserve all product details and condition, add small BB logo badge in bottom right corner, minimal changes, show product exactly as photographed"
+                
+                print(f"📁 URL: {product_url}", file=sys.stderr)
+                print(f"📋 БУ промпт: {bg_prompt}", file=sys.stderr)
+                sys.stderr.flush()
+                
+                result_url = change_background(product_url, bg_prompt)
+                
+                if result_url:
+                    enhanced_image = download_image_from_url(result_url)
+                    print(f"📦 Downloaded: {len(enhanced_image) if enhanced_image else 0} bytes", file=sys.stderr)
+                    sys.stderr.flush()
+                else:
+                    print("❌ FASHN returned None", file=sys.stderr)
+                    sys.stderr.flush()
+                
+            except Exception as e:
+                print(f"❌ FASHN БУ exception: {e}", file=sys.stderr)
+                import traceback
+                traceback.print_exc()
+                sys.stderr.flush()
         else:
             # Background Change через FASHN AI
             try:
@@ -2181,7 +2217,15 @@ def enhance_photo(request, photo_id):
         # Сохраняем обработанное изображение
         new_photo.image.save(filename, ContentFile(enhanced_image), save=True)
         
-        mode_text = 'ghost mannequin' if mode == 'ghost_mannequin' else 'улучшено'
+        # Текст сообщения в зависимости от режима
+        if mode == 'ghost_mannequin':
+            mode_text = 'ghost mannequin'
+        elif mode == 'bu_aa':
+            mode_text = 'БУ АА'
+        elif mode == 'bu_bb':
+            mode_text = 'БУ ББ'
+        else:
+            mode_text = 'улучшено'
         return JsonResponse({
             'success': True,
             'photo_id': new_photo.id,

@@ -492,12 +492,18 @@
                                 <button type="button" onclick="reprocessPhoto({{ photo.id }})" class="btn btn-sm" style="margin-top: 4px; width: 100%; background: #ef4444; color: white; padding: 3px 6px; font-size: 10px;">
                                     🔍 Коды
                             </button>
-                                <div style="display: flex; gap: 2px; margin-top: 4px;">
-                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" class="btn btn-sm" style="flex: 1; background: #8b5cf6; color: white; padding: 3px 4px; font-size: 9px;" title="Генерация модели (FASHN AI, ~30 сек)">
+                                <div style="display: flex; gap: 2px; margin-top: 4px; flex-wrap: wrap;">
+                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" class="btn btn-sm" style="flex: 1; background: #8b5cf6; color: white; padding: 3px 4px; font-size: 9px; min-width: 45px;" title="Генерация модели (FASHN AI, ~30 сек)">
                                         👤
                                     </button>
-                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" class="btn btn-sm" style="flex: 1; background: #ec4899; color: white; padding: 3px 4px; font-size: 9px;" title="Улучшить фото (FASHN AI, ~30 сек)">
+                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" class="btn btn-sm" style="flex: 1; background: #ec4899; color: white; padding: 3px 4px; font-size: 9px; min-width: 45px;" title="Улучшить фото (FASHN AI, ~30 сек)">
                                         ✨
+                                    </button>
+                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'bu_aa')" class="btn btn-sm" style="flex: 1; background: #10b981; color: white; padding: 3px 4px; font-size: 9px; min-width: 45px;" title="БУ АА - добавить логотип АА, сохранить оригинал">
+                                        АА
+                                    </button>
+                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'bu_bb')" class="btn btn-sm" style="flex: 1; background: #f59e0b; color: white; padding: 3px 4px; font-size: 9px; min-width: 45px;" title="БУ ББ - добавить логотип ББ, сохранить оригинал">
+                                        ББ
                                     </button>
                                 </div>
                         </div>
