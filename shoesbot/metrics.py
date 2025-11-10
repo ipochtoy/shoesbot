@@ -60,6 +60,46 @@ def tail_events(n: int = 100) -> list[Dict[str, Any]]:
         return []
 
 
+def get_all_events() -> list[Dict[str, Any]]:
+    """Get all events from metrics file (for analytics dashboard)."""
+    try:
+        events = []
+        # Read main file
+        if os.path.exists(METRICS_FILE):
+            with open(METRICS_FILE, 'r', encoding='utf-8') as fh:
+                for line in fh:
+                    if line.strip():
+                        try:
+                            event = json.loads(line)
+                            # Convert timestamp to ISO format if needed
+                            if 'ts' in event and isinstance(event['ts'], (int, float)):
+                                from datetime import datetime
+                                event['ts'] = datetime.fromtimestamp(event['ts']).isoformat()
+                            events.append(event)
+                        except Exception:
+                            pass
+
+        # Also read rotated files
+        for i in range(1, 4):
+            rotated_file = f"{METRICS_FILE}.{i}"
+            if os.path.exists(rotated_file):
+                with open(rotated_file, 'r', encoding='utf-8') as fh:
+                    for line in fh:
+                        if line.strip():
+                            try:
+                                event = json.loads(line)
+                                if 'ts' in event and isinstance(event['ts'], (int, float)):
+                                    from datetime import datetime
+                                    event['ts'] = datetime.fromtimestamp(event['ts']).isoformat()
+                                events.append(event)
+                            except Exception:
+                                pass
+
+        return events
+    except Exception:
+        return []
+
+
 def summarize(n: int = 500) -> Dict[str, Any]:
     evs = tail_events(n)
     total = len(evs)
