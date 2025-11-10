@@ -355,15 +355,10 @@ If no codes at all, return "NONE"'''
             
             # Отправляем фото
             if photo_items:
-                media_group = []
-                for item in photo_items:
-                    if item.file_obj:
-                        media_group.append(InputMediaPhoto(media=item.file_obj.file_id))
-                
-                if media_group:
-                    sent_msgs = await send_media_group_ret(context.bot, chat_id, media_group)
-                    if sent_msgs:
-                        reg.extend([m.message_id for m in sent_msgs])
+                media_group = [InputMediaPhoto(item.file_id) for item in photo_items]
+                sent_msgs = await send_media_group_ret(context.bot, chat_id, media_group)
+                if sent_msgs:
+                    reg.extend([m.message_id for m in sent_msgs])
             
             # Кнопка "Удалить всё"
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("Удалить всё", callback_data=f"del:{corr}")]])
