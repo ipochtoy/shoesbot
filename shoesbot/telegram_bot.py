@@ -55,7 +55,21 @@ USE_SMART_SKIP = os.getenv("SMART_SKIP_VISION", "0") == "1"  # Disabled by defau
 SENT_BATCHES: dict[str, dict] = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_html("Пришли фото, извлеку штрихкоды/QR. /ping — проверка.")
+    """Welcome message - bot works without this command."""
+    welcome_text = (
+        "👋 <b>ShoesBot готов к работе!</b>\n\n"
+        "📸 Просто пришли фото товара - я автоматически:\n"
+        "  • Найду все штрих-коды и QR-коды\n"
+        "  • Распознаю GG лейблы и Q-коды\n"
+        "  • Создам карточку товара\n\n"
+        "📊 <b>Команды:</b>\n"
+        "/analytics - полная статистика работы\n"
+        "/top_barcodes - топ отсканированных кодов\n"
+        "/cache_stats - статистика кэша Vision API\n"
+        "/ping - проверка связи\n\n"
+        "Бот работает <b>всегда</b>, команда /start не обязательна! 🚀"
+    )
+    await update.message.reply_html(welcome_text)
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("pong")
@@ -132,6 +146,105 @@ async def top_barcodes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         text += f"{idx}. {code}\n   {name} ({count}x)\n\n"
 
     await update.message.reply_text(text)
+
+async def analytics(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show comprehensive analytics dashboard in Telegram."""
+    try:
+        # Gather all statistics
+        from shoesbot.metrics import get_all_events
+        from datetime import datetime, timedelta
+
+        events = get_all_events()
+        db = get_barcode_db()
+        cache = get_cache()
+
+        # Overall stats
+        total_scans = len(events)
+        success_scans = sum(1 for e in events if e.get('result_count', 0) > 0)
+        empty_scans = total_scans - success_scans
+        success_rate = round(success_scans / total_scans * 100, 1) if total_scans > 0 else 0
+
+        # Average processing time
+        total_times = []
+        for event in events:
+            timeline = event.get('timeline', [])
+            total_time = sum(t.get('ms', 0) for t in timeline)
+            total_times.append(total_time)
+        avg_time = round(sum(total_times) / len(total_times), 1) if total_times else 0
+
+        # Database stats
+        db_stats = db.get_stats()
+        cache_stats = cache.get_stats()
+
+        # Recent activity (last 24h)
+        now = datetime.now()
+        cutoff_24h = now - timedelta(hours=24)
+        recent_scans = 0
+        for event in events:
+            try:
+                ts = datetime.fromisoformat(event['ts'])
+                if ts >= cutoff_24h:
+                    recent_scans += 1
+            except:
+                pass
+
+        # Decoder performance
+        decoder_stats = {}
+        for event in events:
+            for decoder_info in event.get('timeline', []):
+                decoder_name = decoder_info.get('decoder', 'unknown')
+                if decoder_name not in decoder_stats:
+                    decoder_stats[decoder_name] = {'hits': 0, 'total': 0, 'time': 0}
+                decoder_stats[decoder_name]['total'] += 1
+                if decoder_info.get('count', 0) > 0:
+                    decoder_stats[decoder_name]['hits'] += 1
+                decoder_stats[decoder_name]['time'] += decoder_info.get('ms', 0)
+
+        # Format message
+        text = "📊 <b>ANALYTICS DASHBOARD</b>\n"
+        text += "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+
+        text += "📈 <b>Общая статистика:</b>\n"
+        text += f"  • Всего сканирований: <b>{total_scans}</b>\n"
+        text += f"  • Успешных: <b>{success_scans}</b> ({success_rate}%)\n"
+        text += f"  • Пустых: {empty_scans}\n"
+        text += f"  • За последние 24ч: <b>{recent_scans}</b>\n"
+        text += f"  • Среднее время: <b>{avg_time}ms</b>\n\n"
+
+        text += "🏷️ <b>База данных кодов:</b>\n"
+        text += f"  • Уникальных кодов: <b>{db_stats.get('total_unique_barcodes', 0)}</b>\n"
+        text += f"  • Всего сканирований: <b>{db_stats.get('total_scans', 0)}</b>\n"
+        text += f"  • Отсканировано сегодня: <b>{db_stats.get('scanned_today', 0)}</b>\n\n"
+
+        most_scanned = db_stats.get('most_scanned')
+        if most_scanned:
+            code = most_scanned.get('barcode', 'N/A')
+            count = most_scanned.get('scan_count', 0)
+            name = most_scanned.get('product_name') or 'Unknown'
+            text += f"🏆 <b>Самый популярный код:</b>\n"
+            text += f"  <code>{code}</code>\n"
+            text += f"  {name} ({count}x)\n\n"
+
+        text += "💾 <b>Cache Vision API:</b>\n"
+        text += f"  • Hit rate: <b>{cache_stats.get('hit_rate_percent', 0)}%</b>\n"
+        text += f"  • Hits: {cache_stats.get('hits', 0)}\n"
+        text += f"  • Misses: {cache_stats.get('misses', 0)}\n"
+        text += f"  • Cached files: {cache_stats.get('cached_files', 0)}\n\n"
+
+        text += "⚙️ <b>Производительность декодеров:</b>\n"
+        for decoder_name, stats in decoder_stats.items():
+            avg_decoder_time = round(stats['time'] / stats['total'], 1) if stats['total'] > 0 else 0
+            hit_rate = round(stats['hits'] / stats['total'] * 100, 1) if stats['total'] > 0 else 0
+            text += f"  • <b>{decoder_name}</b>: {avg_decoder_time}ms, {hit_rate}% hits\n"
+
+        text += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        text += "🔄 Автообновление: отправьте команду снова"
+
+        await update.message.reply_html(text)
+
+    except Exception as e:
+        logger.error(f"Error in analytics command: {e}", exc_info=True)
+        await update.message.reply_text(f"❌ Ошибка получения статистики: {str(e)}")
 
 async def safe_send_message(bot, chat_id: int, text: str, parse_mode: str = None, max_retries: int = 3) -> bool:
     """Send message with retry logic. Returns True if successful, False otherwise."""
@@ -638,6 +751,7 @@ def build_app() -> Application:
     app = Application.builder().token(token).request(request).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("ping", ping))
+    app.add_handler(CommandHandler("analytics", analytics))
     app.add_handler(CommandHandler("debug_on", debug_on))
     app.add_handler(CommandHandler("debug_off", debug_off))
     app.add_handler(CommandHandler("diag", diag))
