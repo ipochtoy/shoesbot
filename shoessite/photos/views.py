@@ -2047,16 +2047,32 @@ def enhance_photo(request, photo_id):
                 print(f"📁 Product URL: {product_url}", file=sys.stderr)
                 sys.stderr.flush()
                 
-                # Подробный промпт для точности и реализма
-                prompt = "realistic e-commerce catalog photo, product exactly as shown with accurate colors and textures, remove any price tags, soft beige background"
+                # Разнообразные фоны для каталога
+                import random
+                backgrounds = [
+                    "urban city street with modern architecture, natural lighting",
+                    "cozy cafe interior with warm lighting, bokeh background",
+                    "minimalist modern apartment with plants and natural light",
+                    "park with trees and green grass, soft daylight",
+                    "contemporary art gallery with white walls and natural lighting",
+                    "rooftop terrace with city skyline view, golden hour",
+                    "brick wall with street art, urban atmosphere",
+                    "beach boardwalk with ocean view, soft natural light",
+                    "modern office space with large windows, professional setting",
+                    "cozy bookstore interior with shelves and warm lighting"
+                ]
+                selected_bg = random.choice(backgrounds)
+                
+                # Подробный промпт для точности и реализма с разнообразным фоном
+                prompt = f"realistic e-commerce catalog photo, product exactly as shown with accurate colors and textures, remove any price tags, background: {selected_bg}"
                 if photo.batch.title:
                     title_lower = photo.batch.title.lower()
                     if any(x in title_lower for x in ['pants', 'брюки', 'штаны']):
-                        prompt = "realistic full body catalog photo, product exactly as is, accurate fabric texture, remove price tags, soft beige background"
+                        prompt = f"realistic full body catalog photo, product exactly as is, accurate fabric texture, remove price tags, background: {selected_bg}"
                     elif any(x in title_lower for x in ['dress', 'платье']):
-                        prompt = "realistic catalog photo, product exactly as shown, natural pose, accurate fabric, remove price tags, soft beige background"
+                        prompt = f"realistic catalog photo, product exactly as shown, natural pose, accurate fabric, remove price tags, background: {selected_bg}"
                     elif any(x in title_lower for x in ['shirt', 'рубашка', 'sweater', 'свитер', 'blouse', 'блузка', 'футболка', 't-shirt']):
-                        prompt = "realistic upper body catalog photo, product exactly as is, accurate colors and print, sleeves as shown, remove price tags, soft beige background"
+                        prompt = f"realistic upper body catalog photo, product exactly as is, accurate colors and print, sleeves as shown, remove price tags, background: {selected_bg}"
                 
                 print(f"📋 Prompt: {prompt}", file=sys.stderr)
                 sys.stderr.flush()
@@ -2101,8 +2117,21 @@ def enhance_photo(request, photo_id):
                 cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
                 product_url = f"{cloudflared_url}{photo.image.url}"
                 
-                # Реалистичный промпт для Background Change
-                bg_prompt = "professional product photography, realistic studio background with soft beige gradient, natural lighting, subtle shadows, high quality commercial photo"
+                # Разнообразные фоны для Background Change
+                import random
+                bg_options = [
+                    "urban city street with modern architecture, natural lighting, professional product photography",
+                    "cozy cafe interior with warm lighting, bokeh background, high quality commercial photo",
+                    "minimalist modern apartment with plants and natural light, realistic studio setting",
+                    "park with trees and green grass, soft daylight, professional catalog style",
+                    "contemporary art gallery with white walls and natural lighting, clean background",
+                    "rooftop terrace with city skyline view, golden hour, professional photography",
+                    "brick wall with street art, urban atmosphere, natural lighting",
+                    "beach boardwalk with ocean view, soft natural light, commercial photo style",
+                    "modern office space with large windows, professional setting, realistic lighting",
+                    "cozy bookstore interior with shelves and warm lighting, atmospheric background"
+                ]
+                bg_prompt = random.choice(bg_options)
                 
                 print(f"📁 URL: {product_url}", file=sys.stderr)
                 print(f"📋 Background: {bg_prompt}", file=sys.stderr)
