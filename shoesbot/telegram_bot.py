@@ -350,19 +350,8 @@ If no codes at all, return "NONE"'''
             }
             logger.info(f"Saved {len(photo_items)} photos to PENDING_WITHOUT_GG for chat {chat_id}")
             
-            error_msg = "❌ <b>GG лейбла не найдена!</b>\n\n"
-            error_msg += "Не могу создать карточку без GG кода.\n\n"
-            error_msg += "📸 <b>Отправь фото лейбы (желтый стикер с GG кодом)</b>\n\n"
-            error_msg += "Код обычно выглядит как:\n"
-            error_msg += "  • GG681\n"
-            error_msg += "  • GG700\n"
-            error_msg += "  • Q2622911\n\n"
-            error_msg += f"У меня уже есть <b>{len(photo_items)} фото</b> товара. "
-            error_msg += "После получения фото лейбы я объединю все и создам полную карточку."
-            
-            m_error = await send_message_ret(context.bot, chat_id, error_msg, parse_mode='HTML')
-            if m_error:
-                reg.append(m_error.message_id)
+            # Не отправляем техническое сообщение пользователю - только логируем
+            logger.info(f"Waiting for GG label photo for chat {chat_id}, have {len(photo_items)} photos")
             
             # НЕ создаем карточку и НЕ загружаем в Django
             logger.info("process_photo_batch: STOPPED - waiting for GG label photo")
