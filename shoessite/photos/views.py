@@ -1995,17 +1995,17 @@ def save_ai_summary(request, card_id):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def enhance_photo_photoroom(request, photo_id):
-    """Обработать фото через Photoroom API."""
+def enhance_photo(request, photo_id):
+    """Обработать фото через FASHN AI API."""
     import traceback
     import sys
     
     # Логируем в файл сразу
     with open('/tmp/enhance_calls.log', 'a') as f:
-        f.write(f"\n=== enhance_photo_photoroom called: photo_id={photo_id} ===\n")
+        f.write(f"\n=== enhance_photo (FASHN) called: photo_id={photo_id} ===\n")
     
     print(f"\n{'='*70}", file=sys.stderr)
-    print(f"🚀 enhance_photo_photoroom called: photo_id={photo_id}", file=sys.stderr)
+    print(f"🚀 enhance_photo (FASHN) called: photo_id={photo_id}", file=sys.stderr)
     print(f"{'='*70}\n", file=sys.stderr)
     sys.stderr.flush()
     
@@ -2091,7 +2091,7 @@ def enhance_photo_photoroom(request, photo_id):
                 traceback.print_exc()
                 sys.stderr.flush()
         else:
-            # Background Change через FASHN (вместо Photoroom)
+            # Background Change через FASHN AI
             try:
                 from .fashn_api import change_background, download_image_from_url
                 print("✅ FASHN Background Change", file=sys.stderr)
@@ -2168,14 +2168,14 @@ def enhance_photo_photoroom(request, photo_id):
         # Записываем полный traceback в файл и stderr
         tb = traceback.format_exc()
         print(f"\n{'='*70}", file=sys.stderr)
-        print(f"❌ EXCEPTION in enhance_photo_photoroom for photo_id={photo_id}:", file=sys.stderr)
+        print(f"❌ EXCEPTION in enhance_photo (FASHN) for photo_id={photo_id}:", file=sys.stderr)
         print(tb, file=sys.stderr)
         print(f"{'='*70}\n", file=sys.stderr)
         sys.stderr.flush()
         
         # Также в файл
         try:
-            with open('/tmp/photoroom_error.log', 'a') as f:
+            with open('/tmp/fashn_error.log', 'a') as f:
                 f.write(f"\n{'='*70}\n")
                 f.write(f"Error at photo_id={photo_id}: {e}\n")
                 f.write(tb)

@@ -496,7 +496,7 @@
                                     <button type="button" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" class="btn btn-sm" style="flex: 1; background: #8b5cf6; color: white; padding: 3px 4px; font-size: 9px;" title="Генерация модели (FASHN AI, ~30 сек)">
                                         👤
                                     </button>
-                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" class="btn btn-sm" style="flex: 1; background: #ec4899; color: white; padding: 3px 4px; font-size: 9px;" title="Улучшить фото (Photoroom)">
+                                    <button type="button" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" class="btn btn-sm" style="flex: 1; background: #ec4899; color: white; padding: 3px 4px; font-size: 9px;" title="Улучшить фото (FASHN AI, ~30 сек)">
                                         ✨
                                     </button>
                                 </div>
@@ -1178,8 +1178,8 @@
                         img.style.opacity = '1';
                     }
                 } else {
-                    console.error('❌ Photoroom API error:', data.error);
-                    alert(`❌ Ошибка Photoroom:\n${data.error}\n\nПроверь консоль (F12) для деталей`);
+                    console.error('❌ FASHN API error:', data.error);
+                    alert(`❌ Ошибка FASHN AI:\n${data.error}\n\nПроверь консоль (F12) для деталей`);
                     if (img) {
                         img.style.opacity = '1';
                     }
