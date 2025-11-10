@@ -8,17 +8,22 @@ import base64
 # Загружаем .env
 try:
     from dotenv import load_dotenv
-    # Путь к корню проекта (где находится .env)
-    env_path = '/Users/dzianismazol/Projects/shoesbot/.env'
+    import sys
+    # Автоматически находим корень проекта (где находится .env)
+    # thenewblack_api.py находится в shoessite/photos/, нужно подняться на 2 уровня вверх
+    BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'))
+    env_path = os.path.join(BASE_DIR, '.env')
     if os.path.exists(env_path):
         load_dotenv(env_path)
-        print(f"✅ Loaded .env from: {env_path}")
+        print(f"✅ Loaded .env from: {env_path}", file=sys.stderr)
     else:
-        print(f"⚠️ .env not found at: {env_path}")
+        print(f"⚠️ .env not found at: {env_path}", file=sys.stderr)
 except ImportError:
-    print("⚠️ python-dotenv not installed")
+    import sys
+    print("⚠️ python-dotenv not installed", file=sys.stderr)
 except Exception as e:
-    print(f"⚠️ Error loading .env: {e}")
+    import sys
+    print(f"⚠️ Error loading .env: {e}", file=sys.stderr)
 
 TNB_EMAIL = os.getenv('TNB_EMAIL')
 TNB_PASSWORD = os.getenv('TNB_PASSWORD')
