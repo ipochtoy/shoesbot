@@ -163,7 +163,20 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             
             t0 = perf_counter()
             buf = BytesIO()
-            await item.file_obj.download_to_memory(out=buf)
+            
+            # Retry механизм для скачивания (httpx.ConnectError защита)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    await item.file_obj.download_to_memory(out=buf)
+                    break
+                except Exception as download_err:
+                    if attempt < max_retries - 1:
+                        logger.warning(f"Download retry {attempt + 1}/{max_retries}: {download_err}")
+                        await asyncio.sleep(1)
+                    else:
+                        raise
+            
             download_ms = int((perf_counter() - t0) * 1000)
             
             raw = buf.getvalue()
