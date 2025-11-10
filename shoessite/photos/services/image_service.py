@@ -7,13 +7,25 @@
 - Поворота
 - Конвертации форматов
 - Оптимизации
+
+Требует: pip install Pillow
 """
+from __future__ import annotations
+
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any
 from io import BytesIO
 
 import requests
-from PIL import Image
+
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    # Создаем заглушку для типов
+    class Image:
+        Image = Any
 
 
 logger = logging.getLogger(__name__)
@@ -62,7 +74,7 @@ class ImageService:
             logger.error(f"Error downloading image: {e}")
             return None
 
-    def load_from_bytes(self, data: bytes) -> Optional[Image.Image]:
+    def load_from_bytes(self, data: bytes) -> Optional['Image.Image']:
         """
         Загружает изображение из байтов.
 
@@ -72,6 +84,10 @@ class ImageService:
         Returns:
             PIL Image объект или None при ошибке
         """
+        if not PIL_AVAILABLE:
+            logger.error("PIL/Pillow not installed. Install with: pip install Pillow")
+            return None
+
         try:
             return Image.open(BytesIO(data))
         except Exception as e:
