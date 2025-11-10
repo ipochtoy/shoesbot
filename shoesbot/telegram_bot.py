@@ -343,7 +343,7 @@ If no codes at all, return "NONE"'''
             # GG лейбла не найдена - создаем карточку с кнопкой "Удалить все"
             logger.warning(f"process_photo_batch: NO GG LABEL FOUND for {corr}")
             
-            # Создаем карточку с предупреждением
+            # Создаем карточку с предупреждением и кнопкой (фото не дублируем - они уже были отправлены)
             html = "❌ <b>GG лейбла не найдена!</b>\n\n"
             html += "Не могу создать карточку без GG кода.\n\n"
             html += "Чтобы не затруднять процесс, нажми кнопку <b>«Удалить всё»</b> и загрузи заново.\n\n"
@@ -352,13 +352,6 @@ If no codes at all, return "NONE"'''
             m_card = await send_message_ret(context.bot, chat_id, html, parse_mode='HTML')
             if m_card:
                 reg.append(m_card.message_id)
-            
-            # Отправляем фото
-            if photo_items:
-                media_group = [InputMediaPhoto(item.file_id) for item in photo_items]
-                sent_msgs = await send_media_group_ret(context.bot, chat_id, media_group)
-                if sent_msgs:
-                    reg.extend([m.message_id for m in sent_msgs])
             
             # Кнопка "Удалить всё"
             kb = InlineKeyboardMarkup([[InlineKeyboardButton("Удалить всё", callback_data=f"del:{corr}")]])
