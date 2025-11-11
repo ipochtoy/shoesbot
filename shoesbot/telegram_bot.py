@@ -32,6 +32,7 @@ from shoesbot.metrics import append_event, summarize
 from shoesbot.admin import get_admin_id, set_admin_id
 from shoesbot.photo_buffer import buffer as photo_buffer
 from shoesbot.django_upload import upload_batch_to_django
+from shoesbot.fitness_reporter import FitnessReporter
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -77,6 +78,42 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     s = summarize(500)
     text = f"total={s['total']}, ok={s['ok']}, empty={s['empty']}, per_decoder={s['per_decoder_hits']}"
     await update.message.reply_text(text)
+
+async def report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Генерация отчета о тренировках и питании"""
+    try:
+        await update.message.reply_text("📊 Генерирую отчет...")
+        
+        reporter = FitnessReporter()
+        report_text, success = reporter.get_daily_report()
+        
+        # Создаем кнопку для повторного запроса
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔄 Обновить отчет", callback_data="report:refresh")
+        ]])
+        
+        await update.message.reply_text(report_text, reply_markup=kb, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"report command error: {e}", exc_info=True)
+        await update.message.reply_text(f"❌ Ошибка генерации отчета: {str(e)[:200]}")
+
+async def on_report_refresh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Обработка кнопки обновления отчета"""
+    try:
+        query = update.callback_query
+        await query.answer("Обновляю отчет...")
+        
+        reporter = FitnessReporter()
+        report_text, success = reporter.get_daily_report()
+        
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔄 Обновить отчет", callback_data="report:refresh")
+        ]])
+        
+        await query.edit_message_text(report_text, reply_markup=kb, parse_mode='HTML')
+    except Exception as e:
+        logger.error(f"report refresh error: {e}", exc_info=True)
+        await query.edit_message_text(f"❌ Ошибка: {str(e)[:200]}")
 
 async def safe_send_message(bot, chat_id: int, text: str, parse_mode: str = None, max_retries: int = 3) -> bool:
     """Send message with retry logic. Returns True if successful, False otherwise."""
@@ -554,8 +591,10 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("diag", diag))
     app.add_handler(CommandHandler("admin_on", admin_on))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(CallbackQueryHandler(on_delete_batch, pattern=r"^del:"))
+    app.add_handler(CallbackQueryHandler(on_report_refresh, pattern=r"^report:"))
     return app
 
 

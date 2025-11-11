@@ -1,0 +1,15 @@
+{
+  "remote.SSH.configFile": "~/.ssh/config",
+  "remote.SSH.defaultExtensions": [
+    "ms-python.python",
+    "ms-python.vscode-pylance"
+  ],
+  "python.defaultInterpreterPath": "/home/pochtoy/shoesbot/.venv/bin/python3",
+  "python.terminal.activateEnvironment": true,
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.venv/**": true
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Restart Bot",
+      "type": "shell",
+      "command": "sudo systemctl restart shoesbot.service",
+      "problemMatcher": []
+    },
+    {
+      "label": "Restart Django",
+      "type": "shell",
+      "command": "sudo systemctl restart shoesdjango.service",
+      "problemMatcher": []
+    },
+    {
+      "label": "Status Bot",
+      "type": "shell",
+      "command": "sudo systemctl status shoesbot.service",
+      "problemMatcher": []
+    },
+    {
+      "label": "Status Django",
+      "type": "shell",
+      "command": "sudo systemctl status shoesdjango.service",
+      "problemMatcher": []
+    },
+    {
+      "label": "Tail Bot Logs",
+      "type": "shell",
+      "command": "tail -f ~/shoesbot/bot.log",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Tail Django Logs",
+      "type": "shell",
+      "command": "tail -f ~/shoesbot/django.log",
+      "problemMatcher": [],
+      "isBackground": true
+    }
+  ]
+}
