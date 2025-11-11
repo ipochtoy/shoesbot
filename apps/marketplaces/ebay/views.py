@@ -5,7 +5,10 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 from django.shortcuts import get_object_or_404
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import EbayCandidate, EbayToken
@@ -29,6 +32,7 @@ from .services.pricing import PricingService
 from .tasks import prepare_candidate, publish_candidate, end_candidate, reprice_candidate
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class EbayCandidateViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing eBay listing candidates.
@@ -46,6 +50,7 @@ class EbayCandidateViewSet(viewsets.ModelViewSet):
     """
 
     queryset = EbayCandidate.objects.select_related('photo_batch').all()
+    permission_classes = [AllowAny]  # TODO: Add proper authentication
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'condition', 'heavy_flag', 'category_id']
     search_fields = ['title', 'ebay_item_id', 'photo_batch__title', 'photo_batch__sku']
@@ -199,6 +204,7 @@ class EbayCandidateViewSet(viewsets.ModelViewSet):
         )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class BulkCreateCandidatesView(APIView):
     """
     Bulk create eBay candidates from PhotoBatch IDs.
@@ -206,6 +212,7 @@ class BulkCreateCandidatesView(APIView):
     POST /api/ebay/candidates/bulk-create/
     Body: {"photo_batch_ids": [1, 2, 3]}
     """
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = BulkCreateSerializer(data=request.data)
@@ -223,12 +230,14 @@ class BulkCreateCandidatesView(APIView):
         )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class TaxonomySuggestView(APIView):
     """
     Suggest eBay categories based on query.
 
     GET /api/ebay/taxonomy/suggest/?q=perfume
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         serializer = TaxonomySuggestionSerializer(data=request.query_params)
@@ -249,12 +258,14 @@ class TaxonomySuggestView(APIView):
         )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ItemSpecificsView(APIView):
     """
     Get required item specifics for a category.
 
     GET /api/ebay/specifics/?category_id=12345
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         category_id = request.query_params.get('category_id')
@@ -278,6 +289,7 @@ class ItemSpecificsView(APIView):
         )
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class PricingCompsView(APIView):
     """
     Get pricing comparables from eBay marketplace.
@@ -285,6 +297,7 @@ class PricingCompsView(APIView):
     GET /api/ebay/pricing/comps/?q=iPhone+13
     GET /api/ebay/pricing/comps/?upc=123456789012
     """
+    permission_classes = [AllowAny]
 
     def get(self, request):
         serializer = PricingCompsQuerySerializer(data=request.query_params)
