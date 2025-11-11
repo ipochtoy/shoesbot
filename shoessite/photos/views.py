@@ -2042,7 +2042,7 @@ def enhance_photo(request, photo_id):
                 sys.stderr.flush()
                 
                 # Публичный URL через cloudflared
-                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
+                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://pochtoy.us')
                 product_url = f"{cloudflared_url}{photo.image.url}"
                 print(f"📁 Product URL: {product_url}", file=sys.stderr)
                 sys.stderr.flush()
@@ -2114,7 +2114,7 @@ def enhance_photo(request, photo_id):
                 sys.stderr.flush()
                 
                 # Публичный URL
-                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
+                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://pochtoy.us')
                 product_url = f"{cloudflared_url}{photo.image.url}"
                 
                 # Промпт для БУ - сохраняем оригинал, добавляем только логотип
@@ -2150,7 +2150,7 @@ def enhance_photo(request, photo_id):
                 sys.stderr.flush()
                 
                 # Публичный URL
-                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://safely-ssl-collected-menus.trycloudflare.com')
+                cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://pochtoy.us')
                 product_url = f"{cloudflared_url}{photo.image.url}"
                 
                 # Разнообразные фоны для Background Change
