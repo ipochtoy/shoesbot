@@ -264,71 +264,113 @@
 const candidateId = {{ ebay_candidate.id|default:"null" }};
 const batchId = {{ card.id }};
 
+// Get CSRF token from cookie or form
+function getCSRFToken() {
+    // Try form first
+    const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (tokenInput) return tokenInput.value;
+    
+    // Try cookie
+    const name = 'csrftoken';
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [key, value] = cookie.trim().split('=');
+        if (key === name) return value;
+    }
+    return '';
+}
+
 function addToEbay() {
     fetch('/api/ebay/candidates/bulk-create/', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+        },
         body: JSON.stringify({photo_batch_ids: [batchId]})
     })
     .then(r => r.json())
     .then(data => {
         alert('Added to eBay list');
         location.reload();
-    });
+    })
+    .catch(err => alert('Error: ' + err));
 }
 
 function prepareEbay() {
     if (!candidateId) return;
-    fetch(`/api/ebay/candidates/${candidateId}/prepare/`, {method: 'POST'})
+    if (confirm('Run AI preparation? This will extract data from photos and search eBay for comps.')) {
+        fetch(`/api/ebay/candidates/${candidateId}/prepare/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCSRFToken()},
+        })
         .then(r => r.json())
         .then(data => {
-            alert(data.message);
+            alert(data.message || 'Preparation complete');
             location.reload();
-        });
+        })
+        .catch(err => alert('Error: ' + err));
+    }
 }
 
 function publishEbay() {
     if (!candidateId) return;
     if (confirm('Publish to eBay?')) {
-        fetch(`/api/ebay/candidates/${candidateId}/publish/`, {method: 'POST'})
-            .then(r => r.json())
-            .then(data => {
-                alert(data.message);
-                location.reload();
-            });
+        fetch(`/api/ebay/candidates/${candidateId}/publish/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCSRFToken()},
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err));
     }
 }
 
 function endEbay() {
     if (!candidateId) return;
     if (confirm('End listing?')) {
-        fetch(`/api/ebay/candidates/${candidateId}/end/`, {method: 'POST'})
-            .then(r => r.json())
-            .then(data => {
-                alert(data.message);
-                location.reload();
-            });
+        fetch(`/api/ebay/candidates/${candidateId}/end/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCSRFToken()},
+        })
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err));
     }
 }
 
 function repriceEbay() {
     if (!candidateId) return;
-    fetch(`/api/ebay/candidates/${candidateId}/reprice/`, {method: 'POST'})
-        .then(r => r.json())
-        .then(data => {
-            alert(data.message);
-            location.reload();
-        });
+    fetch(`/api/ebay/candidates/${candidateId}/reprice/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': getCSRFToken()},
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+        location.reload();
+    })
+    .catch(err => alert('Error: ' + err));
 }
 
 function deleteEbayCandidate() {
     if (!candidateId) return;
     if (confirm('Remove from eBay list?')) {
-        fetch(`/api/ebay/candidates/${candidateId}/`, {method: 'DELETE'})
-            .then(() => {
-                alert('Removed from eBay list');
-                location.reload();
-            });
+        fetch(`/api/ebay/candidates/${candidateId}/`, {
+            method: 'DELETE',
+            headers: {'X-CSRFToken': getCSRFToken()},
+        })
+        .then(() => {
+            alert('Removed from eBay list');
+            location.reload();
+        })
+        .catch(err => alert('Error: ' + err));
     }
 }
 
