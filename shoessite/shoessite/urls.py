@@ -24,6 +24,9 @@ urlpatterns = [
     path('', RedirectView.as_view(url='/photos/sorting/', permanent=False)),
     path('admin/', admin.site.urls),
     path('photos/', include('photos.urls')),
+
+    # eBay marketplace integration
+    path('api/ebay/', include('apps.marketplaces.ebay.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,326 @@
+{% load static %}
+
+<div class="ebay-listing-block">
+    <h3>eBay Listing</h3>
+
+    {% if ebay_candidate %}
+    <div class="ebay-status">
+        <span class="badge status-{{ ebay_candidate.status }}">{{ ebay_candidate.get_status_display }}</span>
+
+        {% if ebay_candidate.ebay_item_id %}
+        <a href="https://www.ebay.com/itm/{{ ebay_candidate.ebay_item_id }}" target="_blank">View on eBay</a>
+        {% endif %}
+    </div>
+
+    <div class="ebay-fields">
+        <div class="field">
+            <label>Title (max 80 chars):</label>
+            <input type="text" name="ebay_title" value="{{ ebay_candidate.title }}" maxlength="80">
+            <small>{{ ebay_candidate.title|length }}/80</small>
+        </div>
+
+        <div class="field">
+            <label>Condition:</label>
+            <select name="ebay_condition">
+                {% for value, label in ebay_candidate.CONDITION_CHOICES %}
+                <option value="{{ value }}" {% if ebay_candidate.condition == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="field">
+            <label>Category:</label>
+            <input type="text" name="ebay_category_id" value="{{ ebay_candidate.category_id }}" placeholder="Search category...">
+            <button type="button" onclick="searchCategory()">Find Category</button>
+        </div>
+
+        <div class="field">
+            <label>Description (Markdown):</label>
+            <textarea name="ebay_description" rows="10">{{ ebay_candidate.description_md }}</textarea>
+        </div>
+
+        <div class="field">
+            <label>Photos (drag to reorder):</label>
+            <div class="photo-list" id="ebay-photos">
+                {% for photo_url in ebay_candidate.photos %}
+                <div class="photo-item" data-url="{{ photo_url }}">
+                    <img src="{{ photo_url }}" alt="Product photo">
+                    <button type="button" onclick="removePhoto(this)">×</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="pricing-sidebar">
+            <h4>Pricing Assistant</h4>
+
+            {% if ebay_candidate.comps %}
+            <div class="comps-stats">
+                <p><strong>Market Median:</strong> ${{ ebay_candidate.comps.0.price|default:"–" }}</p>
+                <p><strong>Suggested:</strong> ${{ ebay_candidate.price_suggested|default:"–" }}</p>
+                <p><strong>Final (with shipping):</strong> ${{ ebay_candidate.price_final|default:"–" }}</p>
+            </div>
+            {% else %}
+            <p>No comps data yet. Run preparation to get pricing.</p>
+            {% endif %}
+
+            <div class="field">
+                <label>Below median by:</label>
+                <input type="number" name="below_median_pct" value="8" step="1" min="0" max="50">
+                <span>%</span>
+            </div>
+
+            <div class="field">
+                <label>
+                    <input type="checkbox" name="best_offer" {% if ebay_candidate.policies.best_offer %}checked{% endif %}>
+                    Enable Best Offer
+                </label>
+            </div>
+
+            <button type="button" onclick="recalculatePrice()">Recalculate Price</button>
+        </div>
+    </div>
+
+    <div class="ebay-actions">
+        {% if ebay_candidate.status == 'draft' %}
+        <button type="button" onclick="prepareEbay()">⚙️ Prepare (AI)</button>
+        {% endif %}
+
+        {% if ebay_candidate.status == 'ready' %}
+        <button type="button" onclick="publishEbay()">🚀 Publish to eBay</button>
+        {% endif %}
+
+        {% if ebay_candidate.status == 'listed' %}
+        <button type="button" onclick="endEbay()">🛑 End Listing</button>
+        <button type="button" onclick="repriceEbay()">💰 Reprice</button>
+        {% endif %}
+
+        <button type="button" onclick="deleteEbayCandidate()">❌ Remove from eBay List</button>
+    </div>
+
+    {% if ebay_candidate.missing_required_fields %}
+    <div class="alert alert-warning">
+        <strong>Missing required fields:</strong> {{ ebay_candidate.missing_required_fields|join:", " }}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <p>This product is not in eBay list yet.</p>
+    <button type="button" onclick="addToEbay()">➕ Add to eBay</button>
+    {% endif %}
+</div>
+
+<style>
+.ebay-listing-block {
+    margin: 20px 0;
+    padding: 20px;
+    border: 2px solid #17a2b8;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.ebay-status {
+    margin-bottom: 15px;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 4px;
+    color: white;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.badge.status-draft { background: #6c757d; }
+.badge.status-ready { background: #17a2b8; }
+.badge.status-listed { background: #28a745; }
+.badge.status-error { background: #dc3545; }
+.badge.status-ended { background: #ffc107; color: #000; }
+
+.ebay-fields {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+.field {
+    margin-bottom: 15px;
+}
+
+.field label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.field input[type="text"],
+.field select,
+.field textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.photo-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
+}
+
+.photo-item {
+    position: relative;
+}
+
+.photo-item img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.photo-item button {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: red;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+}
+
+.pricing-sidebar {
+    padding: 15px;
+    background: white;
+    border-radius: 4px;
+}
+
+.comps-stats p {
+    margin: 5px 0;
+}
+
+.ebay-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.ebay-actions button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.alert {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+</style>
+
+<script>
+const candidateId = {{ ebay_candidate.id|default:"null" }};
+const batchId = {{ photo_batch.id }};
+
+function addToEbay() {
+    fetch('/api/ebay/candidates/bulk-create/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({photo_batch_ids: [batchId]})
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert('Added to eBay list');
+        location.reload();
+    });
+}
+
+function prepareEbay() {
+    if (!candidateId) return;
+    fetch(`/api/ebay/candidates/${candidateId}/prepare/`, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        });
+}
+
+function publishEbay() {
+    if (!candidateId) return;
+    if (confirm('Publish to eBay?')) {
+        fetch(`/api/ebay/candidates/${candidateId}/publish/`, {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            });
+    }
+}
+
+function endEbay() {
+    if (!candidateId) return;
+    if (confirm('End listing?')) {
+        fetch(`/api/ebay/candidates/${candidateId}/end/`, {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                alert(data.message);
+                location.reload();
+            });
+    }
+}
+
+function repriceEbay() {
+    if (!candidateId) return;
+    fetch(`/api/ebay/candidates/${candidateId}/reprice/`, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        });
+}
+
+function deleteEbayCandidate() {
+    if (!candidateId) return;
+    if (confirm('Remove from eBay list?')) {
+        fetch(`/api/ebay/candidates/${candidateId}/`, {method: 'DELETE'})
+            .then(() => {
+                alert('Removed from eBay list');
+                location.reload();
+            });
+    }
+}
+
+function searchCategory() {
+    const query = prompt('Search for category:');
+    if (query) {
+        fetch(`/api/ebay/taxonomy/suggest/?q=${encodeURIComponent(query)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.categories && data.categories.length) {
+                    const cat = data.categories[0];
+                    document.querySelector('[name="ebay_category_id"]').value = cat.category_id;
+                    alert(`Selected: ${cat.category_name} (${cat.category_id})`);
+                }
+            });
+    }
+}
+
+function removePhoto(btn) {
+    btn.parentElement.remove();
+}
+
+function recalculatePrice() {
+    alert('Price recalculation not implemented in MVP');
+}
+</script>
