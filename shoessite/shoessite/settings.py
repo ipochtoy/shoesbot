@@ -29,6 +29,9 @@ ALLOWED_HOSTS = ["*"]
 
 CSRF_TRUSTED_ORIGINS = ['https://pochtoy.us', 'https://www.pochtoy.us']
 
+# Увеличиваем лимит для загрузки фоток из бота
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
+
 
 # Application definition
 
