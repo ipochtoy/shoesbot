@@ -2153,27 +2153,31 @@ def enhance_photo(request, photo_id):
                 cloudflared_url = os.getenv('CLOUDFLARED_URL', 'https://pochtoy.us')
                 product_url = f"{cloudflared_url}{photo.image.url}"
                 
-                # Разнообразные фоны для Background Change
+                # Улучшение фото: ровный товар, нейтральный фон без деталей
                 import random
                 bg_options = [
-                    "urban city street with modern architecture, natural lighting, professional product photography",
-                    "cozy cafe interior with warm lighting, bokeh background, high quality commercial photo",
-                    "minimalist modern apartment with plants and natural light, realistic studio setting",
-                    "park with trees and green grass, soft daylight, professional catalog style",
-                    "contemporary art gallery with white walls and natural lighting, clean background",
-                    "rooftop terrace with city skyline view, golden hour, professional photography",
-                    "brick wall with street art, urban atmosphere, natural lighting",
-                    "beach boardwalk with ocean view, soft natural light, commercial photo style",
-                    "modern office space with large windows, professional setting, realistic lighting",
-                    "cozy bookstore interior with shelves and warm lighting, atmospheric background"
+                    "clean smooth gradient background light gray to white, no details, professional product photo",
+                    "soft beige gradient background, minimal lighting, neutral studio setup, no objects",
+                    "pure white seamless background, professional studio lighting, catalog quality",
+                    "light cream gradient, soft shadows, minimalist product photography, no distractions",
+                    "subtle gray gradient background, diffused lighting, clean professional look",
+                    "warm light beige solid background, even lighting, commercial product photo",
+                    "cool light blue gray gradient, soft studio lighting, neutral backdrop",
+                    "off-white smooth background, professional catalog style, no details or objects"
                 ]
                 bg_prompt = random.choice(bg_options)
                 
+                # Основной промпт для улучшения:
+                # - Выровнять товар
+                # - Сохранить состояние (потертости, складки)
+                # - Спокойный нейтральный фон
+                full_prompt = f"product exactly as photographed, preserve all original condition including wear marks and wrinkles, straighten product alignment, remove only price tags and hangers, {bg_prompt}, realistic product catalog photography"
+                
                 print(f"📁 URL: {product_url}", file=sys.stderr)
-                print(f"📋 Background: {bg_prompt}", file=sys.stderr)
+                print(f"📋 Full prompt: {full_prompt}", file=sys.stderr)
                 sys.stderr.flush()
                 
-                result_url = change_background(product_url, bg_prompt)
+                result_url = change_background(product_url, full_prompt)
                 
                 if result_url:
                     enhanced_image = download_image_from_url(result_url)
