@@ -42,6 +42,9 @@ class PhotoBatch(models.Model):
     sku = models.CharField(max_length=200, blank=True, verbose_name='SKU/Артикул')
     quantity = models.IntegerField(default=1, verbose_name='Количество')
     ai_summary = models.TextField(blank=True, verbose_name='AI Сводка')
+
+    # Inventory locations - JSON array: [{"name": "Shelf A", "qty": 2}, {"name": "Box 3", "qty": 1}]
+    locations = models.JSONField(default=list, blank=True, verbose_name='Locations')
     
     class Meta:
         ordering = ['-uploaded_at']

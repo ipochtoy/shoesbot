@@ -11,6 +11,7 @@ class PhotoBatchAdmin(admin.ModelAdmin):
     list_filter = ['status', 'uploaded_at']
     search_fields = ['correlation_id', 'chat_id', 'title', 'description']
     readonly_fields = ['correlation_id', 'uploaded_at', 'processed_at']
+    actions = ['send_to_ebay']
     fieldsets = (
         ('Основная информация', {
             'fields': ('correlation_id', 'chat_id', 'status', 'uploaded_at', 'processed_at')
@@ -76,6 +77,50 @@ class PhotoBatchAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.prefetch_related('photos', 'photos__barcodes')
+
+    @admin.action(description='📦 Отправить в eBay')
+    def send_to_ebay(self, request, queryset):
+        """Create eBay candidates from selected photo batches."""
+        try:
+            from apps.marketplaces.ebay.models import EbayCandidate
+
+            created = 0
+            already_exists = 0
+
+            for batch in queryset:
+                # Check if candidate already exists
+                if EbayCandidate.objects.filter(photo_batch=batch).exists():
+                    already_exists += 1
+                    continue
+
+                # Create new eBay candidate
+                candidate = EbayCandidate.objects.create(
+                    photo_batch=batch,
+                    status='draft',
+                )
+                candidate.add_log('info', f'Created from PhotoBatch admin action')
+                created += 1
+
+            if created:
+                self.message_user(
+                    request,
+                    f'✓ Создано {created} кандидатов для eBay',
+                    'success'
+                )
+
+            if already_exists:
+                self.message_user(
+                    request,
+                    f'⚠ {already_exists} товаров уже в списке eBay',
+                    'warning'
+                )
+
+        except ImportError:
+            self.message_user(
+                request,
+                '✗ eBay приложение не установлено',
+                'error'
+            )
 
 
 @admin.register(Photo)

@@ -11,9 +11,13 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Add parent directory to path for apps module
+sys.path.insert(0, str(BASE_DIR.parent))
 
 
 # Quick-start development settings - unsuitable for production
@@ -42,7 +46,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Third-party apps
+    'rest_framework',
+    'django_filters',
+
+    # Local apps
     'photos',
+    'apps.marketplaces.ebay',
 ]
 
 MIDDLEWARE = [
@@ -130,3 +141,46 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# =============================================================================
+# REST FRAMEWORK
+# =============================================================================
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',  # Change in production
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
+
+
+# =============================================================================
+# EBAY MARKETPLACE SETTINGS
+# =============================================================================
+
+# eBay Environment
+EBAY_SANDBOX = True  # Set to False for production
+
+# eBay API Credentials
+EBAY_APP_ID = ''  # Your eBay App ID
+EBAY_DEV_ID = ''  # Your eBay Developer ID
+EBAY_CERT_ID = ''  # Your eBay Certificate ID
+
+# Photo hosting
+PHOTO_HOST_DOMAIN = 'https://pochtoy.us'
+
+# GPT/AI Settings
+GPT_PROVIDER = 'openai'  # stub for now
+
+# Pricing Settings
+PRICE_BELOW_MEDIAN_PCT = 0.08  # 8% below market median
+DEFAULT_SHIP_COST = 4.99  # Default shipping cost
+
+# Celery Settings (optional, configure if using Celery)
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'
+# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
