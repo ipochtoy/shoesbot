@@ -27,6 +27,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
+CSRF_TRUSTED_ORIGINS = ['https://pochtoy.us', 'https://www.pochtoy.us']
+
 
 # Application definition
 
