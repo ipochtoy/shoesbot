@@ -1,7 +1,9 @@
 from django.urls import path
 from . import views
+from .health_check import health_check
 
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
     path('api/upload-batch/', views.upload_batch, name='upload_batch'),
     path('api/buffer-upload/', views.buffer_upload, name='buffer_upload'),
     path('api/pochtoy-webhook/', views.pochtoy_webhook, name='pochtoy_webhook'),

@@ -79,6 +79,26 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = f"total={s['total']}, ok={s['ok']}, empty={s['empty']}, per_decoder={s['per_decoder_hits']}"
     await update.message.reply_text(text)
 
+
+async def queue_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show photo upload queue statistics."""
+    try:
+        from shoesbot.photo_queue import PhotoUploadQueue
+        queue = PhotoUploadQueue()
+        stats = queue.get_stats()
+        
+        text = "📦 Photo Upload Queue:\n\n"
+        text += f"✅ Uploaded: {stats.get('uploaded', 0)}\n"
+        text += f"⏳ Pending: {stats.get('pending', 0)}\n"
+        text += f"❌ Failed (permanent): {stats.get('failed_permanent', 0)}\n"
+        text += f"\nФотки защищены! Даже если Django упадёт, они переотправятся автоматически."
+        
+        await update.message.reply_text(text)
+    except Exception as e:
+        logger.error(f"queue_stats error: {e}", exc_info=True)
+        await update.message.reply_text(f"Ошибка: {e}")
+
+
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Генерация отчета о тренировках и питании"""
     try:
@@ -591,10 +611,20 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("diag", diag))
     app.add_handler(CommandHandler("admin_on", admin_on))
     app.add_handler(CommandHandler("stats", stats))
+    app.add_handler(CommandHandler("queue", queue_stats))
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(CallbackQueryHandler(on_delete_batch, pattern=r"^del:"))
     app.add_handler(CallbackQueryHandler(on_report_refresh, pattern=r"^report:"))
+    
+    # Start photo retry worker (protects against Django crashes)
+    async def post_init_callback(app):
+        from shoesbot.photo_retry_worker import start_retry_worker
+        start_retry_worker()
+        logger.info("✅ Photo retry worker started")
+    
+    app.post_init = post_init_callback
+    
     return app
 
 

@@ -6,9 +6,13 @@ import aiohttp
 from io import BytesIO
 from PIL import Image
 from shoesbot.logging_setup import logger
+from shoesbot.photo_queue import PhotoUploadQueue
 
 
 DJANGO_API_URL = os.getenv("DJANGO_API_URL", "http://127.0.0.1:8000/photos/api/upload-batch/")
+
+# Initialize photo queue
+_photo_queue = PhotoUploadQueue()
 
 
 async def upload_batch_to_django(
@@ -18,7 +22,7 @@ async def upload_batch_to_django(
     photo_items: list,
     all_results: list,
 ) -> bool:
-    """Upload photo batch to Django API."""
+    """Upload photo batch to Django API with queue protection."""
     if not DJANGO_API_URL:
         return False
     
@@ -50,6 +54,15 @@ async def upload_batch_to_django(
                 'source': result.source,
             })
         
+        # SAVE TO QUEUE FIRST (protection against Django crash)
+        queue_id = _photo_queue.add_upload(
+            correlation_id=correlation_id,
+            chat_id=chat_id,
+            message_ids=message_ids,
+            photos_data=photos_data,
+            barcodes_data=barcodes_data,
+        )
+        
         payload = {
             'correlation_id': correlation_id,
             'chat_id': chat_id,
@@ -67,6 +80,9 @@ async def upload_batch_to_django(
                 if resp.status == 200:
                     result = await resp.json()
                     logger.info(f"django_upload: uploaded batch {correlation_id}: {result}")
+                    
+                    # SUCCESS - mark as uploaded in queue
+                    _photo_queue.mark_uploaded(correlation_id)
                     
                     # Проверяем результат Pochtoy и отправляем в чат
                     pochtoy_msg = result.get('pochtoy_message')
@@ -87,10 +103,18 @@ async def upload_batch_to_django(
                     return True
                 else:
                     text = await resp.text()
-                    logger.warning(f"django_upload: failed {resp.status}: {text}")
+                    error_msg = f"HTTP {resp.status}: {text[:200]}"
+                    logger.warning(f"django_upload: failed {error_msg}")
+                    
+                    # Mark as failed for retry
+                    _photo_queue.mark_failed(correlation_id, error_msg)
                     return False
                     
     except Exception as e:
-        logger.error(f"django_upload: error: {e}", exc_info=True)
+        error_msg = str(e)
+        logger.error(f"django_upload: error: {error_msg}", exc_info=True)
+        
+        # Mark as failed for retry
+        _photo_queue.mark_failed(correlation_id, error_msg)
         return False
 
