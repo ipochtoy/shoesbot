@@ -10,17 +10,9 @@ if sys.platform == "darwin":
         os.environ["DYLD_LIBRARY_PATH"] = f"{zbar_lib}:{current_dyld}".rstrip(":")
 
 from shoesbot.telegram_bot import build_app
-from shoesbot.daily_fitness_scheduler import DailyFitnessScheduler
 
 if __name__ == "__main__":
     app = build_app()
-    
-    # Инициализируем планировщик ежедневных отчетов
-    async def post_init(application):
-        scheduler = DailyFitnessScheduler(application.bot)
-        scheduler.start()
-    
-    app.post_init = post_init
     
     mode = os.getenv("MODE", "polling").lower()
     if mode == "webhook":
