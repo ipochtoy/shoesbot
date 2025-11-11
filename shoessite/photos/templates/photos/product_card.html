@@ -2082,5 +2082,13 @@
             parseSummaryAndFillFields(summaryText, false);
         }
     </script>
+
+    <!-- eBay Integration Block -->
+    {% if ebay_candidate or card %}
+    <div style="margin: 40px 0; padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px;">
+        {% include 'ebay/partials/product_ebay_block.html' %}
+    </div>
+    {% endif %}
+
 </body>
 </html>

@@ -40,15 +40,18 @@
         </div>
 
         <div class="field">
-            <label>Photos (drag to reorder):</label>
+            <label>Photos (from product batch):</label>
             <div class="photo-list" id="ebay-photos">
-                {% for photo_url in ebay_candidate.photos %}
-                <div class="photo-item" data-url="{{ photo_url }}">
-                    <img src="{{ photo_url }}" alt="Product photo">
-                    <button type="button" onclick="removePhoto(this)">×</button>
+                {% for photo in photos %}
+                <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" data-photo-id="{{ photo.id }}">
+                    <img src="{{ photo.image.url }}" alt="Product photo">
+                    {% if photo.is_main %}
+                    <span class="main-badge">Главная</span>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
+            <small>{{ photos|length }} photo(s) - order will be preserved when publishing</small>
         </div>
 
         <div class="pricing-sidebar">
@@ -105,8 +108,20 @@
     {% endif %}
 
     {% else %}
-    <p>This product is not in eBay list yet.</p>
-    <button type="button" onclick="addToEbay()">➕ Add to eBay</button>
+    <div class="no-ebay-candidate">
+        <p>Этот товар ещё не добавлен в список eBay.</p>
+        <p><strong>Фото в товаре:</strong> {{ photos|length }}</p>
+        {% if photos %}
+        <div class="photo-preview">
+            {% for photo in photos|slice:":4" %}
+            <img src="{{ photo.image.url }}" style="width: 80px; height: 80px; object-fit: cover; margin: 5px; border-radius: 4px;">
+            {% endfor %}
+        </div>
+        {% endif %}
+        <button type="button" onclick="addToEbay()" style="margin-top: 15px; padding: 12px 20px; background: #17a2b8; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+            ➕ Добавить в eBay
+        </button>
+    </div>
     {% endif %}
 </div>
 
@@ -172,11 +187,27 @@
     position: relative;
 }
 
+.photo-item.main-photo {
+    border: 3px solid #28a745;
+}
+
 .photo-item img {
     width: 100%;
     height: 100px;
     object-fit: cover;
     border-radius: 4px;
+}
+
+.photo-item .main-badge {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    background: #28a745;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: bold;
 }
 
 .photo-item button {
@@ -231,7 +262,7 @@
 
 <script>
 const candidateId = {{ ebay_candidate.id|default:"null" }};
-const batchId = {{ photo_batch.id }};
+const batchId = {{ card.id }};
 
 function addToEbay() {
     fetch('/api/ebay/candidates/bulk-create/', {

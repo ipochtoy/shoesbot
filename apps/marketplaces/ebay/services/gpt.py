@@ -1,17 +1,26 @@
 """
-GPT/AI services for eBay listing generation (stub implementation).
+GPT/AI services for eBay listing generation.
 
 This module provides AI-powered services for:
 - Vision extraction (OCR, brand/model detection)
 - Listing content generation (title, description, bullets)
 - Comps selection and analysis
 
-For MVP, these are stubs that return mock data.
-In production, replace with actual GPT-4 Vision and GPT-4 API calls.
+Uses existing AI helpers from photos app.
 """
 import time
+import sys
+import os
 from typing import List, Dict, Any, Optional
 from django.conf import settings
+
+# Import existing AI helpers
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../../../shoessite/photos'))
+try:
+    from photos.ai_helpers import auto_fill_product_card, analyze_photos_with_vision
+except ImportError:
+    auto_fill_product_card = None
+    analyze_photos_with_vision = None
 
 
 class GPTService:
@@ -27,68 +36,90 @@ class GPTService:
 
     def vision_extract(self, image_urls: List[str]) -> Dict[str, Any]:
         """
-        Extract product information from images using GPT-4 Vision (STUB).
+        Extract product information from images using GPT-4 Vision.
 
-        Analyzes product photos to extract:
-        - Brand
-        - Model/line
-        - Variant (color, size, etc.)
-        - Volume/size
-        - Condition (visual assessment)
-        - Product codes (UPC, EAN, ISBN, etc.)
-        - Key terms and features
+        Uses existing analyze_photos_with_vision from photos app.
 
         Args:
             image_urls: List of product image URLs
 
         Returns:
             Extracted data dict
-
-        Prompt for GPT-4 Vision:
-        ```
-        Analyze these product photos (labels, barcodes, boxes).
-        Extract:
-        - Brand
-        - Model/line
-        - Variant (color, flavor, etc.)
-        - Volume/size
-        - Condition (visual assessment)
-        - Product codes (UPC, EAN, ISBN visible on labels)
-        - Key product terms
-
-        If uncertain, return UNKNOWN.
-        Return JSON: {
-            brand, model, variant, volume, condition_guess,
-            codes: [{type, value}],
-            key_terms: []
-        }
-        Do not make up information.
-        ```
-
-        In production, this would call OpenAI GPT-4 Vision API.
         """
-        time.sleep(0.5)  # Simulate API delay
+        if not image_urls:
+            return {
+                'brand': 'UNKNOWN',
+                'model': 'UNKNOWN',
+                'variant': '',
+                'volume': '',
+                'condition_guess': 'USED_GOOD',
+                'codes': [],
+                'key_terms': [],
+                'confidence': 0.0,
+                'notes': 'No images provided',
+            }
 
-        # Mock extraction based on simple heuristics
-        # In production, this would use actual vision analysis
-
+        # Use existing vision helper if available
+        if analyze_photos_with_vision:
+            try:
+                vision_result = analyze_photos_with_vision(image_urls)
+                
+                # Map vision result to eBay format
+                return {
+                    'brand': vision_result.get('brand', 'UNKNOWN'),
+                    'model': vision_result.get('model', 'UNKNOWN'),
+                    'variant': vision_result.get('color', ''),
+                    'volume': vision_result.get('size', ''),
+                    'condition_guess': self._map_condition_to_ebay(vision_result.get('condition', '')),
+                    'codes': self._extract_codes_from_vision(vision_result),
+                    'key_terms': vision_result.get('features', []),
+                    'confidence': 0.8,
+                    'notes': 'Extracted via GPT-4 Vision',
+                }
+            except Exception as e:
+                print(f"Vision extraction error: {e}")
+        
+        # Fallback to stub
         return {
             'brand': 'UNKNOWN',
             'model': 'UNKNOWN',
             'variant': '',
             'volume': '',
             'condition_guess': 'USED_GOOD',
-            'codes': [
-                # Mock codes - in production these would be extracted via OCR
-                # {'type': 'UPC', 'value': '012345678905'},
-            ],
-            'key_terms': [
-                'authentic',
-                'original',
-            ],
-            'confidence': 0.7,  # Overall confidence score
-            'notes': 'STUB: Replace with GPT-4 Vision in production',
+            'codes': [],
+            'key_terms': [],
+            'confidence': 0.0,
+            'notes': f'Vision API not available: {str(e) if "e" in locals() else "No helper found"}',
         }
+    
+    def _map_condition_to_ebay(self, condition_str: str) -> str:
+        """Map Russian condition to eBay condition enum."""
+        condition_map = {
+            'новое': 'NEW',
+            'new': 'NEW',
+            'б/у': 'USED_GOOD',
+            'used': 'USED_GOOD',
+            'отличное': 'USED_EXCELLENT',
+            'excellent': 'USED_EXCELLENT',
+            'хорошее': 'USED_VERY_GOOD',
+            'very good': 'USED_VERY_GOOD',
+        }
+        condition_lower = condition_str.lower() if condition_str else ''
+        return condition_map.get(condition_lower, 'USED_GOOD')
+    
+    def _extract_codes_from_vision(self, vision_result: Dict) -> List[Dict]:
+        """Extract product codes from vision result."""
+        codes = []
+        
+        # Look for UPC/EAN/ISBN in vision result
+        if 'upc' in vision_result and vision_result['upc']:
+            codes.append({'type': 'UPC', 'value': vision_result['upc']})
+        if 'ean' in vision_result and vision_result['ean']:
+            codes.append({'type': 'EAN', 'value': vision_result['ean']})
+        if 'isbn' in vision_result and vision_result['isbn']:
+            codes.append({'type': 'ISBN', 'value': vision_result['isbn']})
+        
+        return codes
 
     def write_listing(
         self,
@@ -137,58 +168,118 @@ class GPTService:
         If required specific is missing data, mark as REQUIRED_MISSING.
         ```
 
-        In production, this would call OpenAI GPT-4 API.
         """
-        time.sleep(0.3)
-
-        # Extract some basic info
+        # Extract basic info
         brand = extracted_data.get('brand', 'Generic')
         model = extracted_data.get('model', 'Product')
+        variant = extracted_data.get('variant', '')
+        volume = extracted_data.get('volume', '')
         condition = extracted_data.get('condition_guess', 'USED_GOOD')
+        
+        # Try to use OpenAI API if available
+        api_key = os.getenv('OPENAI_API_KEY')
+        if api_key and brand != 'UNKNOWN':
+            try:
+                import requests
+                
+                prompt = f"""Generate eBay listing for this product:
 
-        # Generate mock listing
-        title = f"{brand} {model}".strip()
+Brand: {brand}
+Model: {model}
+Variant: {variant}
+Size/Volume: {volume}
+Condition: {condition}
+Category: {category_name}
+
+Requirements:
+- Title: MAX 80 characters, format: Brand + Model + Size/Volume + Condition
+- Description: 2-3 paragraphs in markdown, professional, no guarantees/health claims
+- Bullets: 5 key features
+- Item specifics: Brand, Condition, and other relevant attributes
+
+Return ONLY valid JSON:
+{{
+  "title": "string (max 80 chars)",
+  "condition": "eBay condition enum",
+  "specifics": {{"Brand": "...", ...}},
+  "bullets": ["...", "...", "...", "...", "..."],
+  "description_md": "markdown text"
+}}"""
+
+                response = requests.post(
+                    'https://api.openai.com/v1/chat/completions',
+                    headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+                    json={
+                        'model': 'gpt-4o',
+                        'messages': [{'role': 'user', 'content': prompt}],
+                        'temperature': 0.3,
+                        'max_tokens': 800,
+                    },
+                    timeout=30
+                )
+                
+                if response.ok:
+                    result = response.json()
+                    content = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+                    
+                    # Parse JSON from response
+                    import json
+                    # Remove markdown code blocks if present
+                    content = content.strip()
+                    if content.startswith('```'):
+                        content = content.split('\n', 1)[1]
+                        content = content.rsplit('```', 1)[0]
+                    content = content.strip()
+                    
+                    listing_data = json.loads(content)
+                    
+                    # Ensure title is ≤80 chars
+                    if len(listing_data.get('title', '')) > 80:
+                        listing_data['title'] = listing_data['title'][:77] + '...'
+                    
+                    listing_data['notes'] = 'Generated by GPT-4'
+                    return listing_data
+                    
+            except Exception as e:
+                print(f"GPT listing generation error: {e}")
+                # Fall through to stub
+        
+        # Fallback: simple title generation
+        title_parts = [brand, model, variant, volume]
+        title = ' '.join([p for p in title_parts if p and p != 'UNKNOWN'])
         if len(title) > 75:
             title = title[:75]
-
-        # Map condition
-        condition_map = {
-            'NEW': 'NEW',
-            'USED_EXCELLENT': 'USED_EXCELLENT',
-            'USED_GOOD': 'USED_GOOD',
-            'USED_ACCEPTABLE': 'USED_ACCEPTABLE',
-        }
-        ebay_condition = condition_map.get(condition, 'USED_GOOD')
-
+        if len(title) < 80 and condition:
+            condition_display = condition.replace('_', ' ').title()
+            remaining = 80 - len(title) - 3
+            if len(condition_display) <= remaining:
+                title = f"{title} - {condition_display}"
+        
         return {
-            'title': title,
-            'condition': ebay_condition,
+            'title': title[:80],
+            'condition': condition,
             'specifics': {
                 'Brand': brand if brand != 'UNKNOWN' else 'REQUIRED_MISSING',
-                'Condition': ebay_condition,
+                'Condition': condition,
             },
             'bullets': [
                 'Authentic product',
-                f'Condition: {ebay_condition.replace("_", " ").title()}',
-                'Fast shipping',
+                f'Condition: {condition.replace("_", " ").title()}',
+                'Fast shipping with tracking',
                 'Carefully packaged',
                 'Buy with confidence',
             ],
             'description_md': f"""# {title}
 
-This is an authentic {brand} {model} in {ebay_condition.replace('_', ' ').lower()} condition.
+Authentic {brand} {model} in {condition.replace('_', ' ').lower()} condition.
 
-## Condition Details
-
-Item has been carefully inspected and is ready for a new home. See photos for exact condition.
+## Condition
+Item has been inspected. See photos for exact condition and details.
 
 ## Shipping
-
-Fast and secure shipping. Item will be carefully packaged to ensure safe delivery.
-
-**Note:** STUB description - replace with GPT-4 generated content in production.
+Fast and secure shipping. Item will be carefully packaged.
 """,
-            'notes': 'STUB: Replace with GPT-4 in production',
+            'notes': 'Fallback listing (GPT API not available or insufficient data)',
         }
 
     def select_comps(self, comps: List[Dict[str, Any]]) -> Dict[str, Any]:

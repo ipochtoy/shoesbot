@@ -292,7 +292,9 @@ class EbayClient:
         limit: int = 20
     ) -> List[Dict[str, Any]]:
         """
-        Search for comparable listings (STUB).
+        Search for comparable listings.
+
+        Tries real eBay search first, falls back to mock data.
 
         Args:
             query: Search query
@@ -304,35 +306,159 @@ class EbayClient:
 
         Returns:
             List of comparable items
-
-        In production, this would call:
-        - eBay Browse API: search
         """
-        time.sleep(0.3)
-
-        # Generate mock comparable listings
+        # Build search query - prioritize product codes
+        search_term = upc or ean or isbn or query
+        
+        if not search_term:
+            return []
+        
+        # Try real eBay search via scraping
+        try:
+            comps = self._scrape_ebay_search(search_term, limit)
+            if comps:
+                return comps
+        except Exception as e:
+            print(f"eBay scraping error: {e}")
+        
+        # Fallback to mock data for testing
         import random
-
         base_price = random.uniform(20, 100)
         comps = []
 
-        for i in range(min(limit, 15)):
-            # Add some price variation
-            price_variation = random.uniform(0.8, 1.2)
+        for i in range(min(limit, 10)):
+            price_variation = random.uniform(0.85, 1.15)
             price = round(base_price * price_variation, 2)
 
             comps.append({
-                'item_id': f'COMP_{i}_{int(time.time())}',
-                'title': f'Similar Item {i+1} - {query or "Product"}',
+                'item_id': f'MOCK_{i}',
+                'title': f'{search_term} - Similar Item {i+1}',
                 'price': price,
                 'condition': random.choice(['NEW', 'USED_EXCELLENT', 'USED_GOOD']),
-                'shipping_cost': random.choice([0, 4.99, 7.99]),
+                'shipping_cost': random.choice([0, 4.99]),
                 'seller_rating': random.randint(95, 100),
-                'location': random.choice(['US', 'CA', 'UK']),
-                'url': f'https://www.ebay.com/itm/COMP_{i}',
+                'location': 'US',
+                'url': f'https://www.ebay.com/sch/i.html?_nkw={search_term}',
+                'sold_date': None,
+                'note': 'Mock data - real eBay search not available',
             })
 
         return comps
+    
+    def _scrape_ebay_search(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        Scrape eBay search results for comparable items.
+        
+        Args:
+            query: Search term
+            limit: Max results
+            
+        Returns:
+            List of items with prices
+        """
+        import requests
+        from bs4 import BeautifulSoup
+        import re
+        
+        comps = []
+        
+        # Build eBay search URL - sold/completed listings for real market data
+        params = {
+            '_nkw': query,
+            '_sacat': '0',  # All categories
+            'LH_Sold': '1',  # Sold listings
+            'LH_Complete': '1',  # Completed listings
+            '_sop': '13',  # Sort by recently sold
+            'rt': 'nc',
+        }
+        
+        url = 'https://www.ebay.com/sch/i.html'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+        
+        try:
+            response = requests.get(url, params=params, headers=headers, timeout=10)
+            if not response.ok:
+                return []
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Find item listings
+            items = soup.find_all('li', {'class': 's-item'})[:limit]
+            
+            for item in items:
+                try:
+                    # Extract title
+                    title_elem = item.find('div', {'class': 's-item__title'})
+                    title = title_elem.get_text(strip=True) if title_elem else ''
+                    
+                    if not title or 'Shop on eBay' in title:
+                        continue
+                    
+                    # Extract price
+                    price_elem = item.find('span', {'class': 's-item__price'})
+                    price_text = price_elem.get_text(strip=True) if price_elem else ''
+                    price_match = re.search(r'\$?([\d,]+\.?\d*)', price_text)
+                    price = float(price_match.group(1).replace(',', '')) if price_match else 0
+                    
+                    if price == 0:
+                        continue
+                    
+                    # Extract item ID and URL
+                    link_elem = item.find('a', {'class': 's-item__link'})
+                    item_url = link_elem.get('href', '') if link_elem else ''
+                    item_id_match = re.search(r'/itm/(\d+)', item_url)
+                    item_id = item_id_match.group(1) if item_id_match else ''
+                    
+                    # Extract shipping
+                    shipping_elem = item.find('span', {'class': 's-item__shipping'})
+                    shipping_text = shipping_elem.get_text(strip=True) if shipping_elem else ''
+                    shipping_cost = 0 if 'Free' in shipping_text else 4.99
+                    
+                    # Extract condition
+                    condition_elem = item.find('span', {'class': 'SECONDARY_INFO'})
+                    condition_text = condition_elem.get_text(strip=True) if condition_elem else 'Used'
+                    condition = self._map_condition_from_text(condition_text)
+                    
+                    comps.append({
+                        'item_id': item_id,
+                        'title': title[:100],
+                        'price': price,
+                        'condition': condition,
+                        'shipping_cost': shipping_cost,
+                        'seller_rating': 98,  # Default good rating
+                        'location': 'US',
+                        'url': item_url,
+                        'sold_date': 'recently',
+                        'note': 'Real eBay sold listing',
+                    })
+                    
+                except Exception as e:
+                    print(f"Error parsing item: {e}")
+                    continue
+            
+            return comps
+            
+        except Exception as e:
+            print(f"eBay scraping failed: {e}")
+            return []
+    
+    def _map_condition_from_text(self, text: str) -> str:
+        """Map eBay condition text to enum."""
+        text_lower = text.lower()
+        if 'new' in text_lower:
+            return 'NEW'
+        elif 'excellent' in text_lower:
+            return 'USED_EXCELLENT'
+        elif 'very good' in text_lower or 'like new' in text_lower:
+            return 'USED_VERY_GOOD'
+        elif 'good' in text_lower:
+            return 'USED_GOOD'
+        elif 'acceptable' in text_lower:
+            return 'USED_ACCEPTABLE'
+        else:
+            return 'USED_GOOD'
 
     def fetch_orders(self, since: datetime = None) -> List[Dict[str, Any]]:
         """

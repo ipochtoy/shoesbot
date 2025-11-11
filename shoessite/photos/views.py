@@ -260,6 +260,13 @@ def product_card_detail(request, card_id):
     """Детальная страница карточки товара."""
     card = get_object_or_404(PhotoBatch, id=card_id)
     
+    # Get eBay candidate if exists
+    try:
+        from apps.marketplaces.ebay.models import EbayCandidate
+        ebay_candidate = EbayCandidate.objects.filter(photo_batch=card).first()
+    except ImportError:
+        ebay_candidate = None
+    
     if request.method == 'POST':
         # Обновляем данные карточки
         card.title = request.POST.get('title', '')
@@ -325,6 +332,7 @@ def product_card_detail(request, card_id):
         'all_barcodes': all_barcodes,
         'ai_suggestions': ai_suggestions,
         'ai_summary': ai_summary,
+        'ebay_candidate': ebay_candidate,
     })
 
 

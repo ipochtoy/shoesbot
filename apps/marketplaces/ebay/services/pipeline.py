@@ -61,15 +61,40 @@ def prepare_candidate(candidate_id: int) -> Dict[str, Any]:
     # Step 1: Extract data from photos using Vision AI
     candidate.add_log('info', 'Step 1: Extracting data from photos')
 
-    # Get photo URLs
-    photo_urls = [photo.image.url for photo in batch.photos.all() if photo.image]
+    # Get photo URLs - build full URLs for API calls
+    photo_urls = []
+    for photo in batch.photos.all():
+        if photo.image:
+            # Build full URL: https://pochtoy.us/media/photos/...
+            photo_url = f"https://pochtoy.us{photo.image.url}"
+            photo_urls.append(photo_url)
 
     if not photo_urls:
         candidate.add_log('warning', 'No photos found in batch')
-        photo_urls = []
-
-    # Run vision extraction (stub for now)
+    
+    # Get existing barcodes from database
+    barcodes_from_db = []
+    for photo in batch.photos.all():
+        for barcode in photo.barcodes.all():
+            barcodes_from_db.append({
+                'type': barcode.symbology,
+                'value': barcode.data,
+                'source': barcode.source,
+            })
+    
+    # Run vision extraction (uses real GPT Vision if OPENAI_API_KEY set)
     extracted = gpt_service.vision_extract(photo_urls)
+    
+    # Merge extracted codes with existing barcodes
+    if barcodes_from_db:
+        existing_codes = extracted.get('codes', [])
+        for barcode in barcodes_from_db:
+            # Add UPC/EAN/ISBN barcodes
+            if barcode['type'] in ['EAN13', 'UPCA', 'UPCE', 'ISBN10', 'ISBN13']:
+                code_type = barcode['type'].replace('13', '').replace('A', '').replace('E', '')
+                existing_codes.append({'type': code_type, 'value': barcode['value']})
+        extracted['codes'] = existing_codes
+    
     candidate.add_log('info', f'Vision extraction complete', extracted)
 
     # Step 2: Suggest category
