@@ -29,7 +29,8 @@ from .serializers import (
 )
 from .services.client import EbayClient
 from .services.pricing import PricingService
-from .tasks import prepare_candidate, publish_candidate, end_candidate, reprice_candidate
+from .services import pipeline
+# from .tasks import prepare_candidate, publish_candidate, end_candidate, reprice_candidate  # Celery tasks disabled for now
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -81,18 +82,29 @@ class EbayCandidateViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Trigger celery task
-        prepare_candidate.delay(candidate.id)
-
-        return Response(
-            {
-                'success': True,
-                'status': 'processing',
-                'message': 'Preparation pipeline started. Check back shortly.',
-                'candidate': EbayCandidateDetailSerializer(candidate).data
-            },
-            status=status.HTTP_202_ACCEPTED
-        )
+        # Run preparation synchronously (Celery disabled for now)
+        try:
+            result = pipeline.prepare_candidate(candidate.id)
+            
+            candidate.refresh_from_db()
+            
+            return Response(
+                {
+                    'success': result.get('success', True),
+                    'status': candidate.status,
+                    'message': result.get('message', 'Preparation complete'),
+                    'candidate': EbayCandidateDetailSerializer(candidate).data
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {
+                    'success': False,
+                    'message': f'Preparation failed: {str(e)}'
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
@@ -122,17 +134,24 @@ class EbayCandidateViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Trigger celery task
-        publish_candidate.delay(candidate.id)
-
-        return Response(
-            {
-                'success': True,
-                'message': 'Publishing to eBay...',
-                'candidate': EbayCandidateDetailSerializer(candidate).data
-            },
-            status=status.HTTP_202_ACCEPTED
-        )
+        # Run publish synchronously (Celery disabled)
+        try:
+            result = pipeline.publish_candidate(candidate.id)
+            candidate.refresh_from_db()
+            
+            return Response(
+                {
+                    'success': result.get('success', True),
+                    'message': result.get('message', 'Published to eBay'),
+                    'candidate': EbayCandidateDetailSerializer(candidate).data
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {'success': False, 'message': f'Publish failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['post'])
     def end(self, request, pk=None):
@@ -161,17 +180,24 @@ class EbayCandidateViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Trigger celery task
-        end_candidate.delay(candidate.id)
-
-        return Response(
-            {
-                'success': True,
-                'message': 'Ending listing...',
-                'candidate': EbayCandidateDetailSerializer(candidate).data
-            },
-            status=status.HTTP_202_ACCEPTED
-        )
+        # Run end synchronously (Celery disabled)
+        try:
+            result = pipeline.end_candidate(candidate.id)
+            candidate.refresh_from_db()
+            
+            return Response(
+                {
+                    'success': result.get('success', True),
+                    'message': result.get('message', 'Listing ended'),
+                    'candidate': EbayCandidateDetailSerializer(candidate).data
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {'success': False, 'message': f'End failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     @action(detail=True, methods=['post'])
     def reprice(self, request, pk=None):
@@ -191,17 +217,24 @@ class EbayCandidateViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Trigger celery task
-        reprice_candidate.delay(candidate.id)
-
-        return Response(
-            {
-                'success': True,
-                'message': 'Repricing in progress...',
-                'candidate': EbayCandidateDetailSerializer(candidate).data
-            },
-            status=status.HTTP_202_ACCEPTED
-        )
+        # Run reprice synchronously (Celery disabled)
+        try:
+            result = pipeline.reprice_candidate(candidate.id)
+            candidate.refresh_from_db()
+            
+            return Response(
+                {
+                    'success': result.get('success', True),
+                    'message': result.get('message', 'Repricing complete'),
+                    'candidate': EbayCandidateDetailSerializer(candidate).data
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {'success': False, 'message': f'Reprice failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 @method_decorator(csrf_exempt, name='dispatch')
