@@ -1,43 +1,45 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Restart Bot",
-      "type": "shell",
-      "command": "sudo systemctl restart shoesbot.service",
-      "problemMatcher": []
-    },
-    {
-      "label": "Restart Django",
-      "type": "shell",
-      "command": "sudo systemctl restart shoesdjango.service",
-      "problemMatcher": []
-    },
-    {
-      "label": "Status Bot",
-      "type": "shell",
-      "command": "sudo systemctl status shoesbot.service",
-      "problemMatcher": []
-    },
-    {
-      "label": "Status Django",
-      "type": "shell",
-      "command": "sudo systemctl status shoesdjango.service",
-      "problemMatcher": []
-    },
-    {
-      "label": "Tail Bot Logs",
-      "type": "shell",
-      "command": "tail -f ~/shoesbot/bot.log",
-      "problemMatcher": [],
-      "isBackground": true
-    },
-    {
-      "label": "Tail Django Logs",
-      "type": "shell",
-      "command": "tail -f ~/shoesbot/django.log",
-      "problemMatcher": [],
-      "isBackground": true
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "🚀 Deploy to VM",
+            "type": "shell",
+            "command": "./deploy_from_local.sh",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "📊 VM Status",
+            "type": "shell",
+            "command": "ssh gcp-shoesbot 'sudo systemctl status shoesbot.service shoesdjango.service --no-pager'",
+            "problemMatcher": []
+        },
+        {
+            "label": "📋 Bot Logs",
+            "type": "shell",
+            "command": "ssh gcp-shoesbot 'tail -f ~/shoesbot/bot.log'",
+            "problemMatcher": [],
+            "isBackground": true
+        },
+        {
+            "label": "📋 Django Logs",
+            "type": "shell",
+            "command": "ssh gcp-shoesbot 'tail -f ~/shoesbot/django.log'",
+            "problemMatcher": [],
+            "isBackground": true
+        },
+        {
+            "label": "🔄 Restart Services",
+            "type": "shell",
+            "command": "ssh gcp-shoesbot 'sudo systemctl restart shoesbot.service shoesdjango.service && echo \"✅ Сервисы перезапущены\"'",
+            "problemMatcher": []
+        }
+    ]
 }
