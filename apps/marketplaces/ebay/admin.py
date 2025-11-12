@@ -116,13 +116,20 @@ class EbayCandidateAdmin(admin.ModelAdmin):
     title_display.short_description = 'Title'
 
     def photo_batch_link(self, obj):
-        """Link to source photo batch."""
+        """Link to eBay edit page and source photo batch."""
+        links = []
+        # Link to eBay edit page
+        edit_url = reverse('ebay:candidate-edit', args=[obj.pk])
+        links.append(f'<a href="{edit_url}" style="font-weight: bold; color: #17a2b8;">✏️ Edit</a>')
+        
+        # Link to source photo batch
         if obj.photo_batch:
             url = reverse('admin:photos_photobatch_change', args=[obj.photo_batch.pk])
             title = obj.photo_batch.title or obj.photo_batch.correlation_id
-            return format_html('<a href="{}">{}</a>', url, title[:30])
-        return '-'
-    photo_batch_link.short_description = 'Photo Batch'
+            links.append(f'<a href="{url}">{title[:30]}</a>')
+        
+        return format_html(' | '.join(links)) if links else '-'
+    photo_batch_link.short_description = 'Actions'
 
     def status_badge(self, obj):
         """Display status as colored badge."""

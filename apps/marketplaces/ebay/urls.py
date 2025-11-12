@@ -10,6 +10,7 @@ from .views import (
     ItemSpecificsView,
     PricingCompsView,
     EbayTokenViewSet,
+    ebay_candidate_edit,
 )
 
 app_name = 'ebay'
@@ -20,6 +21,9 @@ router.register(r'candidates', EbayCandidateViewSet, basename='candidate')
 router.register(r'tokens', EbayTokenViewSet, basename='token')
 
 urlpatterns = [
+    # Edit page (non-API)
+    path('candidates/<int:candidate_id>/edit/', ebay_candidate_edit, name='candidate-edit'),
+    
     # Bulk operations
     path('candidates/bulk-create/', BulkCreateCandidatesView.as_view(), name='bulk-create'),
 

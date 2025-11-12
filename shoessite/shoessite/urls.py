@@ -27,6 +27,7 @@ urlpatterns = [
 
     # eBay marketplace integration
     path('api/ebay/', include('apps.marketplaces.ebay.urls')),
+    path('ebay/', include('apps.marketplaces.ebay.urls')),
 ]
 
 if settings.DEBUG:
