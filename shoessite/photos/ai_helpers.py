@@ -732,7 +732,6 @@ Just read and transcribe label text.'''
             error_text = resp.text
             print(f"OpenAI summary error: {resp.status_code}")
             print(f"Error response: {error_text}")
-            error_message = None
             try:
                 error_json = resp.json()
                 if 'error' in error_json:
@@ -744,10 +743,13 @@ Just read and transcribe label text.'''
                     elif resp.status_code == 429:
                         raise ValueError(f"OpenAI API rate limit exceeded: {error_message}")
             except ValueError:
-                raise  # Re-raise ValueError
+                raise  # Re-raise ValueError to propagate to caller
             except:
                 pass
             return None
+    except ValueError:
+        # Re-raise ValueError (API key errors, rate limits)
+        raise
     except requests.exceptions.Timeout:
         print("ERROR: OpenAI API request timeout (30s)")
         return None
