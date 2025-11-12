@@ -88,7 +88,7 @@
         
         .photo-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 15px;
             margin-top: 10px;
         }
@@ -99,6 +99,7 @@
             overflow: hidden;
             cursor: move;
             transition: all 0.2s;
+            background: white;
         }
         .photo-item:hover {
             border-color: #2563eb;
@@ -114,56 +115,78 @@
             display: block;
             cursor: pointer;
         }
-        .main-badge {
+        .photo-controls {
             position: absolute;
-            top: 5px;
-            left: 5px;
-            background: #28a745;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 11px;
-            font-weight: bold;
-            z-index: 2;
-        }
-        .photo-actions {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            top: 8px;
+            right: 8px;
             display: flex;
-            gap: 5px;
-            padding: 8px;
-            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
-            opacity: 0;
-            transition: opacity 0.2s;
+            gap: 4px;
+            flex-wrap: wrap;
+            max-width: 100px;
+            z-index: 10;
         }
-        .photo-item:hover .photo-actions {
-            opacity: 1;
-        }
-        .btn-enhance,
-        .btn-mannequin {
-            flex: 1;
-            padding: 6px 10px;
+        .photo-controls .btn {
+            padding: 3px 5px;
+            font-size: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 3px;
             border: none;
+            cursor: pointer;
+        }
+        .photo-controls .btn-star {
+            background: rgba(245, 158, 11, 0.9);
+        }
+        .photo-controls .btn-delete {
+            background: rgba(239, 68, 68, 0.9);
+        }
+        .photo-main-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: #f59e0b;
+            color: white;
+            padding: 4px 8px;
             border-radius: 4px;
             font-size: 11px;
             font-weight: 600;
-            cursor: pointer;
+            z-index: 10;
+        }
+        .photo-info {
+            padding: 4px 6px;
+            background: #f9fafb;
+            font-size: 10px;
+            color: #6b7280;
+        }
+        .photo-info button {
+            margin-top: 4px;
+            width: 100%;
+            background: #ef4444;
             color: white;
-            transition: all 0.2s;
+            padding: 3px 6px;
+            font-size: 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
         }
-        .btn-enhance {
-            background: #ec4899;
+        .photo-info .fashn-buttons {
+            display: flex;
+            gap: 2px;
+            margin-top: 4px;
+            flex-wrap: wrap;
         }
-        .btn-enhance:hover {
-            background: #db2777;
+        .photo-info .fashn-buttons button {
+            flex: 1;
+            padding: 3px 4px;
+            font-size: 9px;
+            min-width: 45px;
+            margin-top: 0;
         }
-        .btn-mannequin {
+        .photo-info .fashn-buttons .btn-mannequin {
             background: #8b5cf6;
         }
-        .btn-mannequin:hover {
-            background: #7c3aed;
+        .photo-info .fashn-buttons .btn-enhance {
+            background: #ec4899;
         }
         .btn-enhance:disabled,
         .btn-mannequin:disabled {
@@ -301,18 +324,26 @@
             <label style="font-size: 18px; margin-bottom: 15px;">📸 Photos (drag to reorder)</label>
             <div class="photo-list" id="ebay-photos">
                 {% for photo in photos %}
-                <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" data-photo-id="{{ photo.id }}" data-photo-url="{{ photo.url }}">
-                    <img src="{{ photo.url }}" alt="Product photo" onclick="openLightbox('{{ photo.url }}')">
+                <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" id="photo-{{ photo.id }}" data-photo-id="{{ photo.id }}" data-photo-url="{{ photo.url }}">
                     {% if photo.is_main %}
-                    <span class="main-badge">Main</span>
+                    <div class="photo-main-badge">⭐ Главное</div>
                     {% endif %}
-                    <div class="photo-actions">
-                        <button type="button" class="btn-enhance" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" title="Улучшить фото (FASHN AI)">
-                            ✨ Enhance
-                        </button>
-                        <button type="button" class="btn-mannequin" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" title="Генерация модели (FASHN AI)">
-                            👤 Mannequin
-                        </button>
+                    <div class="photo-controls">
+                        <button type="button" onclick="setMainPhoto({{ photo.id }})" class="btn btn-star" title="Сделать главной">⭐</button>
+                        <button type="button" onclick="rotatePhoto({{ photo.id }}, 'left')" class="btn" title="Повернуть влево">↶</button>
+                        <button type="button" onclick="rotatePhoto({{ photo.id }}, 'right')" class="btn" title="Повернуть вправо">↷</button>
+                        <button type="button" onclick="deletePhoto({{ photo.id }})" class="btn btn-delete" title="Удалить">✕</button>
+                    </div>
+                    <img src="{{ photo.url }}" alt="Product photo" onclick="openLightbox('{{ photo.url }}')" style="cursor: pointer;">
+                    <div class="photo-info">
+                        <div class="fashn-buttons">
+                            <button type="button" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" class="btn-mannequin" title="Генерация модели (FASHN AI, ~30 сек)">
+                                👤
+                            </button>
+                            <button type="button" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" class="btn-enhance" title="Улучшить фото (FASHN AI, ~30 сек)">
+                                ✨
+                            </button>
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -424,7 +455,10 @@
 
         // Get CSRF token
         function getCSRFToken() {
-            const name = 'csrftoken';
+            return getCookie('csrftoken');
+        }
+        
+        function getCookie(name) {
             const cookies = document.cookie.split(';');
             for (let cookie of cookies) {
                 const [key, value] = cookie.trim().split('=');
@@ -547,17 +581,126 @@
             alert('Price recalculation not implemented in MVP');
         }
 
+        // Photo management functions
+        async function deletePhoto(photoId) {
+            if (!confirm('Удалить это фото?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/photos/api/delete-photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const photoElement = document.getElementById(`photo-${photoId}`);
+                    if (photoElement) {
+                        photoElement.remove();
+                    }
+                    const photosGrid = document.querySelector('.photo-list');
+                    const photoCount = photosGrid.querySelectorAll('.photo-item').length;
+                    const label = document.querySelector('.field label');
+                    if (label) {
+                        label.textContent = `📸 Photos (${photoCount})`;
+                    }
+                    const small = document.querySelector('.field small');
+                    if (small) {
+                        small.textContent = `${photoCount} photo(s) - order will be preserved when publishing`;
+                    }
+                } else {
+                    alert('Ошибка при удалении фото: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка при удалении фото: ' + error.message);
+            }
+        }
+        
+        async function setMainPhoto(photoId) {
+            try {
+                const response = await fetch(`/photos/api/set-main-photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Ошибка при установке главной фото: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка при установке главной фото: ' + error.message);
+            }
+        }
+        
+        async function rotatePhoto(photoId, direction = 'right') {
+            const photoElement = document.getElementById(`photo-${photoId}`);
+            const img = photoElement ? photoElement.querySelector('img') : null;
+            
+            if (img) {
+                img.style.opacity = '0.5';
+            }
+            
+            try {
+                const response = await fetch(`/photos/api/rotate-photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ direction: direction }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (img) {
+                        img.src = data.photo_url + '?t=' + Date.now();
+                        img.style.opacity = '1';
+                    }
+                } else {
+                    alert('Ошибка при повороте фото: ' + (data.error || 'Неизвестная ошибка'));
+                    if (img) {
+                        img.style.opacity = '1';
+                    }
+                }
+            } catch (error) {
+                alert('Ошибка при повороте фото: ' + error.message);
+                if (img) {
+                    img.style.opacity = '1';
+                }
+            }
+        }
+
         // FASHN API functions
-        async function enhancePhoto(photoId, mode) {
-            const photoItem = document.querySelector(`[data-photo-id="${photoId}"]`);
-            const img = photoItem ? photoItem.querySelector('img') : null;
-            const btnEnhance = photoItem ? photoItem.querySelector('.btn-enhance') : null;
-            const btnMannequin = photoItem ? photoItem.querySelector('.btn-mannequin') : null;
+        async function enhancePhoto(photoId, mode = 'ghost_mannequin') {
+            const photoElement = document.getElementById(`photo-${photoId}`);
+            const img = photoElement ? photoElement.querySelector('img') : null;
+            const btnEnhance = photoElement ? photoElement.querySelector('.btn-enhance') : null;
+            const btnMannequin = photoElement ? photoElement.querySelector('.btn-mannequin') : null;
+            
+            console.log(`🚀 Starting enhancePhoto: photoId=${photoId}, mode=${mode}`);
+            
+            if (img) {
+                img.style.opacity = '0.5';
+                console.log('✅ Set image opacity to 0.5');
+            } else {
+                console.warn('⚠️ Image element not found');
+            }
             
             // Disable buttons
             if (btnEnhance) btnEnhance.disabled = true;
             if (btnMannequin) btnMannequin.disabled = true;
-            if (img) img.style.opacity = '0.5';
             
             const modeText = mode === 'ghost_mannequin' ? 'Генерирую модель (может занять 30-60 сек)' : 'Улучшаю фото';
             console.log(`${modeText} для фото ${photoId}...`);
@@ -586,18 +729,27 @@
                 
                 if (data.success) {
                     console.log(`✅ ${data.message}`);
-                    alert(`✅ ${data.message || 'Готово!'}`);
                     // Перезагружаем страницу чтобы показать новое фото
-                    window.location.reload();
+                    if (data.reload) {
+                        console.log('🔄 Reloading page...');
+                        window.location.reload();
+                    } else if (img) {
+                        img.src = data.photo_url + '?t=' + Date.now();
+                        img.style.opacity = '1';
+                    }
                 } else {
                     console.error('❌ FASHN API error:', data.error);
-                    alert(`❌ Ошибка FASHN AI:\n${data.error || 'Неизвестная ошибка'}`);
-                    if (img) img.style.opacity = '1';
+                    alert(`❌ Ошибка FASHN AI:\n${data.error || 'Неизвестная ошибка'}\n\nПроверь консоль (F12) для деталей`);
+                    if (img) {
+                        img.style.opacity = '1';
+                    }
                 }
             } catch (error) {
                 console.error('❌ Exception in enhancePhoto:', error);
-                alert(`❌ Ошибка при обработке:\n${error.message}`);
-                if (img) img.style.opacity = '1';
+                alert(`❌ Ошибка при обработке:\n${error.message}\n\nПроверь консоль (F12) для деталей`);
+                if (img) {
+                    img.style.opacity = '1';
+                }
             } finally {
                 // Re-enable buttons
                 if (btnEnhance) btnEnhance.disabled = false;
