@@ -569,11 +569,12 @@ class GPTAnalysisView(APIView):
                 if not openai_summary:
                     error_msg = 'No summary generated'
                     if not api_key:
-                        error_msg += ' - OpenAI API key not found'
+                        error_msg += ' - OpenAI API key not found in environment'
                     elif not photo_urls:
                         error_msg += ' - No photo URLs provided'
                     else:
-                        error_msg += ' - Check OpenAI API response and photo URLs accessibility'
+                        # Check if it's an API key error by looking at logs
+                        error_msg += ' - Possible issues: invalid/expired API key, API quota exceeded, or photo URLs not accessible. Check server logs for details.'
                     
                     results['openai'] = {
                         'success': False,
@@ -588,15 +589,26 @@ class GPTAnalysisView(APIView):
                         'summary': openai_summary,
                         'data': structured_data
                     }
+            except ValueError as e:
+                # Handle specific API errors
+                error_msg = str(e)
+                if 'API key error' in error_msg:
+                    error_msg = 'Invalid or expired OpenAI API key. Please update OPENAI_API_KEY in .env file.'
+                elif 'rate limit' in error_msg.lower():
+                    error_msg = 'OpenAI API rate limit exceeded. Please try again later.'
+                results['openai'] = {
+                    'success': False,
+                    'error': error_msg
+                }
             except Exception as e:
                 import traceback
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Exception in OpenAI analysis: {e}\n{traceback.format_exc()}")
+                print(f"[GPTAnalysis] Exception: {e}")
                 results['openai'] = {
                     'success': False,
-                    'error': str(e),
-                    'traceback': traceback.format_exc()
+                    'error': str(e)
                 }
         
         # Google analysis

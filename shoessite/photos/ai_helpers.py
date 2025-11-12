@@ -732,10 +732,19 @@ Just read and transcribe label text.'''
             error_text = resp.text
             print(f"OpenAI summary error: {resp.status_code}")
             print(f"Error response: {error_text}")
+            error_message = None
             try:
                 error_json = resp.json()
                 if 'error' in error_json:
-                    print(f"OpenAI API error message: {error_json['error']}")
+                    error_message = error_json['error'].get('message', str(error_json['error']))
+                    print(f"OpenAI API error message: {error_message}")
+                    # Raise exception with error message so caller can handle it
+                    if resp.status_code == 401:
+                        raise ValueError(f"OpenAI API key error: {error_message}")
+                    elif resp.status_code == 429:
+                        raise ValueError(f"OpenAI API rate limit exceeded: {error_message}")
+            except ValueError:
+                raise  # Re-raise ValueError
             except:
                 pass
             return None
