@@ -392,32 +392,6 @@
             </div>
 
             <div class="pricing-sidebar">
-                <!-- GPT Preview Section -->
-                <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
-                    <h4 style="margin-bottom: 15px;">🤖 AI Preview</h4>
-                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                        <button type="button" onclick="generateGPTPreview('openai')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                            OpenAI
-                        </button>
-                        <button type="button" onclick="generateGPTPreview('google')" style="flex: 1; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                            Google
-                        </button>
-                        <button type="button" onclick="generateGPTPreview('both')" style="flex: 1; padding: 8px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
-                            Both
-                        </button>
-                    </div>
-                    <div id="gpt-preview-container" style="margin-top: 15px;">
-                        <div id="openai-preview" style="display: none; margin-bottom: 15px; padding: 12px; background: #f0fdf4; border-radius: 6px; border-left: 4px solid #10b981;">
-                            <strong style="color: #10b981;">OpenAI:</strong>
-                            <div id="openai-preview-content" style="margin-top: 8px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;"></div>
-                        </div>
-                        <div id="google-preview" style="display: none; margin-bottom: 15px; padding: 12px; background: #eff6ff; border-radius: 6px; border-left: 4px solid #3b82f6;">
-                            <strong style="color: #3b82f6;">Google:</strong>
-                            <div id="google-preview-content" style="margin-top: 8px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;"></div>
-                        </div>
-                    </div>
-                </div>
-
                 <h4>💰 Pricing Assistant</h4>
 
                 {% if candidate.comps %}
@@ -685,66 +659,6 @@
             }
         }
 
-        // Generate GPT preview
-        async function generateGPTPreview(provider) {
-            const openaiDiv = document.getElementById('openai-preview');
-            const googleDiv = document.getElementById('google-preview');
-            const openaiContent = document.getElementById('openai-preview-content');
-            const googleContent = document.getElementById('google-preview-content');
-            
-            // Show loading
-            if (provider === 'openai' || provider === 'both') {
-                openaiDiv.style.display = 'block';
-                openaiContent.textContent = 'Generating...';
-            }
-            if (provider === 'google' || provider === 'both') {
-                googleDiv.style.display = 'block';
-                googleContent.textContent = 'Generating...';
-            }
-            
-            try {
-                const response = await fetch('/api/ebay/gpt-preview/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken(),
-                    },
-                    body: JSON.stringify({
-                        candidate_id: candidateId,
-                        provider: provider
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.openai) {
-                    if (data.openai.success) {
-                        openaiContent.textContent = data.openai.preview || 'No preview generated';
-                    } else {
-                        openaiContent.textContent = `Error: ${data.openai.error}`;
-                        openaiContent.style.color = '#dc3545';
-                    }
-                }
-                
-                if (data.google) {
-                    if (data.google.success) {
-                        googleContent.textContent = data.google.preview || 'No preview generated';
-                    } else {
-                        googleContent.textContent = `Error: ${data.google.error}`;
-                        googleContent.style.color = '#dc3545';
-                    }
-                }
-            } catch (error) {
-                if (provider === 'openai' || provider === 'both') {
-                    openaiContent.textContent = `Error: ${error.message}`;
-                    openaiContent.style.color = '#dc3545';
-                }
-                if (provider === 'google' || provider === 'both') {
-                    googleContent.textContent = `Error: ${error.message}`;
-                    googleContent.style.color = '#dc3545';
-                }
-            }
-        }
 
         // Load item specifics on page load if category is set
         const categoryId = document.getElementById('ebay-category').value;
