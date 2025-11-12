@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Analysis - eBay Candidate #{{ candidate.id }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: #111827;
+        }
+        .back-link {
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .photos-section {
+            margin-bottom: 30px;
+        }
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .photo-item {
+            position: relative;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .photo-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+        }
+        .barcodes-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 6px;
+        }
+        .barcodes-section h3 {
+            margin-bottom: 10px;
+            color: #111827;
+        }
+        .barcode-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .barcode-tag {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: monospace;
+        }
+        .analysis-section {
+            margin-bottom: 30px;
+        }
+        .analysis-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .btn-analyze {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-openai {
+            background: #10b981;
+            color: white;
+        }
+        .btn-openai:hover {
+            background: #059669;
+        }
+        .btn-google {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-google:hover {
+            background: #2563eb;
+        }
+        .btn-both {
+            background: #8b5cf6;
+            color: white;
+        }
+        .btn-both:hover {
+            background: #7c3aed;
+        }
+        .results-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .result-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            background: white;
+        }
+        .result-card.openai {
+            border-color: #10b981;
+        }
+        .result-card.google {
+            border-color: #3b82f6;
+        }
+        .result-card h3 {
+            margin-bottom: 15px;
+            color: #111827;
+        }
+        .result-card.openai h3 {
+            color: #10b981;
+        }
+        .result-card.google h3 {
+            color: #3b82f6;
+        }
+        .result-summary {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .result-data {
+            margin-top: 15px;
+        }
+        .result-data-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f0fdf4;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .result-data-item strong {
+            color: #059669;
+        }
+        .btn-select {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+        .btn-select:hover {
+            background: #1d4ed8;
+        }
+        .btn-combine {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+        .btn-combine:hover {
+            background: #7c3aed;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .error {
+            padding: 15px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            color: #dc2626;
+            margin-top: 10px;
+        }
+        .continue-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+        }
+        .btn-continue {
+            padding: 15px 40px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-continue:hover {
+            background: #059669;
+        }
+        .btn-continue:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🤖 AI Analysis</h1>
+                <p style="color: #6b7280; margin-top: 5px;">
+                    Candidate #{{ candidate.id }} | 
+                    {% if candidate.photo_batch %}
+                        Source: {{ candidate.photo_batch.correlation_id }}
+                    {% endif %}
+                </p>
+            </div>
+            <div>
+                <a href="{% url 'admin:ebay_ebaycandidate_changelist' %}" class="back-link">← Back to List</a>
+            </div>
+        </div>
+
+        <!-- Photos Section -->
+        <div class="photos-section">
+            <h2 style="margin-bottom: 15px;">📸 Product Photos</h2>
+            <div class="photos-grid">
+                {% for photo in photos %}
+                <div class="photo-item">
+                    <img src="{{ photo.url }}" alt="Product photo" onclick="openLightbox('{{ photo.url }}')">
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Barcodes Section -->
+        {% if barcodes %}
+        <div class="barcodes-section">
+            <h3>🏷️ Found Barcodes & Codes</h3>
+            <div class="barcode-list">
+                {% for barcode in barcodes %}
+                <span class="barcode-tag">{{ barcode }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Analysis Section -->
+        <div class="analysis-section">
+            <h2 style="margin-bottom: 15px;">🔍 Run AI Analysis</h2>
+            <div class="analysis-controls">
+                <button class="btn-analyze btn-openai" onclick="runAnalysis('openai')">
+                    🤖 OpenAI Analysis
+                </button>
+                <button class="btn-analyze btn-google" onclick="runAnalysis('google')">
+                    🔍 Google Analysis
+                </button>
+                <button class="btn-analyze btn-both" onclick="runAnalysis('both')">
+                    🚀 Both (Compare)
+                </button>
+            </div>
+
+            <div id="results-container" class="results-container"></div>
+        </div>
+
+        <!-- Continue Section -->
+        <div class="continue-section">
+            <button id="btn-continue" class="btn-continue" onclick="continueToEdit()" disabled>
+                Continue to Edit Page →
+            </button>
+            <p style="margin-top: 10px; color: #6b7280; font-size: 14px;">
+                Select or combine analysis results to proceed
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const candidateId = {{ candidate.id }};
+        let selectedData = null;
+
+        function getCSRFToken() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [key, value] = cookie.trim().split('=');
+                if (key === 'csrftoken') return value;
+            }
+            return '';
+        }
+
+        async function runAnalysis(provider) {
+            const container = document.getElementById('results-container');
+            container.innerHTML = '<div class="loading">🔄 Analyzing... This may take 30-60 seconds</div>';
+
+            try {
+                const response = await fetch('/api/ebay/analyze/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify({
+                        candidate_id: candidateId,
+                        provider: provider
+                    })
+                });
+
+                const data = await response.json();
+                displayResults(data, provider);
+            } catch (error) {
+                container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
+        function displayResults(data, provider) {
+            const container = document.getElementById('results-container');
+            let html = '';
+
+            if (data.openai && data.openai.success) {
+                html += `
+                    <div class="result-card openai">
+                        <h3>🤖 OpenAI Analysis</h3>
+                        <div class="result-summary">${escapeHtml(data.openai.summary || 'No summary')}</div>
+                        ${displayStructuredData(data.openai.data, 'openai')}
+                        <button class="btn-select" onclick="selectData('openai', ${JSON.stringify(data.openai.data).replace(/"/g, '&quot;')})">
+                            ✓ Use This Data
+                        </button>
+                    </div>
+                `;
+            } else if (data.openai) {
+                html += `
+                    <div class="result-card">
+                        <h3>🤖 OpenAI Analysis</h3>
+                        <div class="error">Error: ${data.openai.error || 'Unknown error'}</div>
+                    </div>
+                `;
+            }
+
+            if (data.google && data.google.success) {
+                html += `
+                    <div class="result-card google">
+                        <h3>🔍 Google Analysis</h3>
+                        <div class="result-summary">${escapeHtml(data.google.description || 'No description')}</div>
+                        ${displayStructuredData(data.google.data, 'google')}
+                        <button class="btn-select" onclick="selectData('google', ${JSON.stringify(data.google.data).replace(/"/g, '&quot;')})">
+                            ✓ Use This Data
+                        </button>
+                    </div>
+                `;
+            } else if (data.google) {
+                html += `
+                    <div class="result-card">
+                        <h3>🔍 Google Analysis</h3>
+                        <div class="error">Error: ${data.google.error || 'Unknown error'}</div>
+                    </div>
+                `;
+            }
+
+            if (data.openai && data.openai.success && data.google && data.google.success) {
+                html += `
+                    <div class="result-card" style="grid-column: 1 / -1;">
+                        <h3>🔄 Combined Analysis</h3>
+                        <p style="margin-bottom: 15px;">Combine data from both sources</p>
+                        <button class="btn-combine" onclick="combineData(${JSON.stringify(data.openai.data).replace(/"/g, '&quot;')}, ${JSON.stringify(data.google.data).replace(/"/g, '&quot;')})">
+                            🔗 Combine Both
+                        </button>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function displayStructuredData(data, source) {
+            if (!data) return '';
+            let html = '<div class="result-data">';
+            if (data.title) html += `<div class="result-data-item"><strong>Title:</strong> ${escapeHtml(data.title)}</div>`;
+            if (data.brand) html += `<div class="result-data-item"><strong>Brand:</strong> ${escapeHtml(data.brand)}</div>`;
+            if (data.model) html += `<div class="result-data-item"><strong>Model:</strong> ${escapeHtml(data.model)}</div>`;
+            if (data.category_id) html += `<div class="result-data-item"><strong>Category ID:</strong> ${escapeHtml(data.category_id)}</div>`;
+            if (data.condition) html += `<div class="result-data-item"><strong>Condition:</strong> ${escapeHtml(data.condition)}</div>`;
+            if (data.specifics && Object.keys(data.specifics).length > 0) {
+                html += `<div class="result-data-item"><strong>Specifics:</strong> ${JSON.stringify(data.specifics)}</div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function selectData(source, data) {
+            selectedData = data;
+            document.getElementById('btn-continue').disabled = false;
+            alert(`Selected ${source} analysis data. Click "Continue to Edit Page" to proceed.`);
+        }
+
+        function combineData(openaiData, googleData) {
+            // Combine data, preferring OpenAI for most fields
+            selectedData = {
+                title: openaiData.title || googleData.title || '',
+                description: openaiData.description || googleData.description || '',
+                brand: openaiData.brand || googleData.brand || '',
+                model: openaiData.model || googleData.model || '',
+                category_id: openaiData.category_id || googleData.category_id || '260324',
+                condition: openaiData.condition || googleData.condition || 'USED_GOOD',
+                specifics: {...googleData.specifics, ...openaiData.specifics}
+            };
+            document.getElementById('btn-continue').disabled = false;
+            alert('Combined data from both sources. Click "Continue to Edit Page" to proceed.');
+        }
+
+        function continueToEdit() {
+            if (!selectedData) {
+                alert('Please select analysis data first');
+                return;
+            }
+
+            // Save selected data to candidate
+            fetch(`/api/ebay/candidates/${candidateId}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify(selectedData)
+            })
+            .then(r => r.json())
+            .then(data => {
+                // Redirect to edit page
+                window.location.href = `/ebay/candidates/${candidateId}/edit/`;
+            })
+            .catch(err => {
+                alert('Error saving data: ' + err.message);
+            });
+        }
+
+        function openLightbox(imageUrl) {
+            const lightbox = document.createElement('div');
+            lightbox.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.9);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            `;
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.cssText = `
+                max-width: 90%;
+                max-height: 90%;
+                object-fit: contain;
+            `;
+            
+            lightbox.appendChild(img);
+            lightbox.onclick = () => lightbox.remove();
+            document.body.appendChild(lightbox);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
+

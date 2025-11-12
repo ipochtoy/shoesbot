@@ -116,9 +116,13 @@ class EbayCandidateAdmin(admin.ModelAdmin):
     title_display.short_description = 'Title'
 
     def photo_batch_link(self, obj):
-        """Link to eBay edit page and source photo batch."""
+        """Link to eBay analyze/edit pages and source photo batch."""
         links = []
-        # Link to eBay edit page
+        # Link to analysis page (first step)
+        analyze_url = reverse('ebay:candidate-analyze', args=[obj.pk])
+        links.append(f'<a href="{analyze_url}" style="font-weight: bold; color: #10b981;">🤖 Analyze</a>')
+        
+        # Link to edit page (second step)
         edit_url = reverse('ebay:candidate-edit', args=[obj.pk])
         links.append(f'<a href="{edit_url}" style="font-weight: bold; color: #17a2b8;">✏️ Edit</a>')
         

@@ -10,8 +10,10 @@ from .views import (
     ItemSpecificsView,
     PricingCompsView,
     EbayTokenViewSet,
+    ebay_candidate_analyze,
     ebay_candidate_edit,
     GPTPreviewView,
+    GPTAnalysisView,
 )
 
 app_name = 'ebay'
@@ -22,7 +24,9 @@ router.register(r'candidates', EbayCandidateViewSet, basename='candidate')
 router.register(r'tokens', EbayTokenViewSet, basename='token')
 
 urlpatterns = [
-    # Edit page (non-API)
+    # Analysis page (first step)
+    path('candidates/<int:candidate_id>/analyze/', ebay_candidate_analyze, name='candidate-analyze'),
+    # Edit page (second step)
     path('candidates/<int:candidate_id>/edit/', ebay_candidate_edit, name='candidate-edit'),
     
     # Bulk operations
@@ -35,7 +39,8 @@ urlpatterns = [
     # Pricing endpoints
     path('pricing/comps/', PricingCompsView.as_view(), name='pricing-comps'),
 
-    # GPT Preview endpoints
+    # GPT Analysis endpoints
+    path('analyze/', GPTAnalysisView.as_view(), name='gpt-analyze'),
     path('gpt-preview/', GPTPreviewView.as_view(), name='gpt-preview'),
 
     # Include router URLs

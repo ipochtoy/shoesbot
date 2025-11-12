@@ -408,6 +408,43 @@ class EbayTokenViewSet(viewsets.ModelViewSet):
 
 
 @staff_member_required
+def ebay_candidate_analyze(request, candidate_id):
+    """
+    Analysis page for eBay candidate - GPT analysis and data extraction.
+    First step before editing.
+    """
+    candidate = get_object_or_404(EbayCandidate, id=candidate_id)
+    photo_batch = candidate.photo_batch
+    photos = photo_batch.photos.all() if photo_batch else []
+    
+    # Get photo data
+    photo_data = []
+    barcodes = []
+    for photo in photos:
+        if photo.image:
+            request_scheme = request.scheme if hasattr(request, 'scheme') else 'https'
+            request_host = request.get_host() if hasattr(request, 'get_host') else 'pochtoy.us'
+            photo_url = f"{request_scheme}://{request_host}{photo.image.url}"
+            photo_data.append({
+                'id': photo.id,
+                'url': photo_url,
+                'is_main': photo.is_main,
+                'order': photo.order,
+            })
+            # Collect barcodes
+            for barcode in photo.barcodes.all():
+                if barcode.data not in barcodes:
+                    barcodes.append(barcode.data)
+    
+    return render(request, 'ebay/candidate_analyze.html', {
+        'candidate': candidate,
+        'photo_batch': photo_batch,
+        'photos': photo_data,
+        'barcodes': barcodes,
+    })
+
+
+@staff_member_required
 def ebay_candidate_edit(request, candidate_id):
     """
     Edit page for eBay candidate - dedicated page for eBay listing preparation.
@@ -440,11 +477,12 @@ def ebay_candidate_edit(request, candidate_id):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
-class GPTPreviewView(APIView):
+class GPTAnalysisView(APIView):
     """
-    Generate GPT previews for product listing.
+    Run comprehensive GPT analysis for product listing.
+    Extracts all data needed for eBay listing.
     
-    POST /api/ebay/gpt-preview/
+    POST /api/ebay/analyze/
     Body: {
         "candidate_id": 123,
         "provider": "openai" | "google" | "both"
@@ -454,7 +492,7 @@ class GPTPreviewView(APIView):
 
     def post(self, request):
         candidate_id = request.data.get('candidate_id')
-        provider = request.data.get('provider', 'both')  # 'openai', 'google', 'both'
+        provider = request.data.get('provider', 'both')
         
         if not candidate_id:
             return Response(
@@ -472,14 +510,25 @@ class GPTPreviewView(APIView):
             )
         
         # Get photo URLs
-        photos = photo_batch.photos.all()[:5]  # Limit to 5 photos
+        photos = photo_batch.photos.all()[:10]  # Up to 10 photos
         photo_urls = []
+        barcodes = []
+        gg_labels = []
+        
         for photo in photos:
             if photo.image:
                 request_scheme = request.scheme if hasattr(request, 'scheme') else 'https'
                 request_host = request.get_host() if hasattr(request, 'get_host') else 'pochtoy.us'
                 photo_url = f"{request_scheme}://{request_host}{photo.image.url}"
                 photo_urls.append(photo_url)
+            
+            # Collect barcodes and GG labels
+            for barcode in photo.barcodes.all():
+                if barcode.data not in barcodes:
+                    barcodes.append(barcode.data)
+                # Check for GG labels
+                if 'GG' in barcode.data.upper() or barcode.data.startswith('Q'):
+                    gg_labels.append(barcode.data)
         
         if not photo_urls:
             return Response(
@@ -487,47 +536,49 @@ class GPTPreviewView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Get barcodes
-        barcodes = []
-        for photo in photos:
-            for barcode in photo.barcodes.all():
-                barcodes.append(barcode.data)
-        
         results = {}
         
-        # OpenAI preview
+        # OpenAI analysis
         if provider in ['openai', 'both']:
             try:
                 from photos.ai_helpers import generate_product_summary
-                openai_preview = generate_product_summary(
+                openai_summary = generate_product_summary(
                     photo_urls=photo_urls,
-                    barcodes=barcodes[:3] if barcodes else None
+                    barcodes=barcodes[:5] if barcodes else None,
+                    gg_labels=gg_labels[:5] if gg_labels else None
                 )
+                
+                # Parse structured data from summary
+                structured_data = self._parse_summary_to_structured(openai_summary, barcodes)
+                
                 results['openai'] = {
                     'success': True,
-                    'preview': openai_preview
+                    'summary': openai_summary,
+                    'data': structured_data
                 }
             except Exception as e:
+                import traceback
                 results['openai'] = {
                     'success': False,
-                    'error': str(e)
+                    'error': str(e),
+                    'traceback': traceback.format_exc()
                 }
         
-        # Google preview (using Google Product Search or similar)
+        # Google analysis
         if provider in ['google', 'both']:
             try:
-                # For now, use a simple description generation
-                # In production, this would use Google Product Search API
                 from photos.ai_helpers import generate_product_description
-                google_preview = None
+                google_description = None
                 if barcodes:
-                    google_preview = generate_product_description(
+                    google_description = generate_product_description(
                         barcode=barcodes[0],
                         photos_text=f"Product photos: {len(photo_urls)} images"
                     )
+                
                 results['google'] = {
                     'success': True,
-                    'preview': google_preview or 'Google preview not available'
+                    'description': google_description or 'Google analysis not available',
+                    'data': self._parse_google_to_structured(google_description, barcodes)
                 }
             except Exception as e:
                 results['google'] = {
@@ -536,3 +587,94 @@ class GPTPreviewView(APIView):
                 }
         
         return Response(results, status=status.HTTP_200_OK)
+    
+    def _parse_summary_to_structured(self, summary: str, barcodes: list) -> dict:
+        """Parse GPT summary into structured eBay listing data."""
+        import re
+        
+        data = {
+            'title': '',
+            'description': summary,
+            'brand': '',
+            'model': '',
+            'category_id': '260324',  # Default to watches
+            'condition': 'USED_GOOD',
+            'specifics': {},
+        }
+        
+        # Extract title (first line or first sentence)
+        lines = summary.split('\n')
+        if lines:
+            first_line = lines[0].strip()
+            if len(first_line) <= 80:
+                data['title'] = first_line
+            else:
+                data['title'] = first_line[:77] + '...'
+        
+        # Extract brand (look for common patterns)
+        brand_patterns = [
+            r'\*\*Бренд:\*\*\s*(.+?)(?:\n|$)',
+            r'Brand:\s*(.+?)(?:\n|$)',
+            r'Бренд:\s*(.+?)(?:\n|$)',
+        ]
+        for pattern in brand_patterns:
+            match = re.search(pattern, summary, re.IGNORECASE)
+            if match:
+                data['brand'] = match.group(1).strip()
+                break
+        
+        # Extract model
+        model_patterns = [
+            r'\*\*Модель:\*\*\s*(.+?)(?:\n|$)',
+            r'Model:\s*(.+?)(?:\n|$)',
+            r'Модель:\s*(.+?)(?:\n|$)',
+        ]
+        for pattern in model_patterns:
+            match = re.search(pattern, summary, re.IGNORECASE)
+            if match:
+                data['model'] = match.group(1).strip()
+                break
+        
+        # Try to detect category from summary
+        summary_lower = summary.lower()
+        if any(word in summary_lower for word in ['watch', 'часы', 'wristwatch']):
+            data['category_id'] = '260324'
+        elif any(word in summary_lower for word in ['shoe', 'обувь', 'sneaker']):
+            data['category_id'] = '93427'
+        elif any(word in summary_lower for word in ['perfume', 'парфюм', 'cologne']):
+            data['category_id'] = '31518'
+        
+        # Add barcodes to specifics if found
+        if barcodes:
+            data['specifics']['UPC'] = barcodes[0]
+        
+        return data
+    
+    def _parse_google_to_structured(self, description: str, barcodes: list) -> dict:
+        """Parse Google description into structured data."""
+        return {
+            'title': description.split('.')[0][:80] if description else '',
+            'description': description or '',
+            'category_id': '260324',
+            'condition': 'USED_GOOD',
+            'specifics': {'UPC': barcodes[0]} if barcodes else {},
+        }
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GPTPreviewView(APIView):
+    """
+    Generate GPT previews for product listing (legacy endpoint).
+    
+    POST /api/ebay/gpt-preview/
+    Body: {
+        "candidate_id": 123,
+        "provider": "openai" | "google" | "both"
+    }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # Redirect to new analyze endpoint
+        view = GPTAnalysisView()
+        return view.post(request)
