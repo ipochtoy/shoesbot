@@ -276,6 +276,18 @@ class EbayClient:
                 {'name': 'Style', 'required': False, 'usage': 'RECOMMENDED', 'values': [], 'max_values': 1},
             ]
 
+        elif category_id in ['260324', '260325', '31387']:  # Watches (Men's, Women's, Unisex)
+            return common_specifics + [
+                {'name': 'Model', 'required': True, 'usage': 'REQUIRED', 'values': [], 'max_values': 1},
+                {'name': 'Case Material', 'required': True, 'usage': 'REQUIRED', 'values': ['Stainless Steel', 'Gold', 'Silver', 'Titanium', 'Ceramic', 'Plastic'], 'max_values': 1},
+                {'name': 'Band Material', 'required': True, 'usage': 'REQUIRED', 'values': ['Leather', 'Metal', 'Rubber', 'Fabric', 'Silicone'], 'max_values': 1},
+                {'name': 'Movement', 'required': True, 'usage': 'REQUIRED', 'values': ['Quartz', 'Automatic', 'Mechanical', 'Solar'], 'max_values': 1},
+                {'name': 'Water Resistance', 'required': False, 'usage': 'RECOMMENDED', 'values': ['30m', '50m', '100m', '200m', '300m'], 'max_values': 1},
+                {'name': 'Dial Color', 'required': False, 'usage': 'RECOMMENDED', 'values': [], 'max_values': 1},
+                {'name': 'Band Color', 'required': False, 'usage': 'RECOMMENDED', 'values': [], 'max_values': 1},
+                {'name': 'Case Diameter', 'required': False, 'usage': 'RECOMMENDED', 'values': [], 'max_values': 1},
+            ]
+
         else:  # Default
             return common_specifics + [
                 {'name': 'Model', 'required': False, 'usage': 'RECOMMENDED', 'values': [], 'max_values': 1},

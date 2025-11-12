@@ -11,6 +11,7 @@ from .views import (
     PricingCompsView,
     EbayTokenViewSet,
     ebay_candidate_edit,
+    GPTPreviewView,
 )
 
 app_name = 'ebay'
@@ -33,6 +34,9 @@ urlpatterns = [
 
     # Pricing endpoints
     path('pricing/comps/', PricingCompsView.as_view(), name='pricing-comps'),
+
+    # GPT Preview endpoints
+    path('gpt-preview/', GPTPreviewView.as_view(), name='gpt-preview'),
 
     # Include router URLs
     path('', include(router.urls)),

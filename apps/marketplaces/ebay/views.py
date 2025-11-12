@@ -435,3 +435,102 @@ def ebay_candidate_edit(request, candidate_id):
         'photo_batch': photo_batch,
         'photos': photo_data,
     })
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class GPTPreviewView(APIView):
+    """
+    Generate GPT previews for product listing.
+    
+    POST /api/ebay/gpt-preview/
+    Body: {
+        "candidate_id": 123,
+        "provider": "openai" | "google" | "both"
+    }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        candidate_id = request.data.get('candidate_id')
+        provider = request.data.get('provider', 'both')  # 'openai', 'google', 'both'
+        
+        if not candidate_id:
+            return Response(
+                {'error': 'candidate_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        candidate = get_object_or_404(EbayCandidate, id=candidate_id)
+        photo_batch = candidate.photo_batch
+        
+        if not photo_batch:
+            return Response(
+                {'error': 'No photo batch found'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get photo URLs
+        photos = photo_batch.photos.all()[:5]  # Limit to 5 photos
+        photo_urls = []
+        for photo in photos:
+            if photo.image:
+                request_scheme = request.scheme if hasattr(request, 'scheme') else 'https'
+                request_host = request.get_host() if hasattr(request, 'get_host') else 'pochtoy.us'
+                photo_url = f"{request_scheme}://{request_host}{photo.image.url}"
+                photo_urls.append(photo_url)
+        
+        if not photo_urls:
+            return Response(
+                {'error': 'No photos found'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get barcodes
+        barcodes = []
+        for photo in photos:
+            for barcode in photo.barcodes.all():
+                barcodes.append(barcode.data)
+        
+        results = {}
+        
+        # OpenAI preview
+        if provider in ['openai', 'both']:
+            try:
+                from photos.ai_helpers import generate_product_summary
+                openai_preview = generate_product_summary(
+                    photo_urls=photo_urls,
+                    barcodes=barcodes[:3] if barcodes else None
+                )
+                results['openai'] = {
+                    'success': True,
+                    'preview': openai_preview
+                }
+            except Exception as e:
+                results['openai'] = {
+                    'success': False,
+                    'error': str(e)
+                }
+        
+        # Google preview (using Google Product Search or similar)
+        if provider in ['google', 'both']:
+            try:
+                # For now, use a simple description generation
+                # In production, this would use Google Product Search API
+                from photos.ai_helpers import generate_product_description
+                google_preview = None
+                if barcodes:
+                    google_preview = generate_product_description(
+                        barcode=barcodes[0],
+                        photos_text=f"Product photos: {len(photo_urls)} images"
+                    )
+                results['google'] = {
+                    'success': True,
+                    'preview': google_preview or 'Google preview not available'
+                }
+            except Exception as e:
+                results['google'] = {
+                    'success': False,
+                    'error': str(e)
+                }
+        
+        return Response(results, status=status.HTTP_200_OK)

@@ -371,18 +371,53 @@
                 <div class="field">
                     <label>Category ID:</label>
                     <div style="display: flex; gap: 10px;">
-                        <input type="text" id="ebay-category" value="{{ candidate.category_id|default:'' }}" placeholder="e.g. 99999">
+                        <input type="text" id="ebay-category" value="{{ candidate.category_id|default:'260324' }}" placeholder="e.g. 260324 (Watches)">
                         <button type="button" onclick="searchCategory()" style="padding: 10px 20px; background: #17a2b8; color: white; border: none; border-radius: 6px; cursor: pointer;">Find Category</button>
+                    </div>
+                    <small>Default: 260324 (Men's Watches)</small>
+                </div>
+
+                <!-- Item Specifics (dynamic based on category) -->
+                <div class="field" id="item-specifics-section" style="margin-top: 20px;">
+                    <label style="font-size: 16px; font-weight: 600; margin-bottom: 10px;">Item Specifics:</label>
+                    <div id="item-specifics-container">
+                        <p style="color: #6b7280; font-size: 13px;">Select a category to see required fields</p>
                     </div>
                 </div>
 
-                <div class="field">
+                <div class="field" style="margin-top: 20px;">
                     <label>Description (Markdown):</label>
                     <textarea id="ebay-description" rows="15">{{ candidate.description_md|default:'' }}</textarea>
                 </div>
             </div>
 
             <div class="pricing-sidebar">
+                <!-- GPT Preview Section -->
+                <div style="margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
+                    <h4 style="margin-bottom: 15px;">🤖 AI Preview</h4>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <button type="button" onclick="generateGPTPreview('openai')" style="flex: 1; padding: 8px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            OpenAI
+                        </button>
+                        <button type="button" onclick="generateGPTPreview('google')" style="flex: 1; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            Google
+                        </button>
+                        <button type="button" onclick="generateGPTPreview('both')" style="flex: 1; padding: 8px; background: #8b5cf6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                            Both
+                        </button>
+                    </div>
+                    <div id="gpt-preview-container" style="margin-top: 15px;">
+                        <div id="openai-preview" style="display: none; margin-bottom: 15px; padding: 12px; background: #f0fdf4; border-radius: 6px; border-left: 4px solid #10b981;">
+                            <strong style="color: #10b981;">OpenAI:</strong>
+                            <div id="openai-preview-content" style="margin-top: 8px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;"></div>
+                        </div>
+                        <div id="google-preview" style="display: none; margin-bottom: 15px; padding: 12px; background: #eff6ff; border-radius: 6px; border-left: 4px solid #3b82f6;">
+                            <strong style="color: #3b82f6;">Google:</strong>
+                            <div id="google-preview-content" style="margin-top: 8px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <h4>💰 Pricing Assistant</h4>
 
                 {% if candidate.comps %}
@@ -447,6 +482,7 @@
     <script>
         const candidateId = {{ candidate.id }};
         const batchId = {{ candidate.photo_batch.id|default:"null" }};
+        const candidateSpecifics = {{ candidate.specifics|safe }};
 
         // Update title length counter
         document.getElementById('ebay-title').addEventListener('input', function() {
@@ -468,11 +504,22 @@
         }
 
         function saveChanges() {
+            // Collect item specifics
+            const specifics = {};
+            document.querySelectorAll('.item-specific-input').forEach(input => {
+                const specName = input.getAttribute('data-spec-name');
+                const specValue = input.value.trim();
+                if (specValue) {
+                    specifics[specName] = specValue;
+                }
+            });
+            
             const data = {
                 title: document.getElementById('ebay-title').value,
                 condition: document.getElementById('ebay-condition').value,
                 category_id: document.getElementById('ebay-category').value,
                 description_md: document.getElementById('ebay-description').value,
+                specifics: specifics,
             };
 
             fetch(`/api/ebay/candidates/${candidateId}/`, {
@@ -572,10 +619,143 @@
                             const cat = data.categories[0];
                             document.getElementById('ebay-category').value = cat.category_id;
                             alert(`Selected: ${cat.category_name} (${cat.category_id})`);
+                            loadItemSpecifics(cat.category_id);
                         }
                     });
             }
         }
+
+        // Load item specifics for category
+        async function loadItemSpecifics(categoryId) {
+            if (!categoryId) return;
+            
+            const container = document.getElementById('item-specifics-container');
+            container.innerHTML = '<p style="color: #6b7280;">Loading...</p>';
+            
+            try {
+                const response = await fetch(`/api/ebay/specifics/?category_id=${categoryId}`);
+                const data = await response.json();
+                
+                if (data.specifics && data.specifics.length) {
+                    let html = '';
+                    data.specifics.forEach(spec => {
+                        const specValue = candidateSpecifics && candidateSpecifics[spec.name] ? candidateSpecifics[spec.name] : '';
+                        const required = spec.required ? '<span style="color: red;">*</span>' : '';
+                        
+                        if (spec.values && spec.values.length > 0) {
+                            // Dropdown
+                            html += `
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">
+                                        ${spec.name} ${required}
+                                    </label>
+                                    <select 
+                                        class="item-specific-input" 
+                                        data-spec-name="${spec.name}"
+                                        style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;">
+                                        <option value="">Select...</option>
+                                        ${spec.values.map(v => `<option value="${v}" ${specValue === v ? 'selected' : ''}>${v}</option>`).join('')}
+                                    </select>
+                                </div>
+                            `;
+                        } else {
+                            // Text input
+                            html += `
+                                <div style="margin-bottom: 15px;">
+                                    <label style="display: block; margin-bottom: 5px; font-weight: 500;">
+                                        ${spec.name} ${required}
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        class="item-specific-input" 
+                                        data-spec-name="${spec.name}"
+                                        value="${specValue}"
+                                        placeholder="Enter ${spec.name.toLowerCase()}"
+                                        style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px;">
+                                </div>
+                            `;
+                        }
+                    });
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<p style="color: #6b7280;">No specifics found for this category</p>';
+                }
+            } catch (error) {
+                container.innerHTML = `<p style="color: #dc3545;">Error loading specifics: ${error.message}</p>`;
+            }
+        }
+
+        // Generate GPT preview
+        async function generateGPTPreview(provider) {
+            const openaiDiv = document.getElementById('openai-preview');
+            const googleDiv = document.getElementById('google-preview');
+            const openaiContent = document.getElementById('openai-preview-content');
+            const googleContent = document.getElementById('google-preview-content');
+            
+            // Show loading
+            if (provider === 'openai' || provider === 'both') {
+                openaiDiv.style.display = 'block';
+                openaiContent.textContent = 'Generating...';
+            }
+            if (provider === 'google' || provider === 'both') {
+                googleDiv.style.display = 'block';
+                googleContent.textContent = 'Generating...';
+            }
+            
+            try {
+                const response = await fetch('/api/ebay/gpt-preview/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify({
+                        candidate_id: candidateId,
+                        provider: provider
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.openai) {
+                    if (data.openai.success) {
+                        openaiContent.textContent = data.openai.preview || 'No preview generated';
+                    } else {
+                        openaiContent.textContent = `Error: ${data.openai.error}`;
+                        openaiContent.style.color = '#dc3545';
+                    }
+                }
+                
+                if (data.google) {
+                    if (data.google.success) {
+                        googleContent.textContent = data.google.preview || 'No preview generated';
+                    } else {
+                        googleContent.textContent = `Error: ${data.google.error}`;
+                        googleContent.style.color = '#dc3545';
+                    }
+                }
+            } catch (error) {
+                if (provider === 'openai' || provider === 'both') {
+                    openaiContent.textContent = `Error: ${error.message}`;
+                    openaiContent.style.color = '#dc3545';
+                }
+                if (provider === 'google' || provider === 'both') {
+                    googleContent.textContent = `Error: ${error.message}`;
+                    googleContent.style.color = '#dc3545';
+                }
+            }
+        }
+
+        // Load item specifics on page load if category is set
+        const categoryId = document.getElementById('ebay-category').value;
+        if (categoryId) {
+            loadItemSpecifics(categoryId);
+        }
+
+        // Reload item specifics when category changes
+        document.getElementById('ebay-category').addEventListener('change', function() {
+            loadItemSpecifics(this.value);
+        });
 
         function recalculatePrice() {
             alert('Price recalculation not implemented in MVP');
