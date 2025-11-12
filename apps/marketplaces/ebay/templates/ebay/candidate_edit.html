@@ -98,19 +98,25 @@
             border-radius: 6px;
             overflow: hidden;
             cursor: move;
+            transition: all 0.2s;
+        }
+        .photo-item:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .photo-item.main-photo {
             border-color: #28a745;
         }
         .photo-item img {
             width: 100%;
-            height: 120px;
+            height: 150px;
             object-fit: cover;
             display: block;
+            cursor: pointer;
         }
         .main-badge {
             position: absolute;
-            bottom: 5px;
+            top: 5px;
             left: 5px;
             background: #28a745;
             color: white;
@@ -118,6 +124,51 @@
             border-radius: 3px;
             font-size: 11px;
             font-weight: bold;
+            z-index: 2;
+        }
+        .photo-actions {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            gap: 5px;
+            padding: 8px;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .photo-item:hover .photo-actions {
+            opacity: 1;
+        }
+        .btn-enhance,
+        .btn-mannequin {
+            flex: 1;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-enhance {
+            background: #ec4899;
+        }
+        .btn-enhance:hover {
+            background: #db2777;
+        }
+        .btn-mannequin {
+            background: #8b5cf6;
+        }
+        .btn-mannequin:hover {
+            background: #7c3aed;
+        }
+        .btn-enhance:disabled,
+        .btn-mannequin:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         .pricing-sidebar {
@@ -245,7 +296,31 @@
         </div>
         {% endif %}
 
-        <div class="ebay-fields">
+        <!-- Photos Section - Moved to top -->
+        <div class="field" style="margin-top: 30px;">
+            <label style="font-size: 18px; margin-bottom: 15px;">📸 Photos (drag to reorder)</label>
+            <div class="photo-list" id="ebay-photos">
+                {% for photo in photos %}
+                <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" data-photo-id="{{ photo.id }}" data-photo-url="{{ photo.url }}">
+                    <img src="{{ photo.url }}" alt="Product photo" onclick="openLightbox('{{ photo.url }}')">
+                    {% if photo.is_main %}
+                    <span class="main-badge">Main</span>
+                    {% endif %}
+                    <div class="photo-actions">
+                        <button type="button" class="btn-enhance" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" title="Улучшить фото (FASHN AI)">
+                            ✨ Enhance
+                        </button>
+                        <button type="button" class="btn-mannequin" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" title="Генерация модели (FASHN AI)">
+                            👤 Mannequin
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <small>{{ photos|length }} photo(s) - order will be preserved when publishing</small>
+        </div>
+
+        <div class="ebay-fields" style="margin-top: 30px;">
             <div>
                 <div class="field">
                     <label>Title (max 80 chars):</label>
@@ -273,21 +348,6 @@
                 <div class="field">
                     <label>Description (Markdown):</label>
                     <textarea id="ebay-description" rows="15">{{ candidate.description_md|default:'' }}</textarea>
-                </div>
-
-                <div class="field">
-                    <label>Photos (drag to reorder):</label>
-                    <div class="photo-list" id="ebay-photos">
-                        {% for photo in photos %}
-                        <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" data-photo-id="{{ photo.id }}" data-photo-url="{{ photo.url }}">
-                            <img src="{{ photo.url }}" alt="Product photo">
-                            {% if photo.is_main %}
-                            <span class="main-badge">Main</span>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <small>{{ photos|length }} photo(s) - order will be preserved when publishing</small>
                 </div>
             </div>
 
@@ -485,6 +545,94 @@
 
         function recalculatePrice() {
             alert('Price recalculation not implemented in MVP');
+        }
+
+        // FASHN API functions
+        async function enhancePhoto(photoId, mode) {
+            const photoItem = document.querySelector(`[data-photo-id="${photoId}"]`);
+            const img = photoItem ? photoItem.querySelector('img') : null;
+            const btnEnhance = photoItem ? photoItem.querySelector('.btn-enhance') : null;
+            const btnMannequin = photoItem ? photoItem.querySelector('.btn-mannequin') : null;
+            
+            // Disable buttons
+            if (btnEnhance) btnEnhance.disabled = true;
+            if (btnMannequin) btnMannequin.disabled = true;
+            if (img) img.style.opacity = '0.5';
+            
+            const modeText = mode === 'ghost_mannequin' ? 'Генерирую модель (может занять 30-60 сек)' : 'Улучшаю фото';
+            console.log(`${modeText} для фото ${photoId}...`);
+            
+            try {
+                const url = `/photos/api/enhance-photo/${photoId}/`;
+                console.log(`📡 Sending POST to: ${url}`);
+                
+                // Увеличенный timeout для FASHN (может занять до 2 минут)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 150000);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ mode: mode }),
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
+                
+                console.log(`📥 Response status: ${response.status}`);
+                const data = await response.json();
+                console.log('📥 Response data:', data);
+                
+                if (data.success) {
+                    console.log(`✅ ${data.message}`);
+                    alert(`✅ ${data.message || 'Готово!'}`);
+                    // Перезагружаем страницу чтобы показать новое фото
+                    window.location.reload();
+                } else {
+                    console.error('❌ FASHN API error:', data.error);
+                    alert(`❌ Ошибка FASHN AI:\n${data.error || 'Неизвестная ошибка'}`);
+                    if (img) img.style.opacity = '1';
+                }
+            } catch (error) {
+                console.error('❌ Exception in enhancePhoto:', error);
+                alert(`❌ Ошибка при обработке:\n${error.message}`);
+                if (img) img.style.opacity = '1';
+            } finally {
+                // Re-enable buttons
+                if (btnEnhance) btnEnhance.disabled = false;
+                if (btnMannequin) btnMannequin.disabled = false;
+            }
+        }
+
+        // Lightbox for photo viewing
+        function openLightbox(imageUrl) {
+            const lightbox = document.createElement('div');
+            lightbox.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.9);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            `;
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.cssText = `
+                max-width: 90%;
+                max-height: 90%;
+                object-fit: contain;
+            `;
+            
+            lightbox.appendChild(img);
+            lightbox.onclick = () => lightbox.remove();
+            document.body.appendChild(lightbox);
         }
     </script>
 </body>

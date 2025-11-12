@@ -415,22 +415,23 @@ def ebay_candidate_edit(request, candidate_id):
     photo_batch = candidate.photo_batch
     photos = photo_batch.photos.all() if photo_batch else []
     
-    # Get photo URLs in order
-    photo_urls = []
+    # Get photo data with full Photo objects for FASHN API
+    photo_data = []
     for photo in photos:
         if photo.image:
             request_scheme = request.scheme if hasattr(request, 'scheme') else 'https'
             request_host = request.get_host() if hasattr(request, 'get_host') else 'pochtoy.us'
             photo_url = f"{request_scheme}://{request_host}{photo.image.url}"
-            photo_urls.append({
+            photo_data.append({
                 'id': photo.id,
                 'url': photo_url,
                 'is_main': photo.is_main,
                 'order': photo.order,
+                'photo_obj': photo,  # Full Photo object for FASHN API
             })
     
     return render(request, 'ebay/candidate_edit.html', {
         'candidate': candidate,
         'photo_batch': photo_batch,
-        'photos': photo_urls,
+        'photos': photo_data,
     })
