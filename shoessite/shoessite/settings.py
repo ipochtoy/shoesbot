@@ -12,12 +12,22 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import sys
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Add parent directory to path for apps module
 sys.path.insert(0, str(BASE_DIR.parent))
+
+# Load .env file if it exists
+env_file = BASE_DIR.parent.parent / '.env'
+if env_file.exists():
+    from dotenv import load_dotenv
+    load_dotenv(env_file)
+    print(f"✅ Загружен .env из: {env_file}")
+else:
+    print(f"⚠️ .env файл не найден: {env_file}")
 
 
 # Quick-start development settings - unsuitable for production
