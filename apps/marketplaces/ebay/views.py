@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, render
 from django.contrib.admin.views.decorators import staff_member_required
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+import json
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import EbayCandidate, EbayToken
@@ -434,6 +435,7 @@ def ebay_candidate_edit(request, candidate_id):
         'candidate': candidate,
         'photo_batch': photo_batch,
         'photos': photo_data,
+        'candidate_specifics_json': json.dumps(candidate.specifics or {}),
     })
 
 

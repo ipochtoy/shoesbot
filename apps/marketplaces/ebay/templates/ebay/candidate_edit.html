@@ -482,7 +482,7 @@
     <script>
         const candidateId = {{ candidate.id }};
         const batchId = {{ candidate.photo_batch.id|default:"null" }};
-        const candidateSpecifics = {{ candidate.specifics|safe }};
+        const candidateSpecifics = {{ candidate_specifics_json|safe }};
 
         // Update title length counter
         document.getElementById('ebay-title').addEventListener('input', function() {
