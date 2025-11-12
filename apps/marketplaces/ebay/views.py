@@ -1554,22 +1554,41 @@ def ebay_marketplace_deletion_webhook(request):
     This endpoint receives notifications from eBay when a marketplace account
     is deleted or closed. Required for API compliance.
     
-    GET: Verification challenge (eBay sends verification token)
+    GET: Verification challenge (eBay sends challenge_code, we return SHA256 hash)
     POST: Actual notification about account deletion
     """
     import os
+    import hashlib
     
     # GET request - verification challenge
     if request.method == 'GET':
-        verification_token = request.GET.get('challenge_code')
-        expected_token = os.getenv('EBAY_VERIFICATION_TOKEN', '')
+        challenge_code = request.GET.get('challenge_code')
+        verification_token = os.getenv('EBAY_VERIFICATION_TOKEN', '')
         
-        if verification_token and expected_token and verification_token == expected_token:
-            print(f"[eBay Webhook] Verification successful: {verification_token[:10]}...")
-            return JsonResponse({'challengeResponse': verification_token})
-        else:
-            print(f"[eBay Webhook] Verification failed or token not set")
-            return JsonResponse({'error': 'Invalid verification token'}, status=400)
+        if not challenge_code:
+            print(f"[eBay Webhook] No challenge_code provided")
+            return JsonResponse({'error': 'Missing challenge_code'}, status=400)
+        
+        if not verification_token:
+            print(f"[eBay Webhook] Verification token not set in environment")
+            return JsonResponse({'error': 'Verification token not configured'}, status=500)
+        
+        # Get the full endpoint URL (including https://)
+        endpoint = request.build_absolute_uri().split('?')[0]  # Remove query params
+        
+        # Compute SHA256 hash: challengeCode + verificationToken + endpoint
+        # Order is critical: challengeCode + verificationToken + endpoint
+        m = hashlib.sha256()
+        m.update(challenge_code.encode('utf-8'))
+        m.update(verification_token.encode('utf-8'))
+        m.update(endpoint.encode('utf-8'))
+        challenge_response = m.hexdigest()
+        
+        print(f"[eBay Webhook] Challenge received: {challenge_code[:10]}...")
+        print(f"[eBay Webhook] Endpoint: {endpoint}")
+        print(f"[eBay Webhook] Challenge response hash: {challenge_response[:20]}...")
+        
+        return JsonResponse({'challengeResponse': challenge_response})
     
     # POST request - actual notification
     try:
