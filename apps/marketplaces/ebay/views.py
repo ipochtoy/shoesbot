@@ -541,17 +541,37 @@ class GPTAnalysisView(APIView):
         # OpenAI analysis
         if provider in ['openai', 'both']:
             try:
+                import os
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                # Check API key
+                api_key = os.getenv('OPENAI_API_KEY')
+                logger.info(f"OpenAI API key check: {'Found' if api_key else 'NOT FOUND'} (length: {len(api_key) if api_key else 0})")
+                
                 from photos.ai_helpers import generate_product_summary
+                logger.info(f"Calling generate_product_summary with {len(photo_urls)} photo URLs, {len(barcodes) if barcodes else 0} barcodes")
+                
                 openai_summary = generate_product_summary(
                     photo_urls=photo_urls,
                     barcodes=barcodes[:5] if barcodes else None,
                     gg_labels=gg_labels[:5] if gg_labels else None
                 )
                 
+                logger.info(f"generate_product_summary returned: {type(openai_summary)}, length: {len(openai_summary) if openai_summary else 0}")
+                
                 if not openai_summary:
+                    error_msg = 'No summary generated'
+                    if not api_key:
+                        error_msg += ' - OpenAI API key not found'
+                    elif not photo_urls:
+                        error_msg += ' - No photo URLs provided'
+                    else:
+                        error_msg += ' - Check OpenAI API response and photo URLs accessibility'
+                    
                     results['openai'] = {
                         'success': False,
-                        'error': 'No summary generated - check OpenAI API key and photo URLs'
+                        'error': error_msg
                     }
                 else:
                     # Parse structured data from summary
@@ -564,6 +584,9 @@ class GPTAnalysisView(APIView):
                     }
             except Exception as e:
                 import traceback
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Exception in OpenAI analysis: {e}\n{traceback.format_exc()}")
                 results['openai'] = {
                     'success': False,
                     'error': str(e),
