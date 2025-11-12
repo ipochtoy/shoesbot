@@ -649,17 +649,30 @@ def generate_product_summary(photo_data_list: List[Dict] = None, photo_urls: Lis
         # Формируем контент с фото
         content = [{
             'type': 'text',
-            'text': f'''OCR Task: Read text from retail product labels/tags.
+            'text': f'''OCR Task: Read ALL text from retail product labels/tags, packaging, and product itself.
 
 {context_text if context_text else ""}
 
-Extract visible text and fill template below in Russian:
+ВАЖНО: Извлеки ВСЕ видимые данные:
+- Все текстовые надписи на упаковке, этикетках, бирках
+- Все баркоды и коды (EAN, UPC, QR-коды)
+- Все номера моделей, артикулов, серийных номеров
+- Все размеры, цвета, материалы
+- Все бренды и логотипы
+- Все технические характеристики
+- Все предупреждения и инструкции
+
+Заполни шаблон ниже на русском языке:
 
 **Что это за товар:**
 ОБЯЗАТЕЛЬНО включи бренд в описание. Формат: "Тип товара от [БРЕНД]" (например: "Свитер от Tommy Hilfiger", "Рубашка от Stone Island").
 
 **Бренд и модель:**
 Полное название бренда с этикетки (Tommy Hilfiger, Stone Island, Zara, Victoria's Secret, XGO, Nike, Adidas и т.д.).
+Модель/артикул если указан.
+
+**ВСЕ найденные коды и номера:**
+Перечисли ВСЕ баркоды, EAN, UPC, артикулы, серийные номера, которые видишь на фото.
 
 **Размер и характеристики:**
 Размер (S/M/L/XL или числа), материал, состав ткани.
@@ -685,7 +698,10 @@ new
 **Описание для продажи:**
 3-4 предложения про материал, характеристики, применение на основе информации с этикетки.
 
-Just read and transcribe label text.'''
+**ВСЕ найденные текстовые надписи:**
+Перечисли все видимые надписи, логотипы, тексты на упаковке и товаре.
+
+Just read and transcribe ALL visible text and codes.'''
         }]
         
         # Добавляем фото (до 2 для ускорения, обычно достаточно первого фото с упаковкой)

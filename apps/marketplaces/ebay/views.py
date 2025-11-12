@@ -420,6 +420,8 @@ def ebay_candidate_analyze(request, candidate_id):
     # Get photo data
     photo_data = []
     barcodes = []
+    gg_labels = []
+    
     for photo in photos:
         if photo.image:
             request_scheme = request.scheme if hasattr(request, 'scheme') else 'https'
@@ -435,12 +437,24 @@ def ebay_candidate_analyze(request, candidate_id):
             for barcode in photo.barcodes.all():
                 if barcode.data not in barcodes:
                     barcodes.append(barcode.data)
+                # Collect GG labels
+                if barcode.source == 'gg-label' or (barcode.symbology == 'CODE39' and barcode.data.startswith('Q')):
+                    if barcode.data not in gg_labels:
+                        gg_labels.append(barcode.data)
+    
+    # Also get GG labels from photo batch method
+    if photo_batch:
+        batch_gg_labels = photo_batch.get_gg_labels()
+        for label in batch_gg_labels:
+            if label not in gg_labels:
+                gg_labels.append(label)
     
     return render(request, 'ebay/candidate_analyze.html', {
         'candidate': candidate,
         'photo_batch': photo_batch,
         'photos': photo_data,
         'barcodes': barcodes,
+        'gg_labels': gg_labels,
     })
 
 
@@ -584,10 +598,49 @@ class GPTAnalysisView(APIView):
                     # Parse structured data from summary
                     structured_data = self._parse_summary_to_structured(openai_summary, barcodes)
                     
+                    # Search for stock photos
+                    stock_photos = []
+                    try:
+                        from photos.views import search_stock_photos_api
+                        from django.http import HttpRequest
+                        # Create a mock request for stock photos search
+                        mock_request = HttpRequest()
+                        mock_request.method = 'GET'
+                        mock_request.GET = {'barcode': barcodes[0]} if barcodes else {}
+                        mock_request.META = {}
+                        
+                        # Get photo paths for stock photo search
+                        import os
+                        photo_paths = []
+                        for photo in photos:
+                            if photo.image:
+                                try:
+                                    photo_path = photo.image.path
+                                    if os.path.exists(photo_path):
+                                        photo_paths.append(photo_path)
+                                except:
+                                    pass
+                        
+                        # Search stock photos using existing function
+                        if photo_paths or barcodes:
+                            # Use the search_stock_photos function directly
+                            from photos.views import search_stock_photos
+                            search_query = structured_data.get('title', '') or (barcodes[0] if barcodes else 'product')
+                            stock_result = search_stock_photos(search_query, photo_paths[:2] if photo_paths else None)
+                            if stock_result and isinstance(stock_result, list):
+                                stock_photos = stock_result[:12]  # Limit to 12 photos
+                            elif stock_result and isinstance(stock_result, dict) and 'images' in stock_result:
+                                stock_photos = stock_result['images'][:12]
+                    except Exception as e:
+                        import traceback
+                        print(f"[GPTAnalysis] Stock photos search error: {e}")
+                        traceback.print_exc()
+                    
                     results['openai'] = {
                         'success': True,
                         'summary': openai_summary,
-                        'data': structured_data
+                        'data': structured_data,
+                        'stock_photos': stock_photos
                     }
             except ValueError as e:
                 # Handle specific API errors

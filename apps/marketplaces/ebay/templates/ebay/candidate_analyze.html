@@ -241,6 +241,86 @@
             background: #9ca3af;
             cursor: not-allowed;
         }
+        .extracted-data-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f0f9ff;
+            border-radius: 6px;
+            border: 1px solid #bae6fd;
+        }
+        .extracted-data-section h3 {
+            margin-bottom: 15px;
+            color: #0369a1;
+        }
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .data-item {
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #e0e7ff;
+        }
+        .data-item strong {
+            display: block;
+            color: #4338ca;
+            margin-bottom: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+        .data-item span {
+            color: #1e293b;
+            font-size: 14px;
+            word-break: break-word;
+        }
+        .stock-photos-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fef3c7;
+            border-radius: 6px;
+            border: 1px solid #fcd34d;
+        }
+        .stock-photos-section h3 {
+            margin-bottom: 15px;
+            color: #92400e;
+        }
+        .stock-photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stock-photo-item {
+            position: relative;
+            border: 2px solid #fbbf24;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .stock-photo-item:hover {
+            transform: scale(1.05);
+            border-color: #f59e0b;
+        }
+        .stock-photo-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            display: block;
+        }
+        .stock-photo-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px;
+            font-size: 10px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -272,15 +352,30 @@
             </div>
         </div>
 
-        <!-- Barcodes Section -->
-        {% if barcodes %}
+        <!-- Barcodes & GG Labels Section -->
+        {% if barcodes or gg_labels %}
         <div class="barcodes-section">
             <h3>🏷️ Found Barcodes & Codes</h3>
-            <div class="barcode-list">
-                {% for barcode in barcodes %}
-                <span class="barcode-tag">{{ barcode }}</span>
-                {% endfor %}
+            {% if barcodes %}
+            <div style="margin-bottom: 15px;">
+                <strong style="font-size: 12px; color: #6b7280;">Barcodes:</strong>
+                <div class="barcode-list">
+                    {% for barcode in barcodes %}
+                    <span class="barcode-tag">{{ barcode }}</span>
+                    {% endfor %}
+                </div>
             </div>
+            {% endif %}
+            {% if gg_labels %}
+            <div>
+                <strong style="font-size: 12px; color: #6b7280;">GG Labels:</strong>
+                <div class="barcode-list">
+                    {% for label in gg_labels %}
+                    <span class="barcode-tag" style="background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold;">{{ label }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
         {% endif %}
 
@@ -360,6 +455,7 @@
                         <h3>🤖 OpenAI Analysis</h3>
                         <div class="result-summary">${escapeHtml(data.openai.summary || 'No summary')}</div>
                         ${displayStructuredData(data.openai.data, 'openai')}
+                        ${displayStockPhotos(data.openai.stock_photos)}
                         <button class="btn-select" onclick="selectData('openai', ${JSON.stringify(data.openai.data).replace(/"/g, '&quot;')})">
                             ✓ Use This Data
                         </button>
@@ -411,16 +507,38 @@
 
         function displayStructuredData(data, source) {
             if (!data) return '';
-            let html = '<div class="result-data">';
-            if (data.title) html += `<div class="result-data-item"><strong>Title:</strong> ${escapeHtml(data.title)}</div>`;
-            if (data.brand) html += `<div class="result-data-item"><strong>Brand:</strong> ${escapeHtml(data.brand)}</div>`;
-            if (data.model) html += `<div class="result-data-item"><strong>Model:</strong> ${escapeHtml(data.model)}</div>`;
-            if (data.category_id) html += `<div class="result-data-item"><strong>Category ID:</strong> ${escapeHtml(data.category_id)}</div>`;
-            if (data.condition) html += `<div class="result-data-item"><strong>Condition:</strong> ${escapeHtml(data.condition)}</div>`;
+            let html = '<div class="extracted-data-section"><h3>📋 Извлеченные данные</h3><div class="data-grid">';
+            if (data.title) html += `<div class="data-item"><strong>Название:</strong><span>${escapeHtml(data.title)}</span></div>`;
+            if (data.brand) html += `<div class="data-item"><strong>Бренд:</strong><span>${escapeHtml(data.brand)}</span></div>`;
+            if (data.model) html += `<div class="data-item"><strong>Модель:</strong><span>${escapeHtml(data.model)}</span></div>`;
+            if (data.category_id) html += `<div class="data-item"><strong>Категория ID:</strong><span>${escapeHtml(data.category_id)}</span></div>`;
+            if (data.condition) html += `<div class="data-item"><strong>Состояние:</strong><span>${escapeHtml(data.condition)}</span></div>`;
+            if (data.description) html += `<div class="data-item" style="grid-column: 1 / -1;"><strong>Описание:</strong><span>${escapeHtml(data.description)}</span></div>`;
             if (data.specifics && Object.keys(data.specifics).length > 0) {
-                html += `<div class="result-data-item"><strong>Specifics:</strong> ${JSON.stringify(data.specifics)}</div>`;
+                let specificsHtml = '';
+                for (let key in data.specifics) {
+                    specificsHtml += `${escapeHtml(key)}: ${escapeHtml(data.specifics[key])}<br>`;
+                }
+                html += `<div class="data-item" style="grid-column: 1 / -1;"><strong>Характеристики:</strong><span>${specificsHtml}</span></div>`;
             }
-            html += '</div>';
+            html += '</div></div>';
+            return html;
+        }
+
+        function displayStockPhotos(stockPhotos) {
+            if (!stockPhotos || stockPhotos.length === 0) return '';
+            let html = '<div class="stock-photos-section"><h3>📷 Найденные стоковые фото</h3><div class="stock-photos-grid">';
+            stockPhotos.forEach((photo, index) => {
+                const photoUrl = photo.url || photo;
+                const thumbnail = photo.thumbnail || photoUrl;
+                html += `
+                    <div class="stock-photo-item" onclick="openLightbox('${photoUrl}')">
+                        <img src="${thumbnail}" alt="Stock photo ${index + 1}" onerror="this.src='${photoUrl}'">
+                        <div class="stock-photo-overlay">${photo.source || 'stock'}</div>
+                    </div>
+                `;
+            });
+            html += '</div></div>';
             return html;
         }
 
