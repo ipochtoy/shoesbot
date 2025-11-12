@@ -548,14 +548,20 @@ class GPTAnalysisView(APIView):
                     gg_labels=gg_labels[:5] if gg_labels else None
                 )
                 
-                # Parse structured data from summary
-                structured_data = self._parse_summary_to_structured(openai_summary, barcodes)
-                
-                results['openai'] = {
-                    'success': True,
-                    'summary': openai_summary,
-                    'data': structured_data
-                }
+                if not openai_summary:
+                    results['openai'] = {
+                        'success': False,
+                        'error': 'No summary generated - check OpenAI API key and photo URLs'
+                    }
+                else:
+                    # Parse structured data from summary
+                    structured_data = self._parse_summary_to_structured(openai_summary, barcodes)
+                    
+                    results['openai'] = {
+                        'success': True,
+                        'summary': openai_summary,
+                        'data': structured_data
+                    }
             except Exception as e:
                 import traceback
                 results['openai'] = {
@@ -592,6 +598,9 @@ class GPTAnalysisView(APIView):
         """Parse GPT summary into structured eBay listing data."""
         import re
         
+        if not summary:
+            summary = ''
+        
         data = {
             'title': '',
             'description': summary,
@@ -603,7 +612,7 @@ class GPTAnalysisView(APIView):
         }
         
         # Extract title (first line or first sentence)
-        lines = summary.split('\n')
+        lines = summary.split('\n') if summary else []
         if lines:
             first_line = lines[0].strip()
             if len(first_line) <= 80:
@@ -652,6 +661,8 @@ class GPTAnalysisView(APIView):
     
     def _parse_google_to_structured(self, description: str, barcodes: list) -> dict:
         """Parse Google description into structured data."""
+        if not description:
+            description = ''
         return {
             'title': description.split('.')[0][:80] if description else '',
             'description': description or '',
