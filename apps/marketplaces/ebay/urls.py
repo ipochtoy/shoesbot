@@ -14,6 +14,8 @@ from .views import (
     ebay_candidate_edit,
     GPTPreviewView,
     GPTAnalysisView,
+    EbaySearchView,
+    ebay_marketplace_deletion_webhook,
 )
 
 app_name = 'ebay'
@@ -42,6 +44,12 @@ urlpatterns = [
     # GPT Analysis endpoints
     path('analyze/', GPTAnalysisView.as_view(), name='gpt-analyze'),
     path('gpt-preview/', GPTPreviewView.as_view(), name='gpt-preview'),
+    
+    # eBay Search endpoint (separate from analysis to avoid timeouts)
+    path('search/', EbaySearchView.as_view(), name='ebay-search'),
+    
+    # eBay Marketplace Account Deletion webhook (for API compliance)
+    path('webhook/marketplace-deletion/', ebay_marketplace_deletion_webhook, name='ebay-marketplace-deletion-webhook'),
 
     # Include router URLs
     path('', include(router.urls)),
