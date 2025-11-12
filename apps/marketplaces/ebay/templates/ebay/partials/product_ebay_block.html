@@ -261,7 +261,7 @@
 </style>
 
 <script>
-const candidateId = {{ ebay_candidate.id|default:"null" }};
+const candidateId = {% if ebay_candidate %}{{ ebay_candidate.id }}{% else %}null{% endif %};
 const batchId = {{ card.id }};
 
 // Get CSRF token from cookie or form
