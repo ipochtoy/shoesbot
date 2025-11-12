@@ -21,13 +21,25 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR.parent))
 
 # Load .env file if it exists
-env_file = BASE_DIR.parent.parent / '.env'
-if env_file.exists():
+# Try multiple locations: project root, parent of BASE_DIR, and BASE_DIR
+env_locations = [
+    BASE_DIR.parent.parent / '.env',  # /home/pochtoy/shoesbot/.env
+    BASE_DIR.parent / '.env',         # /home/pochtoy/shoesbot/shoessite/.env
+    BASE_DIR / '.env',                # /home/pochtoy/shoesbot/shoessite/shoessite/.env
+]
+
+env_file = None
+for loc in env_locations:
+    if loc.exists():
+        env_file = loc
+        break
+
+if env_file:
     from dotenv import load_dotenv
     load_dotenv(env_file)
     print(f"✅ Загружен .env из: {env_file}")
 else:
-    print(f"⚠️ .env файл не найден: {env_file}")
+    print(f"⚠️ .env файл не найден. Проверенные пути: {env_locations}")
 
 
 # Quick-start development settings - unsuitable for production
