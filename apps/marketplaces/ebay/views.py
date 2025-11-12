@@ -547,9 +547,12 @@ class GPTAnalysisView(APIView):
                 
                 # Check API key
                 api_key = os.getenv('OPENAI_API_KEY')
+                print(f"[GPTAnalysis] OpenAI API key check: {'Found' if api_key else 'NOT FOUND'} (length: {len(api_key) if api_key else 0})")
                 logger.info(f"OpenAI API key check: {'Found' if api_key else 'NOT FOUND'} (length: {len(api_key) if api_key else 0})")
                 
                 from photos.ai_helpers import generate_product_summary
+                print(f"[GPTAnalysis] Calling generate_product_summary with {len(photo_urls)} photo URLs, {len(barcodes) if barcodes else 0} barcodes")
+                print(f"[GPTAnalysis] Photo URLs: {photo_urls[:2]}")
                 logger.info(f"Calling generate_product_summary with {len(photo_urls)} photo URLs, {len(barcodes) if barcodes else 0} barcodes")
                 
                 openai_summary = generate_product_summary(
@@ -558,6 +561,9 @@ class GPTAnalysisView(APIView):
                     gg_labels=gg_labels[:5] if gg_labels else None
                 )
                 
+                print(f"[GPTAnalysis] generate_product_summary returned: {type(openai_summary)}, length: {len(openai_summary) if openai_summary else 0}")
+                if openai_summary:
+                    print(f"[GPTAnalysis] Summary preview: {openai_summary[:200]}")
                 logger.info(f"generate_product_summary returned: {type(openai_summary)}, length: {len(openai_summary) if openai_summary else 0}")
                 
                 if not openai_summary:
