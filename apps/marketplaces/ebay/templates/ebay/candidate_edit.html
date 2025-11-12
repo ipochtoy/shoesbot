@@ -117,17 +117,17 @@
         }
         .photo-controls {
             position: absolute;
-            top: 8px;
-            right: 8px;
+            top: 6px;
+            right: 6px;
             display: flex;
-            gap: 4px;
+            gap: 2px;
             flex-wrap: wrap;
-            max-width: 100px;
+            max-width: 90px;
             z-index: 10;
         }
         .photo-controls .btn {
-            padding: 3px 5px;
-            font-size: 10px;
+            padding: 2px 4px;
+            font-size: 8px;
             background: rgba(0,0,0,0.7);
             color: white;
             border-radius: 3px;
@@ -142,29 +142,29 @@
         }
         .photo-main-badge {
             position: absolute;
-            top: 8px;
-            left: 8px;
+            top: 6px;
+            left: 6px;
             background: #f59e0b;
             color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 500;
             z-index: 10;
         }
         .photo-info {
-            padding: 4px 6px;
+            padding: 3px 4px;
             background: #f9fafb;
-            font-size: 10px;
+            font-size: 8px;
             color: #6b7280;
         }
         .photo-info button {
-            margin-top: 4px;
+            margin-top: 3px;
             width: 100%;
             background: #ef4444;
             color: white;
-            padding: 3px 6px;
-            font-size: 10px;
+            padding: 2px 4px;
+            font-size: 8px;
             border: none;
             border-radius: 3px;
             cursor: pointer;
@@ -172,14 +172,14 @@
         .photo-info .fashn-buttons {
             display: flex;
             gap: 2px;
-            margin-top: 4px;
+            margin-top: 3px;
             flex-wrap: wrap;
         }
         .photo-info .fashn-buttons button {
             flex: 1;
-            padding: 3px 4px;
-            font-size: 9px;
-            min-width: 45px;
+            padding: 2px 3px;
+            font-size: 7px;
+            min-width: 40px;
             margin-top: 0;
         }
         .photo-info .fashn-buttons .btn-mannequin {
@@ -300,28 +300,9 @@
             </div>
         </div>
 
-        <div class="status-badge status-{{ candidate.status }}">
-            {{ candidate.get_status_display|upper }}
-        </div>
-
-        {% if candidate.ebay_item_id %}
-        <div class="alert alert-info">
-            <strong>Listed on eBay:</strong> 
-            <a href="https://www.ebay.com/itm/{{ candidate.ebay_item_id }}" target="_blank">
-                View on eBay (Item #{{ candidate.ebay_item_id }})
-            </a>
-        </div>
-        {% endif %}
-
-        {% if candidate.missing_required_fields %}
-        <div class="alert alert-warning">
-            <strong>Missing required fields:</strong> {{ candidate.missing_required_fields|join:", " }}
-        </div>
-        {% endif %}
-
         <!-- Photos Section - Moved to top -->
-        <div class="field" style="margin-top: 30px;">
-            <label style="font-size: 18px; margin-bottom: 15px;">📸 Photos (drag to reorder)</label>
+        <div class="field" style="margin-top: 15px;">
+            <label style="font-size: 14px; margin-bottom: 10px; font-weight: 500;">📸 Photos (drag to reorder)</label>
             <div class="photo-list" id="ebay-photos">
                 {% for photo in photos %}
                 <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" id="photo-{{ photo.id }}" data-photo-id="{{ photo.id }}" data-photo-url="{{ photo.url }}">
@@ -348,8 +329,27 @@
                 </div>
                 {% endfor %}
             </div>
-            <small>{{ photos|length }} photo(s) - order will be preserved when publishing</small>
+            <small style="font-size: 11px;">{{ photos|length }} photo(s) - order will be preserved when publishing</small>
         </div>
+
+        <div class="status-badge status-{{ candidate.status }}">
+            {{ candidate.get_status_display|upper }}
+        </div>
+
+        {% if candidate.ebay_item_id %}
+        <div class="alert alert-info">
+            <strong>Listed on eBay:</strong> 
+            <a href="https://www.ebay.com/itm/{{ candidate.ebay_item_id }}" target="_blank">
+                View on eBay (Item #{{ candidate.ebay_item_id }})
+            </a>
+        </div>
+        {% endif %}
+
+        {% if candidate.missing_required_fields %}
+        <div class="alert alert-warning">
+            <strong>Missing required fields:</strong> {{ candidate.missing_required_fields|join:", " }}
+        </div>
+        {% endif %}
 
         <div class="ebay-fields" style="margin-top: 30px;">
             <div>
