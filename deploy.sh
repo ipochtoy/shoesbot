@@ -41,6 +41,10 @@ echo "🎨 Collecting static files..."
 ../.venv/bin/python manage.py collectstatic --noinput
 cd ..
 
+# Фиксируем права доступа для nginx
+echo "🔒 Fixing static permissions..."
+bash fix_static_permissions.sh
+
 # Перезапускаем Django (бот НЕ трогаем - священная корова!)
 echo "🔄 Restarting Django..."
 sudo systemctl restart shoesdjango.service
