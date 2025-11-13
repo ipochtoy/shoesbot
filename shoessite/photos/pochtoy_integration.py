@@ -257,8 +257,8 @@ def delete_from_pochtoy(trackings: List[str]) -> Dict:
         Result dict
     """
     try:
-        # Правильный URL для удаления - /api/garage/delete (не garage-tg!)
-        POCHTOY_DELETE_URL = 'https://pochtoy-test.pochtoy3.ru/api/garage/delete'
+        # URL от программиста Pochtoy - garage-tg, не garage!
+        POCHTOY_DELETE_URL = 'https://pochtoy-test.pochtoy3.ru/api/garage-tg/delete'
         
         if not trackings:
             return {'success': False, 'error': 'No trackings'}
