@@ -186,7 +186,7 @@ def send_buffer_group_to_pochtoy(group_photos: List) -> Optional[Dict]:
             'Authorization': f'Bearer {POCHTOY_API_TOKEN}'
         }
         
-        response = requests.put(POCHTOY_API_URL, json=payload, headers=headers, timeout=60)
+        response = requests.post(POCHTOY_API_URL, json=payload, headers=headers, timeout=60)
         
         print(f"Pochtoy response status: {response.status_code}")
         print(f"Pochtoy response body: {response.text}")
