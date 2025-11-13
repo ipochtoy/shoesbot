@@ -1,5 +1,7 @@
 import os
 import sys
+import socket
+import fcntl
 
 # Fix for pyzbar on macOS - must be before any pyzbar imports
 if sys.platform == "darwin":
@@ -9,9 +11,29 @@ if sys.platform == "darwin":
         current_dyld = os.environ.get("DYLD_LIBRARY_PATH", "")
         os.environ["DYLD_LIBRARY_PATH"] = f"{zbar_lib}:{current_dyld}".rstrip(":")
 
+
+def acquire_lock():
+    """Prevent multiple bot instances using file lock."""
+    lock_file = '/tmp/shoesbot.lock'
+    lock_fd = open(lock_file, 'w')
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock_fd.write(str(os.getpid()))
+        lock_fd.flush()
+        return lock_fd
+    except IOError:
+        print("❌ ERROR: Another instance of bot.py is already running!")
+        print("❌ Only ONE bot can run with this token.")
+        print("❌ Stop other instances or run on server: ssh gcp-shoesbot 'sudo systemctl status shoesbot.service'")
+        sys.exit(1)
+
+
 from shoesbot.telegram_bot import build_app
 
 if __name__ == "__main__":
+    # Acquire lock to prevent duplicate instances
+    lock = acquire_lock()
+    
     app = build_app()
     
     mode = os.getenv("MODE", "polling").lower()
