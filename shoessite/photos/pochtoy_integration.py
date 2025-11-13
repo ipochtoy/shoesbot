@@ -73,7 +73,7 @@ def send_card_to_pochtoy(card) -> Optional[Dict]:
             'Authorization': f'Bearer {POCHTOY_API_TOKEN}'
         }
         
-        response = requests.put(
+        response = requests.post(
             POCHTOY_API_URL,
             json=payload,
             headers=headers,
