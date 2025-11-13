@@ -272,22 +272,24 @@ def delete_from_pochtoy(trackings: List[str]) -> Dict:
         
         print(f"Deleting from Pochtoy ({POCHTOY_DELETE_URL}): {trackings}")
         
-        # Пробуем разные методы если нужно
-        response = None
-        for method_func in [requests.delete, requests.post, requests.put]:
-            try:
-                response = method_func(POCHTOY_DELETE_URL, json=payload, headers=headers, timeout=30)
-                print(f"Pochtoy {method_func.__name__.upper()} response: {response.status_code}")
-                
-                # Если не 405, то нашли правильный метод
-                if response.status_code != 405:
-                    break
-            except Exception as e:
-                print(f"Method {method_func.__name__} failed: {e}")
-                continue
+        # DELETE метод - отправляем trackings в query params или body
+        # Пробуем вариант 1: trackings в query params
+        params = {'trackings': ','.join(trackings)}
+        response = requests.delete(POCHTOY_DELETE_URL, params=params, headers=headers, timeout=30)
         
-        if not response:
-            return {'success': False, 'error': 'All HTTP methods failed'}
+        print(f"Pochtoy DELETE (params) response: {response.status_code}")
+        
+        # Если не сработало, пробуем с json body
+        if response.status_code == 405:
+            response = requests.delete(POCHTOY_DELETE_URL, json=payload, headers=headers, timeout=30)
+            print(f"Pochtoy DELETE (json) response: {response.status_code}")
+        
+        # Если все равно 405, может вообще удаление не поддерживается
+        if response.status_code == 405:
+            print("DELETE method not supported, trying POST with action=delete")
+            payload['action'] = 'delete'
+            response = requests.post(POCHTOY_API_URL, json=payload, headers=headers, timeout=30)
+            print(f"Pochtoy POST (action=delete) response: {response.status_code}")
         
         print(f"Response: {response.text}")
         
