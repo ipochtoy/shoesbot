@@ -1,0 +1,17 @@
+#!/bin/bash
+# Post-merge hook - запускается после git pull/merge
+
+echo "🔍 Post-merge checks..."
+cd /home/pochtoy/shoesbot
+
+if ! ./run_tests.sh; then
+    echo ""
+    echo "❌❌❌ TESTS FAILED AFTER MERGE ❌❌❌"
+    echo ""
+    echo "Откатываю изменения..."
+    git reset --hard HEAD~1
+    sudo systemctl restart shoesdjango.service
+    exit 1
+fi
+
+echo "✅ Post-merge checks passed"

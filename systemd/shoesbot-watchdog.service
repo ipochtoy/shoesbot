@@ -1,0 +1,12 @@
+[Unit]
+Description=ShoesBot Watchdog
+After=network.target
+
+[Service]
+Type=simple
+User=pochtoy
+ExecStart=/home/pochtoy/shoesbot/watchdog.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

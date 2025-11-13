@@ -1,0 +1,19 @@
+[Unit]
+Description=ShoesBot Django Dev Server
+After=network.target
+
+[Service]
+UMask=0022
+Type=simple
+User=pochtoy
+WorkingDirectory=/home/pochtoy/shoesbot/shoessite
+Environment="PATH=/home/pochtoy/shoesbot/.venv/bin:/usr/bin"
+Environment="DEV_MODE=1"
+ExecStart=/home/pochtoy/shoesbot/.venv/bin/python3 manage.py runserver 0.0.0.0:8001 --settings=shoessite.settings_dev --noreload
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/pochtoy/shoesbot/django-dev.log
+StandardError=append:/home/pochtoy/shoesbot/django-dev.log
+
+[Install]
+WantedBy=multi-user.target

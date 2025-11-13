@@ -241,3 +241,29 @@ if SENTRY_DSN:
     except Exception as _sentry_err:
         # Never fail settings because of Sentry
         print(f"⚠️ Sentry init skipped: {_sentry_err}")
+
+# =============================================================================
+# GOOGLE CLOUD STORAGE для защиты фото (опционально)
+# =============================================================================
+
+USE_GCS = os.environ.get('USE_GCS', 'false').lower() == 'true'
+
+if USE_GCS and not DEBUG:
+    # Требует установки: pip install django-storages[google] google-cloud-storage
+    DEFAULT_FILE_STORAGE = 'storages.backends.gcs.GSGoogleCloudStorage'
+    GS_BUCKET_NAME = 'shoesbot-media-prod'
+    GS_PROJECT_ID = 'pochtoy'
+    MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+    print("✅ Google Cloud Storage enabled for media")
+
+# =============================================================================
+# PRODUCTION OVERRIDES - НЕ ТРОГАТЬ при rsync
+# =============================================================================
+
+if not os.environ.get('DEV_MODE'):
+    # Production настройки для статики и медиа
+    STATIC_ROOT = '/var/www/shoesbot/static/'
+    STATIC_URL = '/static/'
+    if not USE_GCS:
+        MEDIA_ROOT = '/home/pochtoy/shoesbot/shoessite/media'
+        MEDIA_URL = '/media/'
