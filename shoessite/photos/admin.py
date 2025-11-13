@@ -59,19 +59,29 @@ class PhotoBatchAdmin(admin.ModelAdmin):
     
     def photo_previews(self, obj):
         """Показываем маленькие превью фото."""
+        import os
         photos = obj.photos.all()[:4]  # Первые 4 фото
         if not photos:
             return "-"
         previews = []
         for photo in photos:
             if photo.image:
-                previews.append(
-                    format_html(
-                        '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; margin: 2px; border: 1px solid #ddd; border-radius: 4px;" />',
-                        photo.image.url
+                # Проверяем существование файла
+                if os.path.exists(photo.image.path):
+                    previews.append(
+                        format_html(
+                            '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; margin: 2px; border: 1px solid #ddd; border-radius: 4px;" />',
+                            photo.image.url
+                        )
                     )
-                )
-        return format_html(''.join(previews))
+                else:
+                    # Показываем placeholder для отсутствующих файлов
+                    previews.append(
+                        format_html(
+                            '<div style="width: 50px; height: 50px; margin: 2px; border: 1px solid #ddd; border-radius: 4px; background: #f3f4f6; display: inline-flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 10px;" title="Файл отсутствует">❌</div>'
+                        )
+                    )
+        return format_html(''.join(previews)) if previews else "-"
     photo_previews.short_description = 'Превью'
     
     def get_queryset(self, request):
