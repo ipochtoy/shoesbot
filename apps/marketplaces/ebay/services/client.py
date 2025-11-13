@@ -258,7 +258,7 @@ class EbayClient:
             return {
                 'success': False,
                 'error': resp.text,
-            }
+        }
 
     def create_or_update_listing(self, candidate) -> Dict[str, Any]:
         """
@@ -269,7 +269,7 @@ class EbayClient:
 
         Returns:
             Response dict with item_id and listing_url
-        
+
         Uses eBay Sell API flow:
         1. createOrReplaceInventoryItem - create product
         2. createOffer - create offer with price
@@ -308,7 +308,7 @@ class EbayClient:
         listing_url = f"https://www.ebay.com/itm/{listing_id}"
         if self.sandbox:
             listing_url = f"https://www.sandbox.ebay.com/itm/{listing_id}"
-        
+
         return {
             'success': True,
             'item_id': listing_id,
@@ -318,7 +318,7 @@ class EbayClient:
             'status': 'ACTIVE',
             'created_at': timezone.now().isoformat(),
         }
-    
+
     def _create_inventory_item(self, candidate, sku: str, token: str) -> Dict[str, Any]:
         """
         Create/update inventory item via Sell API.
@@ -621,10 +621,10 @@ class EbayClient:
             
             if resp.status_code in [200, 204]:
                 return {
-                    'success': True,
-                    'item_id': item_id,
-                    'status': 'ENDED',
-                    'ended_at': timezone.now().isoformat(),
+            'success': True,
+            'item_id': item_id,
+            'status': 'ENDED',
+            'ended_at': timezone.now().isoformat(),
                 }
             else:
                 error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'message': resp.text}
@@ -680,10 +680,10 @@ class EbayClient:
             
             if resp.status_code in [200, 204]:
                 return {
-                    'success': True,
+            'success': True,
                     'offer_id': offer_id,
-                    'new_price': new_price,
-                    'updated_at': timezone.now().isoformat(),
+            'new_price': new_price,
+            'updated_at': timezone.now().isoformat(),
                 }
             else:
                 error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'message': resp.text}
@@ -1068,7 +1068,7 @@ class EbayClient:
                 'Referer': 'https://www.ebay.com/',
             }
             try:
-                response = requests.get(url, params=params, headers=headers, timeout=8)
+                response = requests.get(url, params=params, headers=headers, timeout=30)
                 if not response.ok:
                     return []
                 from bs4 import BeautifulSoup  # local import for safety
