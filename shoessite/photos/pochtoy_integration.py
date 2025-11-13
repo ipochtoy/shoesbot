@@ -257,7 +257,8 @@ def delete_from_pochtoy(trackings: List[str]) -> Dict:
         Result dict
     """
     try:
-        POCHTOY_DELETE_URL = 'https://pochtoy-test.pochtoy3.ru/api/garage-tg/delete'
+        # Используем тот же URL что и для store, но с DELETE методом
+        POCHTOY_DELETE_URL = POCHTOY_API_URL.replace('/store', '/delete')
         
         if not trackings:
             return {'success': False, 'error': 'No trackings'}
@@ -269,12 +270,25 @@ def delete_from_pochtoy(trackings: List[str]) -> Dict:
             'Authorization': f'Bearer {POCHTOY_API_TOKEN}'
         }
         
-        print(f"Deleting from Pochtoy: {trackings}")
+        print(f"Deleting from Pochtoy ({POCHTOY_DELETE_URL}): {trackings}")
         
-        # POST метод (не DELETE)
-        response = requests.post(POCHTOY_DELETE_URL, json=payload, headers=headers, timeout=30)
+        # Пробуем разные методы если нужно
+        response = None
+        for method_func in [requests.delete, requests.post, requests.put]:
+            try:
+                response = method_func(POCHTOY_DELETE_URL, json=payload, headers=headers, timeout=30)
+                print(f"Pochtoy {method_func.__name__.upper()} response: {response.status_code}")
+                
+                # Если не 405, то нашли правильный метод
+                if response.status_code != 405:
+                    break
+            except Exception as e:
+                print(f"Method {method_func.__name__} failed: {e}")
+                continue
         
-        print(f"Pochtoy DELETE response: {response.status_code}")
+        if not response:
+            return {'success': False, 'error': 'All HTTP methods failed'}
+        
         print(f"Response: {response.text}")
         
         if response.status_code == 400:
