@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>eBay Auth Success</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            padding: 40px;
+        }
+        .card {
+            max-width: 720px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+            padding: 32px;
+            border: 1px solid #e2e8f0;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #047857;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #ecfdf5;
+            border: 1px solid #6ee7b7;
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 14px;
+            color: #047857;
+            font-weight: 600;
+        }
+        .label {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            margin-top: 24px;
+            margin-bottom: 8px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            font-family: "SFMono-Regular", ui-monospace, "Courier New", monospace;
+            font-size: 13px;
+            background: #0f172a;
+            color: #bbf7d0;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: inset 0 0 0 1px #1e293b;
+        }
+        .meta {
+            margin-top: 16px;
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+        .meta-item {
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+        .next {
+            margin-top: 32px;
+            padding: 16px;
+            background: #fef3c7;
+            border-radius: 12px;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            font-size: 14px;
+        }
+        .muted {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 24px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>✅ eBay token saved</h1>
+        <div class="badge">
+            Account: {{ username }}
+        </div>
+
+        {% if saved %}
+            <div class="label">Trading token</div>
+            <textarea readonly>{{ token }}</textarea>
+        {% else %}
+            <p style="color:#b91c1c; background:#fee2e2; border:1px solid #fecaca; padding:16px; border-radius:12px;">
+                Token not provided in callback. Check the URL parameters or retry the sign-in flow.
+            </p>
+        {% endif %}
+
+        <div class="meta">
+            <div class="meta-item">
+                <strong>Expires at</strong><br>
+                {% if expires_at %}{{ expires_at }}{% else %}—{% endif %}
+            </div>
+        <div class="meta-item">
+                <strong>Saved to DB</strong><br>
+                {% if saved %}Yes{% else %}No{% endif %}
+            </div>
+        </div>
+
+        <div class="label">Raw parameters</div>
+        <textarea readonly>{{ raw_params }}</textarea>
+
+        <div class="next">
+            Next steps: keep this window for reference, then go back to the eBay console and finish the support ticket for production enablement. Token is already stored in the database (`EbayToken` table, account {{ username }}).
+        </div>
+
+        <div class="muted">
+            You can close this tab once you've copied the token if needed.
+        </div>
+    </div>
+</body>
+</html>
+

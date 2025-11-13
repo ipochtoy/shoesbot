@@ -11,6 +11,9 @@ if sys.platform == "darwin":
 
 import uuid
 import asyncio
+import base64
+import json
+import sqlite3
 from io import BytesIO
 from dotenv import load_dotenv
 from time import perf_counter
@@ -19,6 +22,7 @@ from telegram import Update, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboa
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from typing import Optional
 from telegram.request import HTTPXRequest
+from dataclasses import dataclass
 
 from shoesbot.pipeline import DecoderPipeline
 from shoesbot.decoders.zbar_decoder import ZBarDecoder
@@ -33,6 +37,27 @@ from shoesbot.admin import get_admin_id, set_admin_id
 from shoesbot.photo_buffer import buffer as photo_buffer
 from shoesbot.django_upload import upload_batch_to_django
 from shoesbot.fitness_reporter import FitnessReporter
+
+# --- Optional Sentry (safe if not installed or no DSN) ---
+try:
+    import sentry_sdk  # type: ignore
+    from sentry_sdk.integrations.logging import LoggingIntegration  # type: ignore
+    SENTRY_DSN = os.getenv("SENTRY_DSN_BOT") or os.getenv("SENTRY_DSN")
+    if SENTRY_DSN:
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[LoggingIntegration(level=None, event_level=None)],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES", "0.0")),
+            environment=os.getenv("SENTRY_ENV_BOT", "bot-production"),
+            send_default_pii=False,
+        )
+        logger.info("Sentry initialized for bot")
+except Exception as _sentry_err:  # pragma: no cover
+    # Never fail bot startup due to Sentry
+    try:
+        logger.info(f"Sentry not enabled for bot: {_sentry_err}")
+    except Exception:
+        print(f"Sentry not enabled for bot: {_sentry_err}")
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
@@ -497,7 +522,10 @@ If no codes at all, return "NONE"'''
         
         # Final PLACE4174 - can be closed manually if needed
         logger.info("process_photo_batch: sending final PLACE4174")
-        kb = InlineKeyboardMarkup([[InlineKeyboardButton("Удалить всё", callback_data=f"del:{corr}")]])
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔄 Перезагрузить", callback_data=f"retry:{corr}"),
+            InlineKeyboardButton("Удалить всё", callback_data=f"del:{corr}")
+        ]])
         m_end = await send_message_ret(context.bot, chat_id, "PLACE4174", reply_markup=kb)
         if m_end:
             reg.append(m_end.message_id)
@@ -615,6 +643,7 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("report", report))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(CallbackQueryHandler(on_delete_batch, pattern=r"^del:"))
+    app.add_handler(CallbackQueryHandler(on_retry_batch, pattern=r"^retry:"))
     app.add_handler(CallbackQueryHandler(on_report_refresh, pattern=r"^report:"))
     
     # Start photo retry worker (protects against Django crashes)
@@ -658,6 +687,9 @@ async def on_delete_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                         result = await resp.json()
                         logger.info(f"Django card deleted: {result}")
                         deleted_info = f"Карточка удалена ({result.get('photos_deleted', 0)} фото)"
+                    elif resp.status == 404:
+                        logger.info(f"Django card not found (already deleted): {corr}")
+                        deleted_info = "Карточка уже удалена из Django"
                     else:
                         logger.warning(f"Django delete failed: {resp.status}")
                         deleted_info = "❌❌❌ Ошибка удаления карточки из Django"
@@ -679,3 +711,122 @@ async def on_delete_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             pass
     except Exception as e:
         logger.error(f"on_delete_batch: error: {e}")
+
+
+async def on_retry_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle retry button click - reprocess batch from scratch."""
+    try:
+        query = update.callback_query
+        await query.answer("🔄 Перезагружаю...")
+        
+        data = query.data or ""
+        corr = data.split(":", 1)[1] if ":" in data else data
+        
+        chat_id = query.message.chat_id
+        
+        # Get old messages to delete
+        entry = SENT_BATCHES.pop(corr, None)
+        old_message_ids = entry['message_ids'] if entry else []
+        
+        # Show loading message
+        try:
+            await query.edit_message_text("🔄 Перезагружаю всё заново...")
+        except Exception:
+            pass
+        
+        # Delete card from Django (which also deletes from Pochtoy)
+        try:
+            django_url = os.getenv('DJANGO_URL', 'http://127.0.0.1:8000')
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.delete(
+                    f'{django_url}/photos/api/delete-card-by-correlation/{corr}/',
+                    timeout=aiohttp.ClientTimeout(total=10)
+                ) as resp:
+                    if resp.status == 200:
+                        logger.info(f"Deleted card and Pochtoy data for {corr}")
+                    elif resp.status == 404:
+                        logger.info(f"Card not found (already deleted): {corr}")
+                    else:
+                        logger.warning(f"Django delete failed: {resp.status}")
+        except Exception as django_err:
+            logger.warning(f"Django delete error: {django_err}")
+        
+        # Delete old Telegram messages
+        for mid in sorted(set(old_message_ids), reverse=True):
+            try:
+                await context.bot.delete_message(chat_id=chat_id, message_id=mid)
+            except Exception as e:
+                logger.debug(f"on_retry_batch: failed to delete {mid}: {e}")
+        
+        # Get data from queue
+        try:
+            from shoesbot.photo_queue import PhotoUploadQueue
+            queue = PhotoUploadQueue()
+            
+            conn = sqlite3.connect(queue.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT photos_data, barcodes_data
+                FROM pending_uploads
+                WHERE correlation_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+            ''', (corr,))
+            
+            row = cursor.fetchone()
+            conn.close()
+            
+            if not row:
+                await context.bot.send_message(chat_id, "❌ Данные не найдены в очереди")
+                return
+            
+            photos_data_json, barcodes_data_json = row
+            photos_data = json.loads(photos_data_json)
+            barcodes_data = json.loads(barcodes_data_json)
+            
+            # Recreate photo items from queue
+            @dataclass
+            class MockPhotoItem:
+                file_id: str
+                message_id: int
+                file_obj: any
+            
+            # Create mock file class
+            class MockFile:
+                def __init__(self, image_bytes):
+                    self._bytes = image_bytes
+                
+                async def download_to_memory(self, out):
+                    out.write(self._bytes)
+            
+            # Recreate file objects from base64
+            photo_items = []
+            for photo_data in photos_data:
+                file_id = photo_data.get('file_id')
+                message_id = photo_data.get('message_id')
+                image_b64 = photo_data.get('image')
+                
+                if not image_b64:
+                    continue
+                
+                # Decode base64 to bytes
+                image_bytes = base64.b64decode(image_b64)
+                
+                item = MockPhotoItem(
+                    file_id=file_id,
+                    message_id=message_id,
+                    file_obj=MockFile(image_bytes)
+                )
+                photo_items.append(item)
+            
+            await context.bot.send_message(chat_id, "🔄 Перезагрузка: обрабатываю фото заново...")
+            await process_photo_batch(chat_id, photo_items, context)
+            
+        except Exception as e:
+            logger.error(f"on_retry_batch: error: {e}", exc_info=True)
+            await context.bot.send_message(chat_id, f"❌❌❌\n\nОшибка: {str(e)[:200]}")
+        
+    except Exception as e:
+        logger.error(f"on_retry_batch: error: {e}", exc_info=True)

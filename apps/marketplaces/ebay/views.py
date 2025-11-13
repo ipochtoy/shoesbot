@@ -14,6 +14,8 @@ from django.utils.decorators import method_decorator
 import json
 from django_filters.rest_framework import DjangoFilterBackend
 from django.utils import timezone
+from django.views.decorators.http import require_GET
+from datetime import datetime
 
 from .models import EbayCandidate, EbayToken
 from .serializers import (
@@ -37,6 +39,62 @@ from .services import pipeline
 # from .tasks import prepare_candidate, publish_candidate, end_candidate, reprice_candidate  # Celery tasks disabled for now
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+@require_GET
+def ebay_oauth_success(request):
+    """
+    Handle Auth'n'Auth success callback.
+    Persist the long-lived token so we can use it for Trading/Sell API.
+    """
+    token = request.GET.get('ebaytkn')
+    expires_raw = request.GET.get('tkneexp')
+    username = request.GET.get('username') or 'production'
+
+    saved = False
+    expires_at = None
+
+    if expires_raw:
+        try:
+            expires_at = datetime.strptime(expires_raw, '%Y-%m-%d %H:%M:%S')
+            expires_at = timezone.make_aware(expires_at, timezone=timezone.utc)
+        except ValueError:
+            expires_at = None
+
+    if token:
+        token_record, _ = EbayToken.objects.get_or_create(
+            account=username,
+            defaults={'sandbox': False},
+        )
+        token_record.access_token = token
+        token_record.sandbox = False
+        if expires_at:
+            token_record.expires_at = expires_at
+        token_record.save()
+        saved = True
+
+    all_params = dict(request.GET.items())
+
+    context = {
+        'token': token,
+        'username': username,
+        'expires_at': expires_at,
+        'saved': saved,
+        'raw_params': json.dumps(all_params, indent=2, ensure_ascii=False),
+    }
+    return render(request, 'ebay/oauth_success.html', context, status=200)
+
+
+@require_GET
+def ebay_oauth_cancel(request):
+    """
+    Handle Auth'n'Auth cancel callback.
+    """
+    all_params = dict(request.GET.items())
+    context = {
+        'raw_params': json.dumps(all_params, indent=2, ensure_ascii=False),
+    }
+    return render(request, 'ebay/oauth_cancel.html', context, status=200)
+
+
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1546,7 +1604,7 @@ class GPTPreviewView(APIView):
 
 
 @csrf_exempt
-@require_http_methods(["GET", "POST"])
+@require_http_methods(["GET", "POST", "HEAD"])
 def ebay_marketplace_deletion_webhook(request):
     """
     eBay Marketplace Account Deletion notification endpoint.
@@ -1559,41 +1617,78 @@ def ebay_marketplace_deletion_webhook(request):
     """
     import os
     import hashlib
+    from datetime import datetime
+
+    def log(message):
+        """Append debug info to /tmp/ebay_webhook.log for troubleshooting."""
+        try:
+            with open('/tmp/ebay_webhook.log', 'a', encoding='utf-8') as fh:
+                fh.write(f"{datetime.utcnow().isoformat()}Z {message}\n")
+        except Exception:
+            pass
+    
+    # HEAD request - respond OK for uptime checks
+    if request.method == 'HEAD':
+        return JsonResponse({'status': 'ok'})
     
     # GET request - verification challenge
     if request.method == 'GET':
         challenge_code = request.GET.get('challenge_code')
         verification_token = os.getenv('EBAY_VERIFICATION_TOKEN', '')
         
+        # Log all request details for debugging
+        log("=== VERIFICATION REQUEST ===")
+        log(f"Full URL: {request.build_absolute_uri()}")
+        log(f"Query params: {dict(request.GET)}")
+        log(f"Headers: {dict(request.headers)}")
+        log(f"Challenge code received: {challenge_code}")
+        log(f"Token configured: {(verification_token[:20] + '...') if verification_token else 'NOT SET'}")
+        
         if not challenge_code:
-            print(f"[eBay Webhook] No challenge_code provided")
-            return JsonResponse({'error': 'Missing challenge_code'}, status=400)
+            # eBay may ping without challenge_code to validate SSL/endpoint
+            log("No challenge_code provided - returning generic OK")
+            return JsonResponse({'status': 'ok'})
         
         if not verification_token:
             print(f"[eBay Webhook] Verification token not set in environment")
             return JsonResponse({'error': 'Verification token not configured'}, status=500)
         
         # Get the full endpoint URL (including https://)
-        endpoint = request.build_absolute_uri().split('?')[0]  # Remove query params
+        # Use build_absolute_uri() but remove query params to get clean endpoint URL
+        endpoint_uri = request.build_absolute_uri().split('?')[0]
+        forwarded_proto = request.headers.get('X-Forwarded-Proto')
+        if forwarded_proto and endpoint_uri.startswith('http://'):
+            endpoint = endpoint_uri.replace('http://', f'{forwarded_proto}://', 1)
+        else:
+            endpoint = endpoint_uri
+        
+        # According to eBay docs, endpoint should match exactly what's configured
+        # If behind proxy, ensure we use the public URL
+        # For production, it should be: https://pochtoy.us/api/ebay/webhook/marketplace-deletion/
         
         # Compute SHA256 hash: challengeCode + verificationToken + endpoint
         # Order is critical: challengeCode + verificationToken + endpoint
-        m = hashlib.sha256()
-        m.update(challenge_code.encode('utf-8'))
-        m.update(verification_token.encode('utf-8'))
-        m.update(endpoint.encode('utf-8'))
+        # Per eBay docs: m = hashlib.sha256(challengeCode+verificationToken+endpoint)
+        combined = challenge_code + verification_token + endpoint
+        m = hashlib.sha256(combined.encode('utf-8'))
         challenge_response = m.hexdigest()
         
-        print(f"[eBay Webhook] Challenge received: {challenge_code[:10]}...")
-        print(f"[eBay Webhook] Endpoint: {endpoint}")
-        print(f"[eBay Webhook] Challenge response hash: {challenge_response[:20]}...")
+        log(f"Challenge received: {challenge_code[:10]}...")
+        log(f"Endpoint used: {endpoint}")
+        log(f"Challenge response hash: {challenge_response[:20]}...")
+        log("=== SENDING RESPONSE ===")
         
-        return JsonResponse({'challengeResponse': challenge_response})
+        # Return response with explicit content-type as per eBay docs
+        response = JsonResponse({'challengeResponse': challenge_response})
+        response['Content-Type'] = 'application/json'
+        return response
     
     # POST request - actual notification
     try:
         data = json.loads(request.body) if request.body else {}
-        print(f"[eBay Webhook] Received marketplace deletion notification: {data}")
+        log(f"=== NOTIFICATION RECEIVED ===")
+        log(f"Headers: {dict(request.headers)}")
+        log(f"Body: {data}")
         
         # Log the notification (you can extend this to actually handle the deletion)
         # For now, we just acknowledge receipt

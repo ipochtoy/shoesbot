@@ -5,7 +5,7 @@ import requests
 from typing import List, Dict, Optional
 
 
-POCHTOY_API_URL = os.getenv('POCHTOY_API_URL', 'https://pochtoy-test.pochtoy3.ru/api/garage/store')
+POCHTOY_API_URL = os.getenv('POCHTOY_API_URL', 'https://pochtoy-test.pochtoy3.ru/api/garage-tg/store')
 POCHTOY_API_TOKEN = os.getenv('POCHTOY_API_TOKEN', 'uqwyfg4367gqfuifg3')
 
 
@@ -257,7 +257,7 @@ def delete_from_pochtoy(trackings: List[str]) -> Dict:
         Result dict
     """
     try:
-        POCHTOY_DELETE_URL = 'https://pochtoy-test.pochtoy3.ru/api/garage/delete'
+        POCHTOY_DELETE_URL = 'https://pochtoy-test.pochtoy3.ru/api/garage-tg/delete'
         
         if not trackings:
             return {'success': False, 'error': 'No trackings'}

@@ -14,6 +14,10 @@ from pathlib import Path
 import sys
 import os
 
+# Optional Sentry initialization (safe if SDK not installed or DSN empty)
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+SENTRY_ENV = os.getenv("SENTRY_ENV")  # may be None; set later after DEBUG is known
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -189,9 +193,11 @@ REST_FRAMEWORK = {
 EBAY_SANDBOX = True  # Set to False for production
 
 # eBay API Credentials
-EBAY_APP_ID = ''  # Your eBay App ID
-EBAY_DEV_ID = ''  # Your eBay Developer ID
-EBAY_CERT_ID = ''  # Your eBay Certificate ID
+# eBay API Keys (loaded from .env)
+EBAY_APP_ID = os.getenv('EBAY_APP_ID', '')
+EBAY_DEV_ID = os.getenv('EBAY_DEV_ID', '')
+EBAY_CERT_ID = os.getenv('EBAY_CERT_ID', '')
+EBAY_SANDBOX = os.getenv('EBAY_SANDBOX', 'true').lower() == 'true'  # Default to sandbox
 
 # Photo hosting
 PHOTO_HOST_DOMAIN = 'https://pochtoy.us'
@@ -206,3 +212,32 @@ DEFAULT_SHIP_COST = 4.99  # Default shipping cost
 # Celery Settings (optional, configure if using Celery)
 # CELERY_BROKER_URL = 'redis://localhost:6379/0'
 # CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+# =============================================================================
+# Sentry (error monitoring)
+# =============================================================================
+
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+
+        # Derive environment if not explicitly set
+        environment = SENTRY_ENV or ("development" if DEBUG else "production")
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[
+                DjangoIntegration(),
+                LoggingIntegration(level=None, event_level=None),
+            ],
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES", "0.05")),
+            profiles_sample_rate=float(os.getenv("SENTRY_PROFILES", "0.0")),
+            send_default_pii=False,
+            environment=environment,
+        )
+        print(f"✅ Sentry enabled (env={environment})")
+    except Exception as _sentry_err:
+        # Never fail settings because of Sentry
+        print(f"⚠️ Sentry init skipped: {_sentry_err}")

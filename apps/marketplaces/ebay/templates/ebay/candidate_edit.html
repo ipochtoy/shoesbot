@@ -285,6 +285,7 @@
 </head>
 <body>
     <div class="container">
+        <div id="autofill-meta" style="display:none; margin-bottom:20px;"></div>
         <div class="header">
             <div>
                 <h1>eBay Listing Editor</h1>
@@ -457,6 +458,44 @@
         const candidateId = {{ candidate.id }};
         const batchId = {{ candidate.photo_batch.id|default:"null" }};
         const candidateSpecifics = {{ candidate_specifics_json|safe }};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const fieldsRaw = sessionStorage.getItem(`ebay_autofill_fields_${candidateId}`);
+                const metaRaw = sessionStorage.getItem(`ebay_autofill_meta_${candidateId}`);
+                if (!fieldsRaw && !metaRaw) {
+                    return;
+                }
+                const fields = fieldsRaw ? JSON.parse(fieldsRaw) : {};
+                const meta = metaRaw ? JSON.parse(metaRaw) : {};
+                renderAutofillMeta(meta, fields);
+                sessionStorage.removeItem(`ebay_autofill_fields_${candidateId}`);
+                sessionStorage.removeItem(`ebay_autofill_meta_${candidateId}`);
+            } catch (error) {
+                console.warn('Autofill meta not available', error);
+            }
+        });
+
+        function renderAutofillMeta(meta, fields) {
+            const container = document.getElementById('autofill-meta');
+            if (!container) return;
+            container.style.display = 'block';
+            const price = fields.price_suggested || fields.price || meta?.price_info?.price;
+            const comps = (meta.comps || []).slice(0, 3);
+            container.innerHTML = `
+                <div style="border:1px solid #d1fae5; background:#ecfdf5; padding:16px; border-radius:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="color:#047857; font-size:18px;">✨ Auto-fill applied</h3>
+                        ${price ? `<div style="font-weight:700; color:#dc2626; font-size:20px;">$${price}</div>` : ''}
+                    </div>
+                    ${fields.title ? `<div style="margin-top:8px; color:#065f46; font-weight:500;">${fields.title}</div>` : ''}
+                    ${fields.category_id ? `<div style="margin-top:4px; font-size:12px; color:#047857;">Category: ${fields.category_id}</div>` : ''}
+                    ${comps.length ? `<div style="margin-top:12px; font-size:12px; color:#0f172a;"><strong>Top comps:</strong> ${comps.map(c => `<a href="${c.url}" target="_blank" style="color:#2563eb; text-decoration:none;">$${c.price || '–'} · ${c.title || ''}</a>`).join(', ')}</div>` : ''}
+                </div>
+            `;
+        }
+
+
 
         // Update title length counter
         document.getElementById('ebay-title').addEventListener('input', function() {

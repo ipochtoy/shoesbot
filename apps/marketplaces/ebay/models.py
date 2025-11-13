@@ -83,6 +83,11 @@ class EbayCandidate(models.Model):
         blank=True,
         help_text='Item specifics (key-value pairs)'
     )
+    analysis_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Latest structured analysis snapshot (brand/model/keywords etc.)'
+    )
 
     # Pricing
     price_suggested = models.DecimalField(

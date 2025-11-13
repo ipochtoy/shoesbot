@@ -57,44 +57,112 @@
             border: 2px solid #e5e7eb;
             border-radius: 6px;
             overflow: hidden;
-            cursor: pointer;
+            cursor: move;
+            transition: all 0.2s;
+            background: white;
+        }
+        .photo-item:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .photo-item.main-photo {
+            border-color: #28a745;
         }
         .photo-item img {
             width: 100%;
             height: 150px;
             object-fit: cover;
             display: block;
+            cursor: pointer;
+        }
+        .photo-controls {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+            max-width: 90px;
+            z-index: 10;
+        }
+        .photo-controls .btn {
+            padding: 2px 4px;
+            font-size: 8px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+        }
+        .photo-controls .btn-star {
+            background: rgba(245, 158, 11, 0.9);
+        }
+        .photo-controls .btn-delete {
+            background: rgba(239, 68, 68, 0.9);
+        }
+        .photo-main-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: #f59e0b;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: 500;
+            z-index: 10;
+        }
+        .photo-info {
+            padding: 3px 4px;
+            background: #f9fafb;
+            font-size: 8px;
+            color: #6b7280;
+        }
+        .photo-info .fashn-buttons {
+            display: flex;
+            gap: 2px;
+            margin-top: 3px;
+            flex-wrap: wrap;
+        }
+        .photo-info .fashn-buttons button {
+            flex: 1;
+            padding: 2px 3px;
+            font-size: 7px;
+            min-width: 40px;
+            margin-top: 0;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .photo-info .fashn-buttons .btn-mannequin {
+            background: #8b5cf6;
+        }
+        .photo-info .fashn-buttons .btn-enhance {
+            background: #ec4899;
+        }
+        .btn-enhance:disabled,
+        .btn-mannequin:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         .barcodes-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f9fafb;
-            border-radius: 6px;
-        }
-        .barcodes-section h3 {
             margin-bottom: 10px;
-            color: #111827;
+            padding: 8px 0;
+            font-size: 11px;
+            color: #6b7280;
+            line-height: 1.6;
         }
-        .barcode-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .barcode-tag {
-            padding: 6px 12px;
-            background: white;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            font-size: 13px;
+        .barcodes-section .barcode-item {
+            display: inline;
             font-family: monospace;
+        }
+        .barcodes-section .barcode-item:not(:last-child)::after {
+            content: ', ';
         }
         .analysis-section {
             margin-bottom: 30px;
-        }
-        .analysis-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
         }
         .btn-analyze {
             padding: 12px 24px;
@@ -125,6 +193,42 @@
         }
         .btn-both:hover {
             background: #7c3aed;
+        }
+        .btn-ebay {
+            background: #f59e0b;
+            color: white;
+        }
+        .btn-ebay:hover {
+            background: #d97706;
+        }
+        .btn-autofill {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #10b981;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+        }
+        .btn-autofill:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(16, 185, 129, 0.3);
+        }
+        .btn-autofill:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .analysis-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .inline-status {
+            align-self: center;
+            font-size: 12px;
+            color: #6b7280;
         }
         .results-container {
             display: grid;
@@ -321,6 +425,84 @@
             font-size: 10px;
             text-align: center;
         }
+        .ebay-comps-section {
+            margin-top: 20px;
+            margin-bottom: 30px;
+        }
+        .ebay-comps-section h3 {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+        .ebay-comps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        .ebay-comp-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            overflow: hidden;
+            background: white;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .ebay-comp-item:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .ebay-comp-item img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            background: #f9fafb;
+        }
+        .ebay-comp-info {
+            padding: 8px;
+        }
+        .ebay-comp-title {
+            font-size: 11px;
+            color: #374151;
+            margin-bottom: 6px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .ebay-comp-price {
+            font-size: 13px;
+            font-weight: 600;
+            color: #059669;
+            margin-bottom: 4px;
+        }
+        .ebay-comp-condition {
+            font-size: 10px;
+            color: #6b7280;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -340,44 +522,57 @@
             </div>
         </div>
 
+        <!-- Barcodes & GG Labels Section - Compact -->
+        <div class="barcodes-section">
+            {% if barcodes %}
+            <span style="color: #9ca3af;">Barcodes:</span>
+            {% for barcode in barcodes %}
+            <span class="barcode-item">{{ barcode }}</span>
+            {% endfor %}
+            {% else %}
+            <span style="color: #9ca3af;">Barcodes: <em style="color: #d1d5db;">none</em></span>
+            {% endif %}
+            {% if barcodes and gg_labels %}<br>{% elif barcodes %}<br>{% endif %}
+            {% if gg_labels %}
+            <span style="color: #9ca3af;">GG Labels:</span>
+            {% for label in gg_labels %}
+            <span class="barcode-item" style="color: #856404; font-weight: 500;">{{ label }}</span>
+            {% endfor %}
+            {% else %}
+            <span style="color: #9ca3af;">GG Labels: <em style="color: #d1d5db;">none</em></span>
+            {% endif %}
+        </div>
+
         <!-- Photos Section -->
         <div class="photos-section">
             <h2 style="margin-bottom: 15px;">📸 Product Photos</h2>
             <div class="photos-grid">
                 {% for photo in photos %}
-                <div class="photo-item">
-                    <img src="{{ photo.url }}" alt="Product photo" onclick="openLightbox('{{ photo.url }}')">
+                <div class="photo-item {% if photo.is_main %}main-photo{% endif %}" id="photo-{{ photo.id }}" data-photo-id="{{ photo.id }}" data-photo-url="{{ photo.url }}">
+                    {% if photo.is_main %}
+                    <div class="photo-main-badge">⭐ Главное</div>
+                    {% endif %}
+                    <div class="photo-controls">
+                        <button type="button" onclick="setMainPhoto({{ photo.id }})" class="btn btn-star" title="Сделать главной">⭐</button>
+                        <button type="button" onclick="rotatePhoto({{ photo.id }}, 'left')" class="btn" title="Повернуть влево">↶</button>
+                        <button type="button" onclick="rotatePhoto({{ photo.id }}, 'right')" class="btn" title="Повернуть вправо">↷</button>
+                        <button type="button" onclick="deletePhoto({{ photo.id }})" class="btn btn-delete" title="Удалить">✕</button>
+                    </div>
+                    <img src="{{ photo.url }}" alt="Product photo" onclick="openLightbox('{{ photo.url }}')" style="cursor: pointer;">
+                    <div class="photo-info">
+                        <div class="fashn-buttons">
+                            <button type="button" onclick="enhancePhoto({{ photo.id }}, 'ghost_mannequin')" class="btn-mannequin" title="Генерация модели (FASHN AI, ~30 сек)">
+                                👤
+                            </button>
+                            <button type="button" onclick="enhancePhoto({{ photo.id }}, 'product_beautifier')" class="btn-enhance" title="Улучшить фото (FASHN AI, ~30 сек)">
+                                ✨
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
-
-        <!-- Barcodes & GG Labels Section -->
-        {% if barcodes or gg_labels %}
-        <div class="barcodes-section">
-            <h3>🏷️ Found Barcodes & Codes</h3>
-            {% if barcodes %}
-            <div style="margin-bottom: 15px;">
-                <strong style="font-size: 12px; color: #6b7280;">Barcodes:</strong>
-                <div class="barcode-list">
-                    {% for barcode in barcodes %}
-                    <span class="barcode-tag">{{ barcode }}</span>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-            {% if gg_labels %}
-            <div>
-                <strong style="font-size: 12px; color: #6b7280;">GG Labels:</strong>
-                <div class="barcode-list">
-                    {% for label in gg_labels %}
-                    <span class="barcode-tag" style="background: #fff3cd; border-color: #ffc107; color: #856404; font-weight: bold;">{{ label }}</span>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
 
         <!-- Analysis Section -->
         <div class="analysis-section">
@@ -392,9 +587,53 @@
                 <button class="btn-analyze btn-both" onclick="runAnalysis('both')">
                     🚀 Both (Compare)
                 </button>
+                <input id="ebay-query" type="text" placeholder="Поисковый запрос (необязательно)" 
+                       style="padding: 10px 12px; border:1px solid #d1d5db; border-radius:6px; min-width: 260px;">
+                <button class="btn-analyze btn-ebay" onclick="searchEbay()" style="background: #f59e0b; color: white;">
+                    🛒 Search eBay
+                </button>
+                <span id="ebay-status" class="inline-status"></span>
             </div>
 
-            <div id="results-container" class="results-container"></div>
+            <!-- eBay Similar Listings -->
+            {% if ebay_comps %}
+            <div class="ebay-comps-section">
+                <h3>🛒 Similar eBay Listings</h3>
+                <div class="ebay-comps-grid">
+                    {% for comp in ebay_comps %}
+                    <a href="{{ comp.url }}" target="_blank" class="ebay-comp-item" title="{{ comp.title }}">
+                        {% if comp.image_url %}
+                        <img src="{{ comp.image_url }}" alt="{{ comp.title|truncatewords:5 }}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'140\' height=\'120\'%3E%3Crect fill=\'%23f3f4f6\' width=\'140\' height=\'120\'/%3E%3Ctext fill=\'%239ca3af\' font-family=\'sans-serif\' font-size=\'12\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dominant-baseline=\'middle\'%3ENo Image%3C/text%3E%3C/svg%3E';">
+                        {% else %}
+                        <div style="width: 100%; height: 120px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 11px;">No Image</div>
+                        {% endif %}
+                        <div class="ebay-comp-info">
+                            <div class="ebay-comp-title">{{ comp.title|truncatewords:8 }}</div>
+                            <div class="ebay-comp-price">${{ comp.price|floatformat:2 }}{% if comp.shipping_cost > 0 %} + ${{ comp.shipping_cost|floatformat:2 }}{% endif %}</div>
+                            <div class="ebay-comp-condition">{{ comp.condition_text|default:comp.condition }}</div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+        <div id="autofill-preview" class="results-container" style="display:none;"></div>
+        <div id="results-container" class="results-container"></div>
+        <div id="ebay-results-container" class="results-container" style="margin-top:20px;"></div>
+        <div class="results-container" style="margin-top:20px; background:#f0fdf4; border:2px solid #6ee7b7; border-radius:10px; padding:18px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                <div style="flex:1; min-width:240px;">
+                    <h3 style="color:#047857; margin-bottom:6px;">✨ Auto-fill Listing</h3>
+                    <p style="font-size:13px; color:#047857;">
+                        Скомбинировать GPT, Google и eBay comps и применить результат на странице редактирования.
+                    </p>
+                </div>
+                <button class="btn-autofill" onclick="autoFillCandidate()">
+                    ✨ Auto-fill Listing
+                </button>
+            </div>
+        </div>
         </div>
 
         <!-- Continue Section -->
@@ -411,6 +650,8 @@
     <script>
         const candidateId = {{ candidate.id }};
         let selectedData = null;
+        let lastOpenAi = null;
+        let autofillData = null;
 
         function getCSRFToken() {
             const cookies = document.cookie.split(';');
@@ -426,7 +667,8 @@
             container.innerHTML = '<div class="loading">🔄 Analyzing... This may take 30-60 seconds</div>';
 
             try {
-                const response = await fetch('/api/ebay/analyze/', {
+                const base = location.pathname.startsWith('/dev/') ? '/dev' : '';
+                const response = await fetch(`${base}/api/ebay/analyze/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -438,12 +680,368 @@
                     })
                 });
 
+                // Check if response is OK
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+                }
+
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(`Expected JSON but got ${contentType}. Response: ${text.substring(0, 200)}`);
+                }
+
                 const data = await response.json();
+                try {
+                    lastOpenAi = (data && data.openai && data.openai.success) ? (data.openai.data || null) : null;
+                } catch (e) {
+                    lastOpenAi = null;
+                }
+                // Обновим верхний блок Barcodes/GG Labels сразу после успешного анализа
+                try {
+                    if (lastOpenAi) {
+                        const top = document.querySelector('.barcodes-section');
+                        if (top) {
+                            const existingBarcodes = Array.from(top.querySelectorAll('.barcode-item'))
+                                .map(el => (el.textContent || '').trim())
+                                .filter(Boolean);
+                            let mergedBarcodes = [...existingBarcodes];
+                            (lastOpenAi.barcodes || []).forEach(b => {
+                                if (b && !mergedBarcodes.includes(b)) mergedBarcodes.push(b);
+                            });
+                            // Попробуем вытащить GG/Q из текста
+                            const summary = (data.openai.summary || '').toString();
+                            const ggMatches = summary.match(/\b(GG\d{3,}|Q\d{3,})\b/gi) || [];
+                            ggMatches.forEach(g => {
+                                if (g && !mergedBarcodes.includes(g)) mergedBarcodes.push(g);
+                            });
+                            // Перерисуем блок
+                            top.innerHTML = '';
+                            const bSpan = document.createElement('span');
+                            bSpan.style.color = '#9ca3af';
+                            bSpan.textContent = 'Barcodes:';
+                            top.appendChild(bSpan);
+                            if (mergedBarcodes.length) {
+                                mergedBarcodes.forEach(code => {
+                                    const s = document.createElement('span');
+                                    s.className = 'barcode-item';
+                                    s.textContent = code;
+                                    s.style.marginLeft = '4px';
+                                    top.appendChild(s);
+                                });
+                            } else {
+                                const none = document.createElement('em');
+                                none.style.color = '#d1d5db';
+                                none.textContent = 'none';
+                                const wrap = document.createElement('span');
+                                wrap.style.color = '#9ca3af';
+                                wrap.appendChild(document.createTextNode(' '));
+                                wrap.appendChild(none);
+                                top.appendChild(document.createTextNode(' '));
+                                top.appendChild(wrap);
+                            }
+                        }
+                    }
+                } catch (e) {}
                 displayResults(data, provider);
             } catch (error) {
+                console.error('Analysis error:', error);
                 container.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             }
         }
+
+        async function searchEbay() {
+            const ebayBox = document.getElementById('ebay-results-container');
+            ebayBox.innerHTML = '<div class="loading">🛒 Ищу на eBay... (10–20 сек)</div>';
+            const btn = document.querySelector('.btn-ebay');
+            const statusEl = document.getElementById('ebay-status');
+            const oldBtnHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '⏳ Searching...';
+            }
+            if (statusEl) {
+                statusEl.textContent = 'Запустил поиск...';
+            }
+
+            try {
+                const base = location.pathname.startsWith('/dev/') ? '/dev' : '';
+                // Build a better query from the last OpenAI analysis if available
+                let bestQuery = null;
+                if (lastOpenAi) {
+                    const brand = (lastOpenAi.brand || '').toString().trim();
+                    const model = (lastOpenAi.model || '').toString().trim();
+                    const sq = (lastOpenAi.search_query || '').toString().trim();
+                    if (brand && model) bestQuery = `${brand} ${model}`;
+                    else if (sq) bestQuery = sq;
+                    else if (brand) bestQuery = brand;
+                }
+                const manual = (document.getElementById('ebay-query')?.value || '').trim();
+                const used = manual || bestQuery || undefined;
+                if (statusEl && used) {
+                    statusEl.textContent = `Запрос: ${used} • Ищу...`;
+                }
+                const response = await fetch(`${base}/api/ebay/search/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify({
+                        candidate_id: candidateId,
+                        query: used
+                    })
+                });
+
+                // Check if response is OK
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+                }
+
+                // Check content type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    throw new Error(`Expected JSON but got ${contentType}. Response: ${text.substring(0, 200)}`);
+                }
+
+                const data = await response.json();
+                displayEbayResults(data);
+                if (statusEl) {
+                    const cnt = (data && Array.isArray(data.comps)) ? data.comps.length : 0;
+                    statusEl.textContent = cnt > 0 ? `Готово: найдено ${cnt}` : 'Готово: ничего не найдено';
+                }
+            } catch (error) {
+                console.error('eBay search error:', error);
+                ebayBox.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                if (statusEl) {
+                    statusEl.textContent = 'Ошибка поиска';
+                }
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = oldBtnHtml || '🛒 Search eBay';
+                }
+            }
+        }
+
+        function displayEbayResults(data) {
+            const container = document.getElementById('ebay-results-container');
+            let html = '<div class="result-card" style="border-color: #f59e0b;"><h3>🛒 eBay Search Results</h3>';
+
+            // Price info
+            if (data.price_info) {
+                html += `<div style="margin-bottom: 20px; padding: 15px; background: #fef3c7; border-radius: 6px;">
+                    <h4 style="margin-bottom: 10px; color: #92400e;">💰 Price Information</h4>
+                    <div style="font-size: 16px; font-weight: bold; color: #dc2626;">
+                        Median: $${data.price_info.price.toFixed(2)}
+                    </div>
+                    <div style="font-size: 13px; color: #78350f; margin-top: 5px;">
+                        Range: $${data.price_info.price_min.toFixed(2)} - $${data.price_info.price_max.toFixed(2)} 
+                        (${data.price_info.price_count} listings)
+                    </div>
+                </div>`;
+            }
+
+            if (data.analysis_keywords && data.analysis_keywords.length) {
+                html += `<div style="margin-bottom: 15px; padding: 12px; background: #ecfeff; border-radius: 6px;">
+                    <h4 style="margin-bottom: 6px; color: #0f766e;">🔑 Key Terms (GPT)</h4>
+                    <div style="font-size: 13px; color: #0f172a;">${data.analysis_keywords.join(', ')}</div>
+                </div>`;
+            }
+
+            if ((data.search_terms && data.search_terms.length) || data.used_query) {
+                const termsList = (data.search_terms || []).map(term => `<code style="margin-right: 6px;">${term}</code>`).join(' ');
+                html += `<div style="margin-bottom: 15px; padding: 12px; background: #f3f4f6; border-radius: 6px;">
+                    <h4 style="margin-bottom: 6px; color: #1f2937;">🧠 eBay Search Terms</h4>
+                    ${data.used_query ? `<div style="font-size: 13px; color: #111827; margin-bottom: 4px;">Used query: <strong>${data.used_query}</strong></div>` : ''}
+                    ${termsList ? `<div style="font-size: 12px; color: #4b5563;">Tried: ${termsList}</div>` : ''}
+                </div>`;
+            }
+
+            // Comps
+            if (data.comps && data.comps.length > 0) {
+                html += `<div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">📊 Similar Listings (${data.comps.length})</h4>
+                    <div class="ebay-comps-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px;">`;
+                
+                data.comps.forEach(comp => {
+                    const compJson = JSON.stringify(comp).replace(/"/g, '&quot;');
+                    html += `
+                        <div style="position: relative; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+                            <a href="${comp.url || '#'}" target="_blank" class="ebay-comp-item" style="display: block; text-decoration: none; color: inherit;">
+                                ${comp.image_url ? `<img src="${comp.image_url}" alt="${comp.title || ''}" style="width: 100%; height: 100px; object-fit: cover;" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'140\' height=\'100\'%3E%3Crect fill=\'%23f3f4f6\' width=\'140\' height=\'100\'/%3E%3Ctext fill=\'%239ca3af\' font-family=\'sans-serif\' font-size=\'10\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dominant-baseline=\'middle\'%3ENo Image%3C/text%3E%3C/svg%3E';">` : '<div style="width: 100%; height: 100px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 10px;">No Image</div>'}
+                                <div style="padding: 8px; font-size: 11px;">
+                                    <div style="font-weight: bold; color: #dc2626; margin-bottom: 4px;">$${comp.price ? comp.price.toFixed(2) : 'N/A'}</div>
+                                    <div style="color: #6b7280; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(comp.title || '')}">${escapeHtml((comp.title || '').substring(0, 50))}</div>
+                                    ${comp.condition ? `<div style="color: #9ca3af; font-size: 9px; margin-top: 4px;">${escapeHtml(comp.condition)}</div>` : ''}
+                                </div>
+                            </a>
+                            <button 
+                                onclick="copyCompListing(${compJson}); event.stopPropagation();" 
+                                style="position: absolute; bottom: 4px; right: 4px; background: #10b981; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 9px; cursor: pointer; z-index: 10;"
+                                title="Copy this listing details">
+                                📋 Copy
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            }
+
+            // Stock photos
+            if (data.stock_photos && data.stock_photos.length > 0) {
+                html += `<div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">📸 Stock Photos (${data.stock_photos.length})</h4>
+                    <div class="stock-photos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;">`;
+                
+                data.stock_photos.forEach((photo, index) => {
+                    const photoUrl = photo.url || photo;
+                    html += `
+                        <div class="stock-photo-item" onclick="openLightbox('${photoUrl}')" style="cursor: pointer; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden;">
+                            <img src="${photoUrl}" alt="eBay photo ${index + 1}" style="width: 100%; height: 120px; object-fit: cover;" onerror="this.style.display='none';">
+                        </div>
+                    `;
+                });
+                
+                html += '</div></div>';
+            }
+
+            if (!data.price_info && (!data.comps || data.comps.length === 0) && (!data.stock_photos || data.stock_photos.length === 0)) {
+                html += '<div class="error" style="margin-top: 15px;">No results found on eBay. Try searching with a different query or barcode.</div>';
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+
+        async function autoFillCandidate() {
+            const preview = document.getElementById('autofill-preview');
+            preview.style.display = 'block';
+            preview.innerHTML = '<div class="loading">✨ Generating auto-fill recommendation...</div>';
+            try {
+                const response = await fetch(`/api/ebay/candidates/${candidateId}/autofill/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                });
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${text.substring(0, 200)}`);
+                }
+                const data = await response.json();
+                autofillData = data;
+
+                const patchPayload = {...(data.fields || {})};
+                if (patchPayload.price_recommended !== undefined) {
+                    patchPayload.price_suggested = patchPayload.price_recommended;
+                }
+                delete patchPayload.price_recommended;
+                delete patchPayload.price_info;
+
+                sessionStorage.setItem(`ebay_autofill_fields_${candidateId}`, JSON.stringify(patchPayload));
+                sessionStorage.setItem(`ebay_autofill_meta_${candidateId}`, JSON.stringify({
+                    price_info: data.fields?.price_info || {},
+                    comps: data.comps || [],
+                    stock_photos: data.stock_photos || [],
+                }));
+
+                const updatePayload = {};
+                ['title','description_md','condition','category_id','specifics','photo_queries','keywords','barcodes','gg_labels','price_suggested'].forEach(key => {
+                    if (patchPayload[key] !== undefined) {
+                        updatePayload[key] = patchPayload[key];
+                    }
+                });
+                if (patchPayload.price_suggested === undefined && patchPayload.price === undefined && data.fields?.price_recommended) {
+                    updatePayload.price_suggested = data.fields.price_recommended;
+                }
+
+                selectedData = updatePayload;
+                document.getElementById('btn-continue').disabled = false;
+                renderAutofillPreview(data);
+            } catch (error) {
+                console.error('Auto-fill error:', error);
+                preview.innerHTML = `<div class="error">Auto-fill failed: ${error.message}</div>`;
+            }
+        }
+
+        function renderAutofillPreview(data) {
+            const preview = document.getElementById('autofill-preview');
+            if (!data || !data.fields) {
+                preview.innerHTML = '<div class="error">No auto-fill data available.</div>';
+                return;
+            }
+            const fields = data.fields;
+            const priceInfo = fields.price_info || {};
+            const formatCurrency = (value) => {
+                const num = Number(value);
+                if (Number.isFinite(num)) {
+                    return `$${num.toFixed(2)}`;
+                }
+                return value ? `$${value}` : '—';
+            };
+            const recommendedPriceDisplay = fields.price_recommended !== undefined && fields.price_recommended !== null
+                ? formatCurrency(fields.price_recommended)
+                : '—';
+            const medianTotalDisplay = priceInfo && priceInfo.total_median !== undefined && priceInfo.total_median !== null
+                ? formatCurrency(priceInfo.total_median)
+                : null;
+            const comps = data.comps || [];
+            const photos = data.stock_photos || [];
+            let html = `<div class="result-card" style="border-color:#10b981;">`;
+            html += `<h3>✨ Auto-fill Recommendation</h3>`;
+            html += `<div style="display:flex; gap:20px; flex-wrap:wrap; margin:15px 0;">
+                        <div style="flex:1; min-width:200px;">
+                            <h4 style="color:#065f46; margin-bottom:4px;">Title</h4>
+                            <div style="font-weight:500; color:#047857;">${escapeHtml(fields.title || '–')}</div>
+                        </div>
+                        <div style="width:160px;">
+                            <h4 style="color:#065f46; margin-bottom:4px;">Recommended Price</h4>
+                            <div style="font-size:18px; font-weight:700; color:#dc2626;">${recommendedPriceDisplay}</div>
+                            ${medianTotalDisplay ? `<div style="font-size:12px; color:#4b5563;">Median total: ${medianTotalDisplay}</div>` : ''}
+                        </div>
+                    </div>`;
+            if (fields.keywords && fields.keywords.length) {
+                html += `<div style="margin-bottom:12px; font-size:12px; color:#0369a1;"><strong>Keywords:</strong> ${fields.keywords.map(escapeHtml).join(', ')}</div>`;
+            }
+            if (comps.length) {
+                html += `<div style="margin-top:10px;"><h4 style="color:#1f2937;">Top Comparables</h4><div style="display:grid; gap:8px; margin-top:6px;">`;
+                comps.slice(0,3).forEach(comp => {
+                    html += `<a href="${comp.url}" target="_blank" style="display:flex; gap:10px; align-items:center; padding:8px; border:1px solid #e5e7eb; border-radius:6px; text-decoration:none; color:#111827;">
+                                ${comp.image_url ? `<img src="${comp.image_url}" style="width:60px; height:60px; object-fit:cover; border-radius:4px;">` : ''}
+                                <div>
+                                    <div style="font-weight:600;">$${(comp.price || 0).toFixed ? comp.price.toFixed(2) : comp.price}</div>
+                                    <div style="font-size:12px; color:#4b5563;">${escapeHtml(comp.title || '')}</div>
+                                </div>
+                            </a>`;
+                });
+                html += '</div></div>';
+            }
+            if (photos.length) {
+                html += `<div style="margin-top:15px;">
+                            <h4 style="color:#1d4ed8;">Suggested Stock Photos</h4>
+                            <div class="stock-photos-grid" style="margin-top:8px;">`;
+                photos.slice(0,6).forEach((photo, idx) => {
+                    const url = photo.url || photo;
+                    html += `<div class="stock-photo-item" onclick="openLightbox('${url}')">
+                                <img src="${photo.thumbnail || url}" alt="auto photo ${idx+1}">
+                                <div class="stock-photo-overlay">${escapeHtml((photo.title || 'Auto').substring(0,30))}</div>
+                            </div>`;
+                });
+                html += '</div></div>';
+            }
+            html += `<div style="margin-top:12px; font-size:12px; color:#6b7280;">Auto-fill data saved. Click "Continue to Edit Page" to apply.</div>`;
+            html += '</div>';
+            preview.innerHTML = html;
+        }
+
 
         function displayResults(data, provider) {
             const container = document.getElementById('results-container');
@@ -455,7 +1053,7 @@
                         <h3>🤖 OpenAI Analysis</h3>
                         <div class="result-summary">${escapeHtml(data.openai.summary || 'No summary')}</div>
                         ${displayStructuredData(data.openai.data, 'openai')}
-                        ${displayStockPhotos(data.openai.stock_photos)}
+                        ${displayStockPhotos(data.openai.stock_photos, data.openai.photo_queries)}
                         <button class="btn-select" onclick="selectData('openai', ${JSON.stringify(data.openai.data).replace(/"/g, '&quot;')})">
                             ✓ Use This Data
                         </button>
@@ -508,16 +1106,40 @@
         function displayStructuredData(data, source) {
             if (!data) return '';
             let html = '<div class="extracted-data-section"><h3>📋 Извлеченные данные</h3><div class="data-grid">';
-            if (data.title) html += `<div class="data-item"><strong>Название:</strong><span>${escapeHtml(data.title)}</span></div>`;
+            if (data.title) html += `<div class="data-item" style="grid-column: 1 / -1;"><strong>Название:</strong><span>${escapeHtml(data.title)}</span></div>`;
             if (data.brand) html += `<div class="data-item"><strong>Бренд:</strong><span>${escapeHtml(data.brand)}</span></div>`;
-            if (data.model) html += `<div class="data-item"><strong>Модель:</strong><span>${escapeHtml(data.model)}</span></div>`;
+            if (data.model) html += `<div class="data-item"><strong>Модель:</strong><span style="font-weight: bold; color: #059669;">${escapeHtml(data.model)}</span></div>`;
+            if (data.price) html += `<div class="data-item"><strong>Цена:</strong><span style="font-weight: bold; color: #dc2626;">$${data.price.toFixed(2)}</span></div>`;
+            if (data.price_range) html += `<div class="data-item"><strong>Диапазон цен:</strong><span>${escapeHtml(data.price_range)}</span></div>`;
             if (data.category_id) html += `<div class="data-item"><strong>Категория ID:</strong><span>${escapeHtml(data.category_id)}</span></div>`;
             if (data.condition) html += `<div class="data-item"><strong>Состояние:</strong><span>${escapeHtml(data.condition)}</span></div>`;
-            if (data.description) html += `<div class="data-item" style="grid-column: 1 / -1;"><strong>Описание:</strong><span>${escapeHtml(data.description)}</span></div>`;
+            if (data.technical_specs && Object.keys(data.technical_specs).length > 0) {
+                let techHtml = '';
+                for (let key in data.technical_specs) {
+                    if (key !== 'full_specs') {
+                        techHtml += `<strong>${escapeHtml(key.replace(/_/g, ' '))}:</strong> ${escapeHtml(data.technical_specs[key])}<br>`;
+                    }
+                }
+                if (data.technical_specs.full_specs) {
+                    techHtml += `<div style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 12px;">${escapeHtml(data.technical_specs.full_specs)}</div>`;
+                }
+                html += `<div class="data-item" style="grid-column: 1 / -1;"><strong>Технические характеристики:</strong><span>${techHtml}</span></div>`;
+            }
+            if (data.description) {
+                // Extract eBay description if present
+                let descText = data.description;
+                if (descText.includes('**Описание для продажи на eBay')) {
+                    let ebayDescMatch = descText.match(/\*\*Описание для продажи на eBay.*?:\*\*\s*([\s\S]+?)(?:\*\*|$)/);
+                    if (ebayDescMatch) {
+                        html += `<div class="data-item" style="grid-column: 1 / -1; background: #fef3c7; border-color: #fcd34d;"><strong>📝 Описание для eBay:</strong><span style="white-space: pre-wrap;">${escapeHtml(ebayDescMatch[1].trim())}</span></div>`;
+                    }
+                }
+                html += `<div class="data-item" style="grid-column: 1 / -1;"><strong>Полное описание:</strong><span style="white-space: pre-wrap; font-size: 12px;">${escapeHtml(descText)}</span></div>`;
+            }
             if (data.specifics && Object.keys(data.specifics).length > 0) {
                 let specificsHtml = '';
                 for (let key in data.specifics) {
-                    specificsHtml += `${escapeHtml(key)}: ${escapeHtml(data.specifics[key])}<br>`;
+                    specificsHtml += `<strong>${escapeHtml(key)}:</strong> ${escapeHtml(data.specifics[key])}<br>`;
                 }
                 html += `<div class="data-item" style="grid-column: 1 / -1;"><strong>Характеристики:</strong><span>${specificsHtml}</span></div>`;
             }
@@ -525,19 +1147,47 @@
             return html;
         }
 
-        function displayStockPhotos(stockPhotos) {
-            if (!stockPhotos || stockPhotos.length === 0) return '';
-            let html = '<div class="stock-photos-section"><h3>📷 Найденные стоковые фото</h3><div class="stock-photos-grid">';
+        function displayStockPhotos(stockPhotos, photoQueries) {
+            if (!stockPhotos || stockPhotos.length === 0) {
+                if (photoQueries && photoQueries.length > 0) {
+                    return `<div class="stock-photos-section" style="background: #fef3c7; border-color: #fbbf24;">
+                        <h3>🤖 OpenAI рекомендует запросы для поиска фото</h3>
+                        <div style="font-size: 13px; color: #92400e; margin-top: 10px;">
+                            <strong>Запросы:</strong><br>
+                            ${photoQueries.map(q => `• ${escapeHtml(q)}`).join('<br>')}
+                        </div>
+                        <div style="margin-top: 10px; font-size: 12px; color: #78350f;">
+                            По этим запросам не найдено фото. Попробуйте поискать вручную на Google Images или eBay.
+                        </div>
+                    </div>`;
+                }
+                return '';
+            }
+            
+            let html = '<div class="stock-photos-section" style="background: #dbeafe; border-color: #3b82f6;"><h3>🤖 OpenAI нашел фото</h3>';
+            
+            if (photoQueries && photoQueries.length > 0) {
+                html += `<div style="font-size: 12px; color: #1e40af; margin-bottom: 15px; padding: 8px; background: #eff6ff; border-radius: 4px;">
+                    <strong>Запросы OpenAI:</strong><br>
+                    ${photoQueries.map(q => `• ${escapeHtml(q)}`).join('<br>')}
+                </div>`;
+            }
+            
+            html += `<div style="font-size: 12px; color: #1e40af; margin-bottom: 10px;">Найдено: ${stockPhotos.length} фото</div>`;
+            html += '<div class="stock-photos-grid">';
+            
             stockPhotos.forEach((photo, index) => {
                 const photoUrl = photo.url || photo;
                 const thumbnail = photo.thumbnail || photoUrl;
+                const queryTitle = photo.title || photoQueries?.[0] || 'OpenAI';
                 html += `
                     <div class="stock-photo-item" onclick="openLightbox('${photoUrl}')">
-                        <img src="${thumbnail}" alt="Stock photo ${index + 1}" onerror="this.src='${photoUrl}'">
-                        <div class="stock-photo-overlay">${photo.source || 'stock'}</div>
+                        <img src="${thumbnail}" alt="OpenAI photo ${index + 1}" onerror="this.src='${photoUrl}'">
+                        <div class="stock-photo-overlay">${escapeHtml(queryTitle.substring(0, 30))}</div>
                     </div>
                 `;
             });
+            
             html += '</div></div>';
             return html;
         }
@@ -569,6 +1219,11 @@
                 return;
             }
 
+            try {
+                sessionStorage.setItem(`ebay_selected_fields_${candidateId}`, JSON.stringify(selectedData));
+            } catch (e) {
+                console.warn('sessionStorage not available', e);
+            }
             // Save selected data to candidate
             fetch(`/api/ebay/candidates/${candidateId}/`, {
                 method: 'PATCH',
@@ -621,6 +1276,258 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function copyCompListing(comp) {
+            // Store comp data for potential use in edit page
+            localStorage.setItem('ebay_comp_copy', JSON.stringify(comp));
+            
+            // Show notification
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #10b981;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 10000;
+                font-size: 14px;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.innerHTML = `
+                ✅ <strong>Copied!</strong><br>
+                Title: ${comp.title ? comp.title.substring(0, 40) + '...' : 'N/A'}<br>
+                Price: $${comp.price ? comp.price.toFixed(2) : 'N/A'}
+            `;
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+            
+            // Copy basic info to clipboard as text
+            const copyText = `Title: ${comp.title || 'N/A'}\nPrice: $${comp.price ? comp.price.toFixed(2) : 'N/A'}\nCondition: ${comp.condition || 'N/A'}\nURL: ${comp.url || 'N/A'}`;
+            navigator.clipboard.writeText(copyText).catch(err => console.log('Clipboard copy failed:', err));
+        }
+
+        function continueToEdit() {
+            if (!selectedData) {
+                alert('Please select or combine analysis data first');
+                return;
+            }
+            window.location.href = `/ebay/candidates/${candidateId}/edit/`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const section = document.querySelector('.analysis-section');
+            if (!section || section.querySelector('.btn-autofill')) {
+                return;
+            }
+            const wrapper = document.createElement('div');
+            wrapper.className = 'results-container';
+            wrapper.style.marginTop = '20px';
+            wrapper.style.background = '#f0fdf4';
+            wrapper.style.border = '2px solid #6ee7b7';
+            wrapper.style.borderRadius = '10px';
+            wrapper.style.padding = '18px';
+            wrapper.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:240px;">
+                        <h3 style="color:#047857; margin-bottom:6px;">✨ Auto-fill Listing</h3>
+                        <p style="font-size:13px; color:#047857;">
+                            Скомбинировать GPT, Google и eBay comps и применить результат на странице редактирования.
+                        </p>
+                    </div>
+                    <button class="btn-autofill" onclick="autoFillCandidate()">
+                        ✨ Auto-fill Listing
+                    </button>
+                </div>
+            `;
+            section.appendChild(wrapper);
+        });
+
+        // Photo management functions
+        async function deletePhoto(photoId) {
+            if (!confirm('Удалить это фото?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/photos/api/delete-photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const photoElement = document.getElementById(`photo-${photoId}`);
+                    if (photoElement) {
+                        photoElement.remove();
+                    }
+                } else {
+                    alert('Ошибка при удалении фото: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка при удалении фото: ' + error.message);
+            }
+        }
+        
+        async function setMainPhoto(photoId) {
+            try {
+                const response = await fetch(`/photos/api/set-main-photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.reload();
+                } else {
+                    alert('Ошибка при установке главной фото: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                alert('Ошибка при установке главной фото: ' + error.message);
+            }
+        }
+        
+        async function rotatePhoto(photoId, direction = 'right') {
+            const photoElement = document.getElementById(`photo-${photoId}`);
+            const img = photoElement ? photoElement.querySelector('img') : null;
+            
+            if (img) {
+                img.style.opacity = '0.5';
+            }
+            
+            try {
+                const response = await fetch(`/photos/api/rotate-photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ direction: direction }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (img) {
+                        img.src = data.photo_url + '?t=' + Date.now();
+                        img.style.opacity = '1';
+                    }
+                } else {
+                    alert('Ошибка при повороте фото: ' + (data.error || 'Неизвестная ошибка'));
+                    if (img) {
+                        img.style.opacity = '1';
+                    }
+                }
+            } catch (error) {
+                alert('Ошибка при повороте фото: ' + error.message);
+                if (img) {
+                    img.style.opacity = '1';
+                }
+            }
+        }
+
+        // FASHN API functions
+        async function enhancePhoto(photoId, mode = 'ghost_mannequin') {
+            const photoElement = document.getElementById(`photo-${photoId}`);
+            const img = photoElement ? photoElement.querySelector('img') : null;
+            const btnEnhance = photoElement ? photoElement.querySelector('.btn-enhance') : null;
+            const btnMannequin = photoElement ? photoElement.querySelector('.btn-mannequin') : null;
+            
+            if (img) {
+                img.style.opacity = '0.5';
+            }
+            
+            if (btnEnhance) btnEnhance.disabled = true;
+            if (btnMannequin) btnMannequin.disabled = true;
+            
+            try {
+                const url = `/photos/api/enhance-photo/${photoId}/`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 150000);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken(),
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ mode: mode }),
+                    signal: controller.signal
+                }).finally(() => clearTimeout(timeoutId));
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.reload) {
+                        window.location.reload();
+                    } else if (img) {
+                        img.src = data.photo_url + '?t=' + Date.now();
+                        img.style.opacity = '1';
+                    }
+                } else {
+                    alert(`❌ Ошибка FASHN AI:\n${data.error || 'Неизвестная ошибка'}`);
+                    if (img) {
+                        img.style.opacity = '1';
+                    }
+                }
+            } catch (error) {
+                alert(`❌ Ошибка при обработке:\n${error.message}`);
+                if (img) {
+                    img.style.opacity = '1';
+                }
+            } finally {
+                if (btnEnhance) btnEnhance.disabled = false;
+                if (btnMannequin) btnMannequin.disabled = false;
+            }
+        }
+
+        // Lightbox for photo viewing
+        function openLightbox(imageUrl) {
+            const lightbox = document.createElement('div');
+            lightbox.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.9);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            `;
+            
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.cssText = `
+                max-width: 90%;
+                max-height: 90%;
+                object-fit: contain;
+            `;
+            
+            lightbox.appendChild(img);
+            document.body.appendChild(lightbox);
+            
+            lightbox.onclick = () => {
+                document.body.removeChild(lightbox);
+            };
         }
     </script>
 </body>

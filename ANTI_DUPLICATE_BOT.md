@@ -47,3 +47,4 @@ ssh gcp-shoesbot "sudo systemctl start shoesbot.service"
 - Локальная копия используется **только для разработки** (когда серверная остановлена)
 - File lock гарантирует, что случайный `python bot.py` на Mac не сломает production
 
+

@@ -95,7 +95,7 @@ def main():
     restored = 0
     failed = 0
     
-    for i, photo in enumerate(missing[:100], 1):  # Ограничиваем 100 для теста
+    for i, photo in enumerate(missing, 1):  # Восстанавливаем все
         print(f"[{i}/{min(100, len(missing))}] Photo {photo.id} (batch {photo.batch.correlation_id})...")
         if restore_photo(photo):
             restored += 1

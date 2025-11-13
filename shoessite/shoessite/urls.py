@@ -18,14 +18,20 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
+from apps.marketplaces.ebay import views as ebay_views
 
 urlpatterns = [
     path('', RedirectView.as_view(url='/photos/sorting/', permanent=False)),
     path('admin/', admin.site.urls),
     path('photos/', include('photos.urls')),
+    path('about/', TemplateView.as_view(template_name='static/about.html'), name='about'),
+    path('privacy/', TemplateView.as_view(template_name='static/privacy.html'), name='privacy'),
+    path('terms/', TemplateView.as_view(template_name='static/terms.html'), name='terms'),
 
     # eBay marketplace integration
+    path('oauth/ebay/success/', ebay_views.ebay_oauth_success, name='ebay-oauth-success'),
+    path('oauth/ebay/cancel/', ebay_views.ebay_oauth_cancel, name='ebay-oauth-cancel'),
     path('api/ebay/', include('apps.marketplaces.ebay.urls')),
     path('ebay/', include('apps.marketplaces.ebay.urls')),
 ]

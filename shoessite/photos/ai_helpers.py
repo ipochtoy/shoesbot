@@ -464,7 +464,7 @@ def search_price_on_ebay(brand: str = None, model: str = None, barcode: str = No
     return result.get('price') if result else None
 
 
-def search_products_on_ebay(brand: str = None, model: str = None, barcode: str = None, title: str = None) -> Optional[Dict]:
+def search_products_on_ebay(brand: str = None, model: str = None, barcode: str = None, title: str = None, category_id: str = None) -> Optional[Dict]:
     """Ищет товары на eBay через Finding API и возвращает цены, фото и другую информацию."""
     ebay_app_id = os.getenv('EBAY_APP_ID') or os.getenv('EBAY_API_KEY')
     
@@ -473,111 +473,161 @@ def search_products_on_ebay(brand: str = None, model: str = None, barcode: str =
         return None
     
     try:
-        # Формируем поисковый запрос
+        # Формируем поисковый запрос - приоритет: brand + model, затем title, затем barcode
         keywords = []
-        if brand:
+        if brand and model:
+            # Лучший вариант - точный поиск по бренду и модели
+            keywords = [brand, model]
+        elif brand:
             keywords.append(brand)
-        if model:
-            keywords.append(model)
-        if title:
-            # Берем первые 3 слова из названия
-            title_words = title.split()[:3]
+            if model:
+                keywords.append(model)
+        elif title:
+            # Берем первые 5 слов из названия
+            title_words = title.split()[:5]
             keywords.extend(title_words)
-        if barcode:
+        elif barcode:
             keywords.append(barcode)
         
         if not keywords:
             return None
         
-        search_query = ' '.join(keywords[:5])  # Максимум 5 слов
+        search_query = ' '.join(keywords[:10])  # Увеличиваем до 10 слов для лучшего поиска
         
-        # eBay Finding API
+        # eBay Finding API - используем findItemsAdvanced для большего контроля
         url = 'https://svcs.ebay.com/services/search/FindingService/v1'
         params = {
-            'OPERATION-NAME': 'findItemsByKeywords',
+            'OPERATION-NAME': 'findItemsAdvanced',
             'SERVICE-VERSION': '1.0.0',
             'SECURITY-APPNAME': ebay_app_id,
             'RESPONSE-DATA-FORMAT': 'JSON',
             'REST-PAYLOAD': '',
             'keywords': search_query,
-            'paginationInput.entriesPerPage': '10',  # Увеличиваем для получения больше фото
-            'itemFilter(0).name': 'ListingType',
-            'itemFilter(0).value': 'FixedPrice',
-            'sortOrder': 'PricePlusShippingLowest'
+            'paginationInput.entriesPerPage': '20',  # Увеличиваем для получения больше фото
+            'sortOrder': 'PricePlusShippingLowest',
         }
         
-        print(f"Searching eBay for: {search_query}")
-        resp = requests.get(url, params=params, timeout=10)
+        # Добавляем фильтр по категории если есть
+        if category_id:
+            params['categoryId'] = category_id
+        
+        # Фильтр по типу листинга
+        params['itemFilter(0).name'] = 'ListingType'
+        params['itemFilter(0).value'] = 'FixedPrice'
+        
+        # НЕ используем фильтры по UPC/EAN - они слишком строгие
+        # Вместо этого добавляем баркод в keywords для поиска
+        # Это позволяет находить товары даже если продавцы не заполнили Model
+        if barcode and len(barcode) >= 8:
+            # Добавляем баркод в поисковый запрос, но не как фильтр
+            search_query = f"{search_query} {barcode}".strip()
+            params['keywords'] = search_query
+        
+        print(f"[eBay Search] Searching for: {search_query} (category: {category_id or 'any'})")
+        resp = requests.get(url, params=params, timeout=15)
         
         if resp.ok:
             data = resp.json()
-            items = data.get('findItemsByKeywordsResponse', [{}])[0].get('searchResult', [{}])[0].get('item', [])
+            response = data.get('findItemsAdvancedResponse', [{}])[0]
+            search_result = response.get('searchResult', [{}])[0]
+            items = search_result.get('item', [])
             
-            if items:
-                prices = []
-                images = []
-                titles = []
-                urls = []
-                
-                for item in items[:10]:
-                    try:
-                        # Извлекаем цену
-                        price_val = item.get('sellingStatus', [{}])[0].get('currentPrice', [{}])[0].get('__value__')
-                        if price_val:
-                            prices.append(float(price_val))
-                        
-                        # Извлекаем изображения (galleryURL содержит фото товара)
-                        gallery_url = item.get('galleryURL', [''])[0]
-                        if gallery_url and gallery_url.startswith('http'):
-                            # eBay использует разные размеры изображений
-                            # Заменяем на больший размер если возможно
-                            if 'img.ebaystatic.com' in gallery_url:
-                                # Заменяем на размер 225x225 или больше
-                                gallery_url = gallery_url.replace('s-l64', 's-l225').replace('s-l140', 's-l225')
-                            if gallery_url not in images:
-                                images.append(gallery_url)
-                        
-                        # Извлекаем название товара
-                        item_title = item.get('title', [''])[0]
-                        if item_title:
-                            titles.append(item_title)
-                        
-                        # Извлекаем URL товара
-                        view_item_url = item.get('viewItemURL', [''])[0]
-                        if view_item_url:
-                            urls.append(view_item_url)
-                            
-                    except (ValueError, KeyError, IndexError) as e:
-                        print(f"Error parsing eBay item: {e}")
+            if not items:
+                print(f"[eBay Search] No items found for: {search_query}")
+                return None
+            
+            prices = []
+            images = []
+            titles = []
+            urls = []
+            comps_data = []  # Для более детальной информации
+            
+            for item in items[:20]:  # Обрабатываем до 20 товаров
+                try:
+                    # Извлекаем цену
+                    price_elem = item.get('sellingStatus', [{}])[0].get('currentPrice', [{}])[0]
+                    price_val = price_elem.get('__value__', 0)
+                    if not price_val:
                         continue
-                
-                # Формируем результат
-                result = {}
-                
-                if prices:
-                    prices.sort()
-                    median_price = prices[len(prices) // 2]
-                    result['price'] = median_price
-                    result['price_min'] = min(prices)
-                    result['price_max'] = max(prices)
-                    result['price_count'] = len(prices)
-                    print(f"eBay prices found: ${min(prices):.2f} - ${max(prices):.2f}, median: ${median_price:.2f}")
-                
-                if images:
-                    result['images'] = images[:12]  # Ограничиваем до 12 фото
-                    print(f"eBay images found: {len(result['images'])}")
-                
-                if titles:
-                    result['titles'] = titles[:5]  # Сохраняем несколько названий для анализа
-                
-                if urls:
-                    result['urls'] = urls[:5]
-                
-                return result if result else None
+                    
+                    price = float(price_val)
+                    prices.append(price)
+                    
+                    # Извлекаем shipping cost
+                    shipping_info = item.get('shippingInfo', [{}])[0]
+                    shipping_cost = 0
+                    if shipping_info:
+                        shipping_cost_elem = shipping_info.get('shippingServiceCost', [{}])[0]
+                        if shipping_cost_elem:
+                            shipping_cost = float(shipping_cost_elem.get('__value__', 0))
+                    
+                    # Извлекаем изображения - берем galleryURL и пытаемся получить больше фото
+                    gallery_url = item.get('galleryURL', [''])[0]
+                    if gallery_url and gallery_url.startswith('http'):
+                        # eBay использует разные размеры изображений
+                        # Заменяем на больший размер если возможно
+                        if 'img.ebaystatic.com' in gallery_url:
+                            # Заменяем на размер 500x500 или больше
+                            gallery_url = gallery_url.replace('s-l64', 's-l500').replace('s-l140', 's-l500').replace('s-l225', 's-l500')
+                        if gallery_url not in images:
+                            images.append(gallery_url)
+                    
+                    # Извлекаем название товара
+                    item_title = item.get('title', [''])[0]
+                    if item_title:
+                        titles.append(item_title)
+                    
+                    # Извлекаем URL товара
+                    view_item_url = item.get('viewItemURL', [''])[0]
+                    if view_item_url:
+                        urls.append(view_item_url)
+                    
+                    # Сохраняем детальную информацию для comps
+                    comps_data.append({
+                        'item_id': item.get('itemId', [''])[0],
+                        'title': item_title,
+                        'price': price,
+                        'shipping_cost': shipping_cost,
+                        'total_price': price + shipping_cost,
+                        'url': view_item_url,
+                        'image_url': gallery_url,
+                    })
+                        
+                except (ValueError, KeyError, IndexError) as e:
+                    print(f"[eBay Search] Error parsing item: {e}")
+                    continue
+            
+            # Формируем результат после обработки всех items
+            result = {}
+            
+            if prices:
+                prices.sort()
+                median_price = prices[len(prices) // 2]
+                result['price'] = median_price
+                result['price_min'] = min(prices)
+                result['price_max'] = max(prices)
+                result['price_count'] = len(prices)
+                print(f"[eBay Search] Prices: ${min(prices):.2f} - ${max(prices):.2f}, median: ${median_price:.2f}")
+            
+            if images:
+                result['images'] = images[:20]  # Увеличиваем до 20 фото
+                print(f"[eBay Search] Images found: {len(result['images'])}")
+            
+            if titles:
+                result['titles'] = titles[:10]  # Сохраняем больше названий
+            
+            if urls:
+                result['urls'] = urls[:10]
+            
+            if comps_data:
+                result['comps'] = comps_data[:10]  # Сохраняем детальную информацию о comps
+            
+            return result if result else None
         else:
-            print(f"eBay API error: {resp.status_code} - {resp.text[:200]}")
+            error_text = resp.text[:500]
+            print(f"[eBay Search] API error {resp.status_code}: {error_text}")
     except Exception as e:
-        print(f"Error searching eBay: {e}")
+        print(f"[eBay Search] Error: {e}")
         import traceback
         traceback.print_exc()
     
@@ -625,89 +675,100 @@ def generate_product_summary(photo_data_list: List[Dict] = None, photo_urls: Lis
         if gg_labels:
             context_parts.append(f"Наши лейбы GG: {', '.join(gg_labels)}")
         
-        # Пробуем найти товар на eBay по баркоду/названию
-        ebay_price = None
-        ebay_info = None
-        if barcodes:
-            ebay_info = search_products_on_ebay(barcode=barcodes[0])
-            if ebay_info:
-                ebay_price = ebay_info.get('price')
-                if ebay_price:
-                    context_parts.append(f"Найдена цена на eBay: ${ebay_price:.2f} (диапазон: ${ebay_info.get('price_min', ebay_price):.2f} - ${ebay_info.get('price_max', ebay_price):.2f})")
-                    print(f"eBay price found: ${ebay_price:.2f}")
-                    if ebay_info.get('images'):
-                        print(f"eBay also has {len(ebay_info['images'])} product images available")
-        
         context_text = "\n".join(context_parts) if context_parts else ""
         
-        # Формируем текст для секции цены
-        if ebay_price:
-            price_instruction = f"Используй найденную цену на eBay: {ebay_price:.0f} USD"
-        else:
-            price_instruction = "ОБЯЗАТЕЛЬНО оцени примерную розничную цену этого товара в USD, используя свои знания о ценах на подобные товары и бренды. Если видишь бренд и модель (например, XGO, Victoria's Secret, Stone Island и т.д.) - используй их для оценки типичной цены на такие товары. Даже если не уверен - попробуй оценить на основе бренда и типа товара. Цена должна быть только числом без символов, например: 45.99 или 120. НЕ пиши \"Не указана\" если можешь хотя бы приблизительно оценить."
+        # Формируем текст для секции цены - убрали поиск eBay отсюда, чтобы не замедлять запрос
+        price_instruction = "ОБЯЗАТЕЛЬНО оцени примерную розничную цену этого товара в USD, используя свои знания о ценах на подобные товары и бренды. Если видишь бренд и модель (например, XGO, Victoria's Secret, Stone Island и т.д.) - используй их для оценки типичной цены на такие товары. Даже если не уверен - попробуй оценить на основе бренда и типа товара. Цена должна быть только числом без символов, например: 45.99 или 120. НЕ пиши \"Не указана\" если можешь хотя бы приблизительно оценить."
         
         # Формируем контент с фото
         content = [{
             'type': 'text',
-            'text': f'''OCR Task: Read ALL text from retail product labels/tags, packaging, and product itself.
+            'text': f'''You are an expert product analyst specializing in luxury goods, watches, electronics, and fashion items.
 
 {context_text if context_text else ""}
 
-ВАЖНО: Извлеки ВСЕ видимые данные:
-- Все текстовые надписи на упаковке, этикетках, бирках
-- Все баркоды и коды (EAN, UPC, QR-коды)
-- Все номера моделей, артикулов, серийных номеров
-- Все размеры, цвета, материалы
-- Все бренды и логотипы
-- Все технические характеристики
-- Все предупреждения и инструкции
+CRITICAL: Analyze the PRODUCT ITSELF, not just the packaging. Look INSIDE the box if visible.
 
-Заполни шаблон ниже на русском языке:
+IMPORTANT: Extract ALL visible data:
+- All text on packaging, labels, tags, and the PRODUCT ITSELF
+- All barcodes and codes (EAN, UPC, QR codes, serial numbers)
+- All model numbers, SKUs (e.g.: GM-2110D-2AER for G-SHOCK watches)
+- All sizes, colors, materials
+- All brands and logos
+- All technical specifications (water resistance, functions, case dimensions, etc.)
+- All warnings and instructions
 
-**Что это за товар:**
-ОБЯЗАТЕЛЬНО включи бренд в описание. Формат: "Тип товара от [БРЕНД]" (например: "Свитер от Tommy Hilfiger", "Рубашка от Stone Island").
+ESPECIALLY IMPORTANT FOR WATCHES:
+- Exact model (e.g.: GM-2110D-2AER, not just "G-SHOCK")
+- Case size (diameter, thickness)
+- Case and bracelet material
+- Movement type (quartz, automatic, etc.)
+- Functions (chronograph, timer, alarm, world time, etc.)
+- Water resistance (in meters or bars)
+- Crystal type (mineral, sapphire)
+- Battery and lifespan
 
-**Бренд и модель:**
-Полное название бренда с этикетки (Tommy Hilfiger, Stone Island, Zara, Victoria's Secret, XGO, Nike, Adidas и т.д.).
-Модель/артикул если указан.
+Fill the template below IN ENGLISH:
 
-**ВСЕ найденные коды и номера:**
-Перечисли ВСЕ баркоды, EAN, UPC, артикулы, серийные номера, которые видишь на фото.
+**What is this product (exact name):**
+Describe the PRODUCT ITSELF, not the packaging. Example: "Casio G-SHOCK GM-2110D-2AER watch" or "Tommy Hilfiger sweater model XYZ", not "G-SHOCK box".
 
-**Размер и характеристики:**
-Размер (S/M/L/XL или числа), материал, состав ткани.
+**Brand and EXACT model:**
+Full brand name and EXACT model/SKU from the label or product itself.
+For watches: must include full model number (e.g.: GM-2110D-2AER, not just "G-SHOCK").
+If model is shown on tag/label/product - you MUST include it.
 
-**Цвет:**
-Один цвет словом по-русски (черный/синий/белый/серый/красный/зеленый/коричневый/бежевый).
+**ALL found codes and numbers:**
+List ALL barcodes, EAN, UPC, SKUs, serial numbers, model numbers visible in photos.
 
-**Состояние товара:**
-new
+**Technical specifications (COMPLETE):**
+For watches: case diameter, thickness, case material, bracelet material, movement type, functions, water resistance, crystal type, battery.
+For clothing: size (S/M/L/XL or numbers), material, fabric composition.
+For electronics: technical specs, functions, dimensions, weight.
 
-**Особенности:**
-Технические характеристики если есть на этикетке.
+**Color:**
+Exact product color (not packaging). For watches: dial and bracelet color.
 
-**Температурный режим / Назначение:**
-Если указан диапазон температур.
+**Product condition:**
+new or used - assess from photos.
 
-**Производитель:**
-Страна если видно.
+**Features and functions:**
+All additional features, specifications, technical characteristics.
 
-**Рекомендуемая розничная цена (USD):**
+**Manufacturer:**
+Country of manufacture if visible.
+
+**Recommended retail price (USD):**
 {price_instruction}
+For watches use your knowledge of specific model prices (e.g., G-SHOCK GM-2110D-2AER is around $300-360).
 
-**Описание для продажи:**
-3-4 предложения про материал, характеристики, применение на основе информации с этикетки.
+**eBay sales description (professional):**
+Create a professional product description for eBay including:
+- Full name with model
+- All technical specifications
+- Product condition
+- What's included (box, documents, etc.)
+- Why this product is attractive to buyers
+- Use structured format with headings
 
-**ВСЕ найденные текстовые надписи:**
-Перечисли все видимые надписи, логотипы, тексты на упаковке и товаре.
+**Stock photo recommendations for eBay:**
+Based on product analysis, suggest 3-5 specific search queries for finding stock photos on eBay/Google Images.
+Format: each query on new line, example:
+- "Casio G-SHOCK GM-2110D-2AER white background"
+- "G-SHOCK GM-2110D-2AER product photo"
+- "Casio GM-2110D-2AER dial close-up"
+Queries must be very specific with brand and model.
 
-Just read and transcribe ALL visible text and codes.'''
+**ALL found text inscriptions:**
+List all visible inscriptions, logos, texts on packaging AND on THE PRODUCT ITSELF.
+
+Analyze the PRODUCT, not the packaging. Extract model numbers, technical specs, and all visible information.'''
         }]
         
-        # Добавляем фото (до 2 для ускорения, обычно достаточно первого фото с упаковкой)
+        # Добавляем фото (до 5 для лучшего анализа товара, включая фото самого товара, а не только упаковки)
         # Приоритет: base64 данные, затем URL
         if photo_data_list:
-            for photo_data in photo_data_list[:2]:
+            for photo_data in photo_data_list[:5]:  # Увеличиваем до 5 фото
                 if isinstance(photo_data, dict) and 'base64' in photo_data:
                     content.append({
                         'type': 'image_url',
@@ -716,52 +777,75 @@ Just read and transcribe ALL visible text and codes.'''
                         }
                     })
         elif photo_urls:
-            for photo_url in photo_urls[:2]:
+            for photo_url in photo_urls[:5]:  # Увеличиваем до 5 фото
                 if photo_url.startswith('http'):
+                    # Принудительно используем HTTPS для нашего домена,
+                    # так как OpenAI отклоняет http-загрузки
+                    if photo_url.startswith('http://pochtoy.us'):
+                        photo_url = 'https://' + photo_url[len('http://'):]
+                    if photo_url.startswith('http://www.pochtoy.us'):
+                        photo_url = 'https://' + photo_url[len('http://'):]
                     content.append({
                         'type': 'image_url',
                         'image_url': {'url': photo_url}
                     })
         
         payload = {
-            'model': 'gpt-4o-mini',  # Используем mini - мягче политики контента
+            'model': 'gpt-4o',  # Используем полную модель для лучшего анализа товаров
             'messages': [{
                 'role': 'user',
                 'content': content
             }],
-            'max_tokens': 1200,
+            'max_tokens': 2000,  # Увеличиваем для более детального описания
             'temperature': 0.3,
         }
         
         image_count = len([c for c in content if c.get('type') == 'image_url'])
-        print(f"Sending summary request to OpenAI with {image_count} images")
-        resp = requests.post(url, json=payload, headers=headers, timeout=30)
+        print(f"[OpenAI] Sending summary request to OpenAI with {image_count} images")
+        print(f"[OpenAI] Payload size: {len(str(payload))} chars, model: {payload['model']}")
+        
+        resp = requests.post(url, json=payload, headers=headers, timeout=60)  # Увеличиваем timeout до 60 сек
+        
+        print(f"[OpenAI] Response status: {resp.status_code}")
         
         if resp.ok:
             data = resp.json()
-            text = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
-            print(f"Summary received: {len(text)} characters")
+            print(f"[OpenAI] Response keys: {list(data.keys())}")
+            
+            choices = data.get('choices', [])
+            if not choices:
+                print("[OpenAI] ERROR: No choices in response")
+                print(f"[OpenAI] Full response: {data}")
+                return None
+            
+            text = choices[0].get('message', {}).get('content', '').strip()
+            print(f"[OpenAI] Summary received: {len(text)} characters")
             if not text:
-                print("WARNING: Summary text is empty")
+                print("[OpenAI] WARNING: Summary text is empty")
+                print(f"[OpenAI] Full response: {data}")
+                return None
             return text
         else:
             error_text = resp.text
-            print(f"OpenAI summary error: {resp.status_code}")
-            print(f"Error response: {error_text}")
+            print(f"[OpenAI] ERROR: Status {resp.status_code}")
+            print(f"[OpenAI] Error response (first 500 chars): {error_text[:500]}")
             try:
                 error_json = resp.json()
                 if 'error' in error_json:
                     error_message = error_json['error'].get('message', str(error_json['error']))
-                    print(f"OpenAI API error message: {error_message}")
+                    error_type = error_json['error'].get('type', 'unknown')
+                    print(f"[OpenAI] Error type: {error_type}, message: {error_message}")
                     # Raise exception with error message so caller can handle it
                     if resp.status_code == 401:
                         raise ValueError(f"OpenAI API key error: {error_message}")
                     elif resp.status_code == 429:
                         raise ValueError(f"OpenAI API rate limit exceeded: {error_message}")
+                    else:
+                        raise ValueError(f"OpenAI API error ({resp.status_code}): {error_message}")
             except ValueError:
                 raise  # Re-raise ValueError to propagate to caller
-            except:
-                pass
+            except Exception as e:
+                print(f"[OpenAI] Failed to parse error JSON: {e}")
             return None
     except ValueError:
         # Re-raise ValueError (API key errors, rate limits)
