@@ -190,15 +190,17 @@ REST_FRAMEWORK = {
 # EBAY MARKETPLACE SETTINGS
 # =============================================================================
 
-# eBay Environment
-EBAY_SANDBOX = True  # Set to False for production
-
-# eBay API Credentials
-# eBay API Keys (loaded from .env)
-EBAY_APP_ID = os.getenv('EBAY_APP_ID', '')
-EBAY_DEV_ID = os.getenv('EBAY_DEV_ID', '')
-EBAY_CERT_ID = os.getenv('EBAY_CERT_ID', '')
+# eBay API Credentials (loaded from .env)
+EBAY_APP_ID = os.getenv('EBAY_APP_ID', '')  # For Finding API
+EBAY_CLIENT_ID = os.getenv('EBAY_CLIENT_ID', '')  # OAuth Client ID
+EBAY_CLIENT_SECRET = os.getenv('EBAY_CLIENT_SECRET', '')  # OAuth Secret
+EBAY_REDIRECT_URI = os.getenv('EBAY_REDIRECT_URI', 'https://pochtoy.us/ebay/oauth/callback')  # OAuth callback
 EBAY_SANDBOX = os.getenv('EBAY_SANDBOX', 'true').lower() == 'true'  # Default to sandbox
+
+# eBay Business Policies (create these in eBay Seller Hub)
+EBAY_PAYMENT_POLICY_ID = os.getenv('EBAY_PAYMENT_POLICY_ID', '')
+EBAY_RETURN_POLICY_ID = os.getenv('EBAY_RETURN_POLICY_ID', '')
+EBAY_FULFILLMENT_POLICY_ID = os.getenv('EBAY_FULFILLMENT_POLICY_ID', '')
 
 # Photo hosting
 PHOTO_HOST_DOMAIN = 'https://pochtoy.us'

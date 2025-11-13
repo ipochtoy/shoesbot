@@ -32,17 +32,28 @@ class EbayClient:
     Replace with real eBay API calls in production.
     """
 
-    def __init__(self, sandbox: bool = None):
+    def __init__(self, sandbox: bool = None, access_token: str = None):
         """
         Initialize eBay client.
 
         Args:
             sandbox: Use sandbox environment (default from settings)
+            access_token: OAuth access token (if not provided, will try to fetch from DB)
         """
         self.sandbox = sandbox if sandbox is not None else getattr(settings, 'EBAY_SANDBOX', True)
         self.app_id = getattr(settings, 'EBAY_APP_ID', '')
-        self.dev_id = getattr(settings, 'EBAY_DEV_ID', '')
-        self.cert_id = getattr(settings, 'EBAY_CERT_ID', '')
+        self.client_id = getattr(settings, 'EBAY_CLIENT_ID', '')
+        self.client_secret = getattr(settings, 'EBAY_CLIENT_SECRET', '')
+        self.redirect_uri = getattr(settings, 'EBAY_REDIRECT_URI', '')
+        self.access_token = access_token
+        
+        # Base URLs
+        if self.sandbox:
+            self.api_base = 'https://api.sandbox.ebay.com'
+            self.oauth_base = 'https://auth.sandbox.ebay.com'
+        else:
+            self.api_base = 'https://api.ebay.com'
+            self.oauth_base = 'https://auth.ebay.com'
 
     def _log_request(self, method: str, endpoint: str, params: Dict = None) -> Dict:
         """
@@ -63,54 +74,494 @@ class EbayClient:
             'params': params or {},
             'sandbox': self.sandbox,
         }
+    
+    def _get_access_token(self) -> Optional[str]:
+        """
+        Get access token from instance or database.
+        
+        Returns:
+            Access token string or None
+        """
+        if self.access_token:
+            return self.access_token
+        
+        # Try to fetch from database
+        try:
+            from ..models import EbayToken
+            token_obj = EbayToken.objects.filter(
+                sandbox=self.sandbox,
+                expires_at__gt=timezone.now()
+            ).first()
+            
+            if token_obj:
+                return token_obj.access_token
+        except Exception as e:
+            print(f"[EbayClient] Error fetching token from DB: {e}")
+        
+        return None
+    
+    def get_oauth_url(self, state: str = None) -> str:
+        """
+        Generate OAuth authorization URL for user consent.
+        
+        Args:
+            state: Optional state parameter for CSRF protection
+            
+        Returns:
+            Authorization URL
+        """
+        import urllib.parse
+        
+        params = {
+            'client_id': self.client_id,
+            'redirect_uri': self.redirect_uri,
+            'response_type': 'code',
+            'scope': ' '.join([
+                'https://api.ebay.com/oauth/api_scope',
+                'https://api.ebay.com/oauth/api_scope/sell.inventory',
+                'https://api.ebay.com/oauth/api_scope/sell.marketing',
+                'https://api.ebay.com/oauth/api_scope/sell.account',
+                'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
+            ]),
+        }
+        
+        if state:
+            params['state'] = state
+        
+        url = f"{self.oauth_base}/oauth2/authorize"
+        return f"{url}?{urllib.parse.urlencode(params)}"
+    
+    def exchange_code_for_token(self, authorization_code: str) -> Dict[str, Any]:
+        """
+        Exchange authorization code for access token.
+        
+        Args:
+            authorization_code: Authorization code from OAuth callback
+            
+        Returns:
+            Token data with access_token, refresh_token, expires_in
+        """
+        import base64
+        
+        url = f"{self.oauth_base}/identity/v1/oauth2/token"
+        
+        # Basic auth header
+        credentials = f"{self.client_id}:{self.client_secret}"
+        auth_header = base64.b64encode(credentials.encode()).decode()
+        
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': f'Basic {auth_header}',
+        }
+        
+        data = {
+            'grant_type': 'authorization_code',
+            'code': authorization_code,
+            'redirect_uri': self.redirect_uri,
+        }
+        
+        resp = requests.post(url, headers=headers, data=data, timeout=10)
+        
+        if resp.ok:
+            token_data = resp.json()
+            
+            # Save to database
+            from ..models import EbayToken
+            expires_at = timezone.now() + timedelta(seconds=token_data.get('expires_in', 7200))
+            
+            token_obj, created = EbayToken.objects.update_or_create(
+                account='default',
+                sandbox=self.sandbox,
+                defaults={
+                    'access_token': token_data['access_token'],
+                    'refresh_token': token_data.get('refresh_token', ''),
+                    'expires_at': expires_at,
+                }
+            )
+            
+            return {
+                'success': True,
+                'access_token': token_data['access_token'],
+                'refresh_token': token_data.get('refresh_token'),
+                'expires_at': expires_at.isoformat(),
+            }
+        else:
+            return {
+                'success': False,
+                'error': resp.text,
+            }
+
+    def refresh_access_token(self, refresh_token: str = None) -> Dict[str, Any]:
+        """
+        Refresh OAuth access token.
+
+        Args:
+            refresh_token: Refresh token (if not provided, will fetch from DB)
+
+        Returns:
+            New token data
+        """
+        import base64
+        
+        # Get refresh token from DB if not provided
+        if not refresh_token:
+            try:
+                from ..models import EbayToken
+                token_obj = EbayToken.objects.filter(sandbox=self.sandbox).first()
+                if token_obj:
+                    refresh_token = token_obj.refresh_token
+            except Exception as e:
+                print(f"[EbayClient] Error fetching refresh token: {e}")
+        
+        if not refresh_token:
+            return {'success': False, 'error': 'No refresh token available'}
+        
+        url = f"{self.oauth_base}/identity/v1/oauth2/token"
+        
+        credentials = f"{self.client_id}:{self.client_secret}"
+        auth_header = base64.b64encode(credentials.encode()).decode()
+        
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': f'Basic {auth_header}',
+        }
+        
+        data = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token,
+        }
+        
+        resp = requests.post(url, headers=headers, data=data, timeout=10)
+        
+        if resp.ok:
+            token_data = resp.json()
+            
+            # Update database
+            from ..models import EbayToken
+            expires_at = timezone.now() + timedelta(seconds=token_data.get('expires_in', 7200))
+            
+            EbayToken.objects.update_or_create(
+                account='default',
+                sandbox=self.sandbox,
+                defaults={
+                    'access_token': token_data['access_token'],
+                    'expires_at': expires_at,
+                }
+            )
+            
+            return {
+                'success': True,
+                'access_token': token_data['access_token'],
+                'expires_at': expires_at.isoformat(),
+            }
+        else:
+            return {
+                'success': False,
+                'error': resp.text,
+            }
 
     def create_or_update_listing(self, candidate) -> Dict[str, Any]:
         """
-        Create or update eBay listing (STUB).
+        Create or update eBay listing using Sell API.
 
         Args:
             candidate: EbayCandidate instance
 
         Returns:
             Response dict with item_id and listing_url
-
-        In production, this would call:
-        - eBay Sell API: createOrReplaceInventoryItem
-        - eBay Sell API: createOffer
-        - eBay Sell API: publishOffer
+        
+        Uses eBay Sell API flow:
+        1. createOrReplaceInventoryItem - create product
+        2. createOffer - create offer with price
+        3. publishOffer - make it live
         """
-        time.sleep(0.5)  # Simulate API delay
-
-        # Generate mock eBay item ID
-        item_id = f"MOCK_{candidate.id}_{int(time.time())}"
-
-        # Mock listing URL
-        listing_url = f"https://www.ebay.com/itm/{item_id}"
+        token = self._get_access_token()
+        if not token:
+            return {
+                'success': False,
+                'error': 'No access token available. Please authorize first.',
+            }
+        
+        # Generate SKU
+        sku = candidate.photo_batch.sku or f"SKU_{candidate.id}_{int(time.time())}"
+        
+        # Step 1: Create/Update Inventory Item
+        inventory_result = self._create_inventory_item(candidate, sku, token)
+        if not inventory_result.get('success'):
+            return inventory_result
+        
+        # Step 2: Create Offer
+        offer_result = self._create_offer(candidate, sku, token)
+        if not offer_result.get('success'):
+            return offer_result
+        
+        offer_id = offer_result.get('offer_id')
+        
+        # Step 3: Publish Offer
+        publish_result = self._publish_offer(offer_id, token)
+        if not publish_result.get('success'):
+            return publish_result
+        
+        listing_id = publish_result.get('listing_id')
+        
+        # Build listing URL
+        listing_url = f"https://www.ebay.com/itm/{listing_id}"
         if self.sandbox:
-            listing_url = f"https://sandbox.ebay.com/itm/{item_id}"
-
-        response = {
+            listing_url = f"https://www.sandbox.ebay.com/itm/{listing_id}"
+        
+        return {
             'success': True,
-            'item_id': item_id,
+            'item_id': listing_id,
             'listing_url': listing_url,
-            'sku': candidate.photo_batch.sku or f"SKU_{candidate.id}",
+            'sku': sku,
+            'offer_id': offer_id,
             'status': 'ACTIVE',
             'created_at': timezone.now().isoformat(),
         }
-
-        # Log the mock request
-        log_entry = self._log_request(
-            'POST',
-            '/sell/inventory/v1/inventory_item',
-            {
+    
+    def _create_inventory_item(self, candidate, sku: str, token: str) -> Dict[str, Any]:
+        """
+        Create/update inventory item via Sell API.
+        
+        Args:
+            candidate: EbayCandidate instance
+            sku: Product SKU
+            token: Access token
+            
+        Returns:
+            Success/error response
+        """
+        url = f"{self.api_base}/sell/inventory/v1/inventory_item/{sku}"
+        
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+        
+        # Build product data
+        product_data = {
+            'availability': {
+                'shipToLocationAvailability': {
+                    'quantity': candidate.photo_batch.quantity or 1,
+                }
+            },
+            'condition': self._map_condition_to_ebay(candidate.condition),
+            'product': {
                 'title': candidate.title,
-                'price': str(candidate.price_final),
-                'category_id': candidate.category_id,
+                'description': candidate.description_md,
+                'aspects': self._format_item_specifics(candidate.specifics),
+                'imageUrls': self._get_photo_urls(candidate),
             }
-        )
-        log_entry['response'] = response
-
-        return response
+        }
+        
+        # Add UPC/EAN if available
+        barcodes = self._get_barcodes(candidate)
+        if barcodes.get('upc'):
+            product_data['product']['upc'] = [barcodes['upc']]
+        elif barcodes.get('ean'):
+            product_data['product']['ean'] = [barcodes['ean']]
+        elif barcodes.get('isbn'):
+            product_data['product']['isbn'] = [barcodes['isbn']]
+        
+        try:
+            resp = requests.put(url, headers=headers, json=product_data, timeout=15)
+            
+            if resp.status_code in [200, 201, 204]:
+                return {
+                    'success': True,
+                    'sku': sku,
+                }
+            else:
+                error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'message': resp.text}
+                return {
+                    'success': False,
+                    'error': f"Inventory item creation failed: {error_data.get('errors', [error_data.get('message', resp.text)])}",
+                    'status_code': resp.status_code,
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f"Request error: {str(e)}",
+            }
+    
+    def _create_offer(self, candidate, sku: str, token: str) -> Dict[str, Any]:
+        """
+        Create offer for inventory item.
+        
+        Args:
+            candidate: EbayCandidate instance
+            sku: Product SKU
+            token: Access token
+            
+        Returns:
+            Success/error with offer_id
+        """
+        url = f"{self.api_base}/sell/inventory/v1/offer"
+        
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+        
+        # Build offer data
+        offer_data = {
+            'sku': sku,
+            'marketplaceId': 'EBAY_US',
+            'format': 'FIXED_PRICE',
+            'availableQuantity': candidate.photo_batch.quantity or 1,
+            'categoryId': candidate.category_id,
+            'listingDescription': candidate.description_md,
+            'listingPolicies': self._get_listing_policies(candidate),
+            'pricingSummary': {
+                'price': {
+                    'value': str(candidate.price_final),
+                    'currency': 'USD',
+                }
+            },
+        }
+        
+        try:
+            resp = requests.post(url, headers=headers, json=offer_data, timeout=15)
+            
+            if resp.status_code in [200, 201]:
+                data = resp.json()
+                return {
+                    'success': True,
+                    'offer_id': data.get('offerId'),
+                }
+            else:
+                error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'message': resp.text}
+                return {
+                    'success': False,
+                    'error': f"Offer creation failed: {error_data.get('errors', [error_data.get('message', resp.text)])}",
+                    'status_code': resp.status_code,
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f"Request error: {str(e)}",
+            }
+    
+    def _publish_offer(self, offer_id: str, token: str) -> Dict[str, Any]:
+        """
+        Publish offer to make it live.
+        
+        Args:
+            offer_id: Offer ID
+            token: Access token
+            
+        Returns:
+            Success/error with listing_id
+        """
+        url = f"{self.api_base}/sell/inventory/v1/offer/{offer_id}/publish"
+        
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        }
+        
+        try:
+            resp = requests.post(url, headers=headers, json={}, timeout=15)
+            
+            if resp.status_code in [200, 201]:
+                data = resp.json()
+                return {
+                    'success': True,
+                    'listing_id': data.get('listingId'),
+                }
+            else:
+                error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'message': resp.text}
+                return {
+                    'success': False,
+                    'error': f"Offer publish failed: {error_data.get('errors', [error_data.get('message', resp.text)])}",
+                    'status_code': resp.status_code,
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f"Request error: {str(e)}",
+            }
+    
+    def _map_condition_to_ebay(self, condition: str) -> str:
+        """Map internal condition to eBay condition ID."""
+        condition_map = {
+            'NEW': 'NEW',
+            'NEW_OTHER': 'NEW_OTHER',
+            'NEW_WITH_DEFECTS': 'NEW_WITH_DEFECTS',
+            'MANUFACTURER_REFURBISHED': 'MANUFACTURER_REFURBISHED',
+            'CERTIFIED_REFURBISHED': 'CERTIFIED_REFURBISHED',
+            'SELLER_REFURBISHED': 'SELLER_REFURBISHED',
+            'LIKE_NEW': 'LIKE_NEW',
+            'USED_EXCELLENT': 'USED_EXCELLENT',
+            'USED_VERY_GOOD': 'USED_VERY_GOOD',
+            'USED_GOOD': 'USED_GOOD',
+            'USED_ACCEPTABLE': 'USED_ACCEPTABLE',
+            'FOR_PARTS_OR_NOT_WORKING': 'FOR_PARTS_OR_NOT_WORKING',
+        }
+        return condition_map.get(condition, 'USED_GOOD')
+    
+    def _format_item_specifics(self, specifics: Dict) -> Dict[str, List[str]]:
+        """Format item specifics for eBay API."""
+        formatted = {}
+        for key, value in specifics.items():
+            if isinstance(value, list):
+                formatted[key] = value
+            else:
+                formatted[key] = [str(value)]
+        return formatted
+    
+    def _get_photo_urls(self, candidate) -> List[str]:
+        """Get photo URLs from candidate."""
+        photos = candidate.photos or []
+        if isinstance(photos, str):
+            import json
+            photos = json.loads(photos)
+        
+        urls = []
+        for photo in photos:
+            if isinstance(photo, dict):
+                urls.append(photo.get('url', ''))
+            elif isinstance(photo, str):
+                urls.append(photo)
+        
+        return [url for url in urls if url]
+    
+    def _get_barcodes(self, candidate) -> Dict[str, str]:
+        """Extract barcodes from photo batch."""
+        barcodes = {'upc': None, 'ean': None, 'isbn': None}
+        
+        try:
+            from photos.models import BarcodeResult
+            barcode_results = BarcodeResult.objects.filter(
+                photo__batch=candidate.photo_batch
+            )
+            
+            for barcode in barcode_results:
+                symbology = barcode.symbology.upper()
+                if 'UPC' in symbology or 'UPCA' in symbology:
+                    barcodes['upc'] = barcode.data
+                elif 'EAN' in symbology:
+                    barcodes['ean'] = barcode.data
+                elif 'ISBN' in symbology:
+                    barcodes['isbn'] = barcode.data
+        except Exception as e:
+            print(f"[EbayClient] Error fetching barcodes: {e}")
+        
+        return barcodes
+    
+    def _get_listing_policies(self, candidate) -> Dict:
+        """Get listing policies (payment, shipping, return)."""
+        policies = candidate.policies or {}
+        
+        # Use stored policies or defaults
+        return {
+            'paymentPolicyId': policies.get('payment_policy_id', getattr(settings, 'EBAY_PAYMENT_POLICY_ID', '')),
+            'returnPolicyId': policies.get('return_policy_id', getattr(settings, 'EBAY_RETURN_POLICY_ID', '')),
+            'fulfillmentPolicyId': policies.get('fulfillment_policy_id', getattr(settings, 'EBAY_FULFILLMENT_POLICY_ID', '')),
+        }
 
     def upload_media(self, urls: List[str]) -> List[str]:
         """
@@ -131,54 +582,121 @@ class EbayClient:
         # In production, you might upload to eBay's servers
         return urls
 
-    def end_listing(self, item_id: str) -> Dict[str, Any]:
+    def end_listing(self, item_id: str, offer_id: str = None) -> Dict[str, Any]:
         """
-        End/delete eBay listing (STUB).
+        End/delete eBay listing via Sell API.
 
         Args:
-            item_id: eBay item ID
+            item_id: eBay listing ID
+            offer_id: Offer ID (if available)
 
         Returns:
             Response dict
-
-        In production, this would call:
-        - eBay Sell API: withdrawOffer or deleteInventoryItem
         """
-        time.sleep(0.3)
-
-        response = {
-            'success': True,
-            'item_id': item_id,
-            'status': 'ENDED',
-            'ended_at': timezone.now().isoformat(),
+        token = self._get_access_token()
+        if not token:
+            return {
+                'success': False,
+                'error': 'No access token available',
+            }
+        
+        # Use offer_id to withdraw the offer
+        if offer_id:
+            url = f"{self.api_base}/sell/inventory/v1/offer/{offer_id}/withdraw"
+        else:
+            # If no offer_id, we can't end it via API directly
+            return {
+                'success': False,
+                'error': 'Offer ID required to end listing',
+            }
+        
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
         }
+        
+        try:
+            resp = requests.post(url, headers=headers, json={}, timeout=15)
+            
+            if resp.status_code in [200, 204]:
+                return {
+                    'success': True,
+                    'item_id': item_id,
+                    'status': 'ENDED',
+                    'ended_at': timezone.now().isoformat(),
+                }
+            else:
+                error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'message': resp.text}
+                return {
+                    'success': False,
+                    'error': f"Withdraw offer failed: {error_data.get('errors', [error_data.get('message', resp.text)])}",
+                    'status_code': resp.status_code,
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f"Request error: {str(e)}",
+            }
 
-        return response
-
-    def update_price(self, item_id: str, new_price: float) -> Dict[str, Any]:
+    def update_price(self, offer_id: str, new_price: float) -> Dict[str, Any]:
         """
-        Update listing price (STUB).
+        Update listing price via Sell API.
 
         Args:
-            item_id: eBay item ID
+            offer_id: Offer ID
             new_price: New price
 
         Returns:
             Response dict
-
-        In production, this would call:
-        - eBay Sell API: updateOffer
         """
-        time.sleep(0.2)
-
-        response = {
-            'success': True,
-            'item_id': item_id,
-            'new_price': new_price,
-            'updated_at': timezone.now().isoformat(),
+        token = self._get_access_token()
+        if not token:
+            return {
+                'success': False,
+                'error': 'No access token available',
+            }
+        
+        url = f"{self.api_base}/sell/inventory/v1/offer/{offer_id}"
+        
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
         }
-
-        return response
+        
+        # Update only price
+        update_data = {
+            'pricingSummary': {
+                'price': {
+                    'value': str(new_price),
+                    'currency': 'USD',
+                }
+            }
+        }
+        
+        try:
+            resp = requests.put(url, headers=headers, json=update_data, timeout=15)
+            
+            if resp.status_code in [200, 204]:
+                return {
+                    'success': True,
+                    'offer_id': offer_id,
+                    'new_price': new_price,
+                    'updated_at': timezone.now().isoformat(),
+                }
+            else:
+                error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'message': resp.text}
+                return {
+                    'success': False,
+                    'error': f"Price update failed: {error_data.get('errors', [error_data.get('message', resp.text)])}",
+                    'status_code': resp.status_code,
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f"Request error: {str(e)}",
+            }
 
     def get_business_policies(self) -> Dict[str, Any]:
         """

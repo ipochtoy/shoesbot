@@ -61,6 +61,11 @@ class EbayCandidate(models.Model):
         db_index=True,
         help_text='eBay item ID once listed'
     )
+    ebay_offer_id = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text='eBay offer ID'
+    )
     condition = models.CharField(
         max_length=50,
         choices=CONDITION_CHOICES,

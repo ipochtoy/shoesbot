@@ -39,6 +39,67 @@ from .services import pipeline
 # from .tasks import prepare_candidate, publish_candidate, end_candidate, reprice_candidate  # Celery tasks disabled for now
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+
+@require_GET
+def ebay_oauth_start(request):
+    """
+    Start OAuth 2.0 authorization flow.
+    Redirects user to eBay consent page.
+    """
+    from .services.client import EbayClient
+    
+    sandbox = request.GET.get('sandbox', 'true').lower() == 'true'
+    client = EbayClient(sandbox=sandbox)
+    
+    # Generate OAuth URL
+    auth_url = client.get_oauth_url(state='shoesbot')
+    
+    # Redirect to eBay
+    from django.shortcuts import redirect
+    return redirect(auth_url)
+
+
+@require_GET
+def ebay_oauth_callback(request):
+    """
+    Handle OAuth 2.0 callback from eBay.
+    Exchange authorization code for access token.
+    """
+    from .services.client import EbayClient
+    
+    code = request.GET.get('code')
+    error = request.GET.get('error')
+    state = request.GET.get('state')
+    
+    if error:
+        context = {
+            'success': False,
+            'error': error,
+            'error_description': request.GET.get('error_description', ''),
+        }
+        return render(request, 'ebay/oauth_callback.html', context, status=400)
+    
+    if not code:
+        context = {
+            'success': False,
+            'error': 'No authorization code received',
+        }
+        return render(request, 'ebay/oauth_callback.html', context, status=400)
+    
+    # Exchange code for token
+    sandbox = request.GET.get('sandbox', 'true').lower() == 'true'
+    client = EbayClient(sandbox=sandbox)
+    result = client.exchange_code_for_token(code)
+    
+    context = {
+        'success': result.get('success', False),
+        'error': result.get('error'),
+        'expires_at': result.get('expires_at'),
+    }
+    
+    return render(request, 'ebay/oauth_callback.html', context)
+
+
 @require_GET
 def ebay_oauth_success(request):
     """

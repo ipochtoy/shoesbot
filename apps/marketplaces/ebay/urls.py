@@ -16,6 +16,10 @@ from .views import (
     GPTAnalysisView,
     EbaySearchView,
     ebay_marketplace_deletion_webhook,
+    ebay_oauth_start,
+    ebay_oauth_callback,
+    ebay_oauth_success,
+    ebay_oauth_cancel,
 )
 
 app_name = 'ebay'
@@ -26,6 +30,12 @@ router.register(r'candidates', EbayCandidateViewSet, basename='candidate')
 router.register(r'tokens', EbayTokenViewSet, basename='token')
 
 urlpatterns = [
+    # OAuth 2.0 endpoints
+    path('oauth/start/', ebay_oauth_start, name='oauth-start'),
+    path('oauth/callback/', ebay_oauth_callback, name='oauth-callback'),
+    path('oauth/success/', ebay_oauth_success, name='oauth-success'),  # Legacy Auth'n'Auth
+    path('oauth/cancel/', ebay_oauth_cancel, name='oauth-cancel'),
+    
     # Analysis page (first step)
     path('candidates/<int:candidate_id>/analyze/', ebay_candidate_analyze, name='candidate-analyze'),
     # Edit page (second step)
