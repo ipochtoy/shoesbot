@@ -84,6 +84,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Раздача статики
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -267,3 +268,10 @@ if not os.environ.get('DEV_MODE'):
     if not USE_GCS:
         MEDIA_ROOT = '/home/pochtoy/shoesbot/shoessite/media'
         MEDIA_URL = '/media/'
+
+# =============================================================================
+# WHITENOISE - раздача статики через Django
+# =============================================================================
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Whitenoise автоматически будет раздавать файлы из STATIC_ROOT с кешированием
+
