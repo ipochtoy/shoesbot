@@ -20,6 +20,8 @@ class EbayCandidateAdmin(admin.ModelAdmin):
         'id',
         'title_display',
         'photo_batch_link',
+        'photo_previews',
+        'photo_count',
         'status_badge',
         'condition',
         'category_display',
@@ -107,6 +109,11 @@ class EbayCandidateAdmin(admin.ModelAdmin):
         'action_prepare',
     ]
 
+    def get_queryset(self, request):
+        """Optimize queryset with prefetch_related."""
+        qs = super().get_queryset(request)
+        return qs.prefetch_related('photo_batch__photos')
+
     def title_display(self, obj):
         """Display title with truncation."""
         title = obj.title or f'Candidate #{obj.pk}'
@@ -114,6 +121,33 @@ class EbayCandidateAdmin(admin.ModelAdmin):
             return f'{title[:50]}...'
         return title
     title_display.short_description = 'Title'
+
+    def photo_previews(self, obj):
+        """Display small photo previews from photo_batch."""
+        if not obj.photo_batch:
+            return "-"
+        photos = obj.photo_batch.photos.all()[:4]  # First 4 photos
+        if not photos:
+            return "-"
+        previews = []
+        for photo in photos:
+            if photo.image:
+                previews.append(
+                    format_html(
+                        '<img src="{}" style="width: 50px; height: 50px; object-fit: cover; margin: 2px; border: 1px solid #ddd; border-radius: 4px;" />',
+                        photo.image.url
+                    )
+                )
+        return format_html(''.join(previews)) if previews else "-"
+    photo_previews.short_description = 'Превью'
+
+    def photo_count(self, obj):
+        """Display photo count."""
+        if not obj.photo_batch:
+            return "-"
+        count = obj.photo_batch.photos.count()
+        return count
+    photo_count.short_description = 'Фото'
 
     def photo_batch_link(self, obj):
         """Link to eBay analyze/edit pages and source photo batch."""
