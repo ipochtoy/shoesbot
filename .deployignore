@@ -1,0 +1,43 @@
+# Файлы которые НЕ ДОЛЖНЫ синкаться с локальной машины на сервер
+# Это защищает production от случайного перезаписывания критичных файлов
+
+# Virtual environment
+.venv/
+venv/
+
+# Databases
+shoessite/db.sqlite3
+dev_data/
+
+# Media files
+shoessite/media/
+
+# Settings files
+shoessite/shoessite/settings.py
+.env
+
+# Logs
+*.log
+bot.log.*
+django.log
+django-dev.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backups
+backups/
