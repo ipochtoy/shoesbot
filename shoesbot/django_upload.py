@@ -100,10 +100,26 @@ async def upload_batch_to_django(
                                     import requests
                                     bot_token = os.getenv('BOT_TOKEN')
                                     telegram_url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
-                                    requests.post(telegram_url, json={
+                                    resp = requests.post(telegram_url, json={
                                         'chat_id': chat_id,
                                         'text': f"📡 Pochtoy:\n{pochtoy_msg}"
                                     }, timeout=5)
+                                    
+                                    # Сохраняем message_id чтобы можно было удалить
+                                    if resp.status_code == 200:
+                                        resp_data = resp.json()
+                                        if resp_data.get('ok') and resp_data.get('result'):
+                                            msg_id = resp_data['result'].get('message_id')
+                                            if msg_id:
+                                                # Добавляем в SENT_BATCHES если есть
+                                                try:
+                                                    from shoesbot.telegram_bot import SENT_BATCHES
+                                                    if correlation_id in SENT_BATCHES:
+                                                        SENT_BATCHES[correlation_id]['message_ids'].append(msg_id)
+                                                        logger.info(f"Added Pochtoy message {msg_id} to batch {correlation_id}")
+                                                except Exception:
+                                                    pass
+                                    
                                     logger.info(f"Sent Pochtoy message to chat: {pochtoy_msg}")
                                 except Exception as e:
                                     logger.error(f"Failed to send Pochtoy message: {e}")
@@ -211,10 +227,26 @@ async def retry_upload_from_queue(correlation_id: str) -> bool:
                                     import requests
                                     bot_token = os.getenv('BOT_TOKEN')
                                     telegram_url = f'https://api.telegram.org/bot{bot_token}/sendMessage'
-                                    requests.post(telegram_url, json={
+                                    resp = requests.post(telegram_url, json={
                                         'chat_id': chat_id,
                                         'text': f"📡 Pochtoy:\n{pochtoy_msg}"
                                     }, timeout=5)
+                                    
+                                    # Сохраняем message_id чтобы можно было удалить
+                                    if resp.status_code == 200:
+                                        resp_data = resp.json()
+                                        if resp_data.get('ok') and resp_data.get('result'):
+                                            msg_id = resp_data['result'].get('message_id')
+                                            if msg_id:
+                                                # Добавляем в SENT_BATCHES если есть
+                                                try:
+                                                    from shoesbot.telegram_bot import SENT_BATCHES
+                                                    if correlation_id in SENT_BATCHES:
+                                                        SENT_BATCHES[correlation_id]['message_ids'].append(msg_id)
+                                                        logger.info(f"Added Pochtoy message {msg_id} to batch {correlation_id}")
+                                                except Exception:
+                                                    pass
+                                    
                                     logger.info(f"Sent Pochtoy message to chat: {pochtoy_msg}")
                                 except Exception as e:
                                     logger.error(f"Failed to send Pochtoy message: {e}")
