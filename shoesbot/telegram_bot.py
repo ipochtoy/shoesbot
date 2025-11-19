@@ -354,30 +354,32 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             logger.info("Trying OpenAI on all photos for GG/Q detection...")
             try:
                 import base64
-                import requests as sync_requests
+                import aiohttp
                 import re
                 from shoesbot.models import Barcode
                 
                 openai_key = os.getenv('OPENAI_API_KEY')
                 if openai_key:
-                    # Пробуем каждое фото
-                    for idx, photo_item in enumerate(photo_items):
+                    # Пробуем каждое фото асинхронно
+                    async def check_photo_with_openai(idx: int, photo_item):
                         try:
                             buf2 = BytesIO()
                             await photo_item.file_obj.download_to_memory(out=buf2)
                             img_data = buf2.getvalue()
                             img_b64 = base64.b64encode(img_data).decode('utf-8')
                             
-                            resp = sync_requests.post('https://api.openai.com/v1/chat/completions',
-                                headers={'Authorization': f'Bearer {openai_key}'},
-                                json={
-                                    'model': 'gpt-4o-mini',
-                                    'messages': [{
-                                        'role': 'user',
-                                        'content': [
-                                            {
-                                                'type': 'text',
-                                                'text': '''Find ALL codes on this product:
+                            async with aiohttp.ClientSession() as session:
+                                async with session.post(
+                                    'https://api.openai.com/v1/chat/completions',
+                                    headers={'Authorization': f'Bearer {openai_key}'},
+                                    json={
+                                        'model': 'gpt-4o-mini',
+                                        'messages': [{
+                                            'role': 'user',
+                                            'content': [
+                                                {
+                                                    'type': 'text',
+                                                    'text': '''Find ALL codes on this product:
 
 1. GG code - LARGE BLACK TEXT on yellow sticker (like GG727, GG681)
 2. Q code - numbers UNDER or NEAR the barcode lines (like Q2622988, Q747)
@@ -394,37 +396,47 @@ Q2622988
 
 If you find only GG, still return it.
 If no codes at all, return "NONE"'''
-                                            },
-                                            {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
-                                        ]
-                                    }],
-                                    'max_tokens': 50,
-                                    'temperature': 0
-                                },
-                                timeout=15
-                            )
-                            
-                            if resp.status_code == 200:
-                                text = resp.json().get('choices', [{}])[0].get('message', {}).get('content', '').strip().upper()
-                                logger.info(f"OpenAI photo {idx+1} response: {text}")
-                                
-                                # Ищем GG и Q коды
-                                gg_matches = re.findall(r'\b(GG\d{2,7})\b', text)
-                                q_matches = re.findall(r'\b(Q\d{4,10})\b', text)
-                                
-                                for match in gg_matches + q_matches:
-                                    # Проверяем что еще не добавили
-                                    if not any(r.data == match for r in gg_labels):
-                                        gg_labels.append(Barcode(
-                                            symbology='GG_LABEL',
-                                            data=match,
-                                            source='openai-emergency'
-                                        ))
-                                        barcode_results.append(gg_labels[-1])
-                                        logger.info(f"OpenAI emergency found: {match}")
+                                                },
+                                                {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{img_b64}'}}
+                                            ]
+                                        }],
+                                        'max_tokens': 50,
+                                        'temperature': 0
+                                    },
+                                    timeout=aiohttp.ClientTimeout(total=15)
+                                ) as resp:
+                                    if resp.status == 200:
+                                        data = await resp.json()
+                                        text = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip().upper()
+                                        logger.info(f"OpenAI photo {idx+1} response: {text}")
+                                        
+                                        # Ищем GG и Q коды
+                                        gg_matches = re.findall(r'\b(GG\d{2,7})\b', text)
+                                        q_matches = re.findall(r'\b(Q\d{4,10})\b', text)
+                                        
+                                        return gg_matches + q_matches
+                                    else:
+                                        logger.warning(f"OpenAI photo {idx+1} failed: HTTP {resp.status}")
+                                        return []
                         except Exception as photo_err:
                             logger.error(f"OpenAI photo {idx+1} error: {photo_err}")
-                            continue
+                            return []
+                    
+                    # Запускаем проверку всех фото параллельно
+                    openai_tasks = [check_photo_with_openai(idx, photo_item) for idx, photo_item in enumerate(photo_items)]
+                    openai_results = await asyncio.gather(*openai_tasks)
+                    
+                    # Собираем все найденные коды
+                    for matches in openai_results:
+                        for match in matches:
+                            if not any(r.data == match for r in gg_labels):
+                                gg_labels.append(Barcode(
+                                    symbology='GG_LABEL',
+                                    data=match,
+                                    source='openai-emergency'
+                                ))
+                                barcode_results.append(gg_labels[-1])
+                                logger.info(f"OpenAI emergency found: {match}")
             except Exception as e:
                 logger.error(f"OpenAI emergency GG detection failed: {e}")
         
@@ -486,8 +498,8 @@ If no codes at all, return "NONE"'''
                 tasks.append(process_single_photo(idx, item))
             
             photo_results = await asyncio.gather(*tasks)
-            for pr in photo_results:
-                all_barcode_results.extend(pr['results'])
+            for results, timeline, idx in photo_results:
+                all_barcode_results.extend(results)
             
             # Используем объединенные результаты
             barcode_results = all_barcode_results
