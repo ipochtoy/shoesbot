@@ -31,6 +31,10 @@ async def retry_pending_uploads():
         
         logger.info(f"🔄 Retrying upload {correlation_id} (attempt {retry_count + 1})")
         
+        if not queue.mark_in_progress(correlation_id):
+            logger.info(f"⏳ Skip retry for {correlation_id}, already in progress")
+            continue
+        
         try:
             payload = {
                 'correlation_id': correlation_id,

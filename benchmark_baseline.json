@@ -1,0 +1,35 @@
+{
+  "label": "baseline",
+  "iterations": 5,
+  "avg_seconds": 0.504814,
+  "stdev_seconds": 0.007434870394398667,
+  "min_seconds": 0.49837133300000014,
+  "max_seconds": 0.516884875,
+  "photos": 6,
+  "images_used": [
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_diuc_08i/generated_0.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_diuc_08i/generated_1.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_diuc_08i/generated_2.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_diuc_08i/generated_3.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_diuc_08i/generated_4.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_diuc_08i/generated_5.jpg"
+  ],
+  "openai_runs": 0,
+  "results": [
+    {
+      "duration": 0.51016825
+    },
+    {
+      "duration": 0.516884875
+    },
+    {
+      "duration": 0.499008667
+    },
+    {
+      "duration": 0.49837133300000014
+    },
+    {
+      "duration": 0.49963687499999976
+    }
+  ]
+}

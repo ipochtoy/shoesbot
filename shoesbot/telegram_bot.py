@@ -34,7 +34,7 @@ from shoesbot.logging_setup import logger
 from shoesbot.diagnostics import system_info
 from shoesbot.metrics import append_event, summarize
 from shoesbot.admin import get_admin_id, set_admin_id
-from shoesbot.photo_buffer import buffer as photo_buffer
+from shoesbot.photo_buffer import buffer as photo_buffer, PhotoItem
 from shoesbot.django_upload import upload_batch_to_django
 from shoesbot.fitness_reporter import FitnessReporter
 
@@ -227,9 +227,12 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
         logger.info(f"process_photo_batch: starting, chat={chat_id}, items={len(photo_items)}")
         is_debug = DEBUG_DEFAULT or (chat_id in DEBUG_CHATS)
         corr = uuid.uuid4().hex[:8]
+        batch_started = perf_counter()
+        bot = context.bot
         
         all_results = []
         all_timelines = []
+        openai_used = False
         
         # Обновляем прогресс: начало обработки
         if status_msg:
@@ -238,31 +241,42 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
             except Exception as e:
                 logger.debug(f"Failed to update progress: {e}")
         
+        async def ensure_photo_bytes(item):
+            data = getattr(item, "file_bytes", None)
+            if data:
+                return data
+            tg_file = await bot.get_file(item.file_id)
+            buf = BytesIO()
+            await tg_file.download_to_memory(out=buf)
+            data = buf.getvalue()
+            try:
+                item.file_bytes = data
+            except Exception:
+                pass
+            return data
+        
+        async def serialize_photos(items):
+            payload = []
+            for item in items:
+                raw = await ensure_photo_bytes(item)
+                img_b64 = base64.b64encode(raw).decode('utf-8')
+                payload.append({
+                    'file_id': item.file_id,
+                    'message_id': item.message_id,
+                    'image': img_b64,
+                })
+            return payload
+        
         # Параллельная обработка всех фото одновременно
         async def process_single_photo(idx: int, item) -> tuple:
             """Обработать одно фото и вернуть результаты."""
             logger.info(f"process_photo_batch: processing item {idx+1}/{len(photo_items)}")
             
             t0 = perf_counter()
-            buf = BytesIO()
-            
-            # Retry механизм для скачивания (httpx.ConnectError защита)
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    await item.file_obj.download_to_memory(out=buf)
-                    break
-                except Exception as download_err:
-                    if attempt < max_retries - 1:
-                        logger.warning(f"Download retry {attempt + 1}/{max_retries}: {download_err}")
-                        await asyncio.sleep(1)
-                    else:
-                        raise
-            
+            raw = await ensure_photo_bytes(item)
             download_ms = int((perf_counter() - t0) * 1000)
             
-            raw = buf.getvalue()
-            buf.seek(0)
+            buf = BytesIO(raw)
             img = Image.open(buf).convert("RGB")
             
             # Use smart parallel or regular parallel decoders
@@ -360,15 +374,13 @@ async def process_photo_batch(chat_id: int, photo_items: list, context: ContextT
                 
                 openai_key = os.getenv('OPENAI_API_KEY')
                 if openai_key:
-                    # Пробуем каждое фото асинхронно
-                    async def check_photo_with_openai(idx: int, photo_item):
-                        try:
-                            buf2 = BytesIO()
-                            await photo_item.file_obj.download_to_memory(out=buf2)
-                            img_data = buf2.getvalue()
-                            img_b64 = base64.b64encode(img_data).decode('utf-8')
-                            
-                            async with aiohttp.ClientSession() as session:
+                    openai_used = True
+                    async with aiohttp.ClientSession() as session:
+                        async def check_photo_with_openai(idx: int, photo_item):
+                            try:
+                                img_data = await ensure_photo_bytes(photo_item)
+                                img_b64 = base64.b64encode(img_data).decode('utf-8')
+                                
                                 async with session.post(
                                     'https://api.openai.com/v1/chat/completions',
                                     headers={'Authorization': f'Bearer {openai_key}'},
@@ -410,7 +422,6 @@ If no codes at all, return "NONE"'''
                                         text = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip().upper()
                                         logger.info(f"OpenAI photo {idx+1} response: {text}")
                                         
-                                        # Ищем GG и Q коды
                                         gg_matches = re.findall(r'\b(GG\d{2,7})\b', text)
                                         q_matches = re.findall(r'\b(Q\d{4,10})\b', text)
                                         
@@ -418,25 +429,23 @@ If no codes at all, return "NONE"'''
                                     else:
                                         logger.warning(f"OpenAI photo {idx+1} failed: HTTP {resp.status}")
                                         return []
-                        except Exception as photo_err:
-                            logger.error(f"OpenAI photo {idx+1} error: {photo_err}")
-                            return []
-                    
-                    # Запускаем проверку всех фото параллельно
-                    openai_tasks = [check_photo_with_openai(idx, photo_item) for idx, photo_item in enumerate(photo_items)]
-                    openai_results = await asyncio.gather(*openai_tasks)
-                    
-                    # Собираем все найденные коды
-                    for matches in openai_results:
-                        for match in matches:
-                            if not any(r.data == match for r in gg_labels):
-                                gg_labels.append(Barcode(
-                                    symbology='GG_LABEL',
-                                    data=match,
-                                    source='openai-emergency'
-                                ))
-                                barcode_results.append(gg_labels[-1])
-                                logger.info(f"OpenAI emergency found: {match}")
+                            except Exception as photo_err:
+                                logger.error(f"OpenAI photo {idx+1} error: {photo_err}")
+                                return []
+                        
+                        openai_tasks = [check_photo_with_openai(idx, photo_item) for idx, photo_item in enumerate(photo_items)]
+                        openai_results = await asyncio.gather(*openai_tasks)
+                        
+                        for matches in openai_results:
+                            for match in matches:
+                                if not any(r.data == match for r in gg_labels):
+                                    gg_labels.append(Barcode(
+                                        symbology='GG_LABEL',
+                                        data=match,
+                                        source='openai-emergency'
+                                    ))
+                                    barcode_results.append(gg_labels[-1])
+                                    logger.info(f"OpenAI emergency found: {match}")
             except Exception as e:
                 logger.error(f"OpenAI emergency GG detection failed: {e}")
         
@@ -468,7 +477,13 @@ If no codes at all, return "NONE"'''
             
             # НЕ загружаем в Django (без GG лейблы карточка не создается)
             logger.info("process_photo_batch: STOPPED - no GG label, card created with delete button")
-            return
+            duration = perf_counter() - batch_started
+            return {
+                "duration": duration,
+                "openai_used": openai_used,
+                "photos": len(photo_items),
+                "corr": corr,
+            }
         
         # GG найдена - проверяем есть ли ожидающие фото
         logger.info(f"process_photo_batch: GG labels found: {[g.data for g in gg_labels]}")
@@ -542,18 +557,66 @@ If no codes at all, return "NONE"'''
         if m_end:
             reg.append(m_end.message_id)
         
+        # Подготавливаем данные для Django/очереди (без повторных загрузок)
+        photos_payload = await serialize_photos(photo_items)
+        barcodes_payload = [{
+            'photo_index': 0,
+            'symbology': result.symbology,
+            'data': result.data,
+            'source': result.source,
+        } for result in all_results]
+        benchmark_mode = os.getenv("BENCHMARK_MODE") == "1"
+        if benchmark_mode:
+            duration = perf_counter() - batch_started
+            logger.info(
+                "process_photo_batch: benchmark mode skip upload (%.2fs, photos=%d, openai=%s)",
+                duration,
+                len(photo_items),
+                "yes" if openai_used else "no",
+            )
+            return {
+                "duration": duration,
+                "openai_used": openai_used,
+                "photos": len(photo_items),
+                "corr": corr,
+                "benchmark": True,
+            }
+        
         # Upload to Django in background
         message_ids_list = [item.message_id for item in photo_items]
         try:
-            upload_success = await upload_batch_to_django(corr, chat_id, message_ids_list, photo_items, all_results)
+            upload_success, upload_response = await upload_batch_to_django(
+                corr,
+                chat_id,
+                message_ids_list,
+                photos_payload,
+                barcodes_payload,
+            )
             if not upload_success:
-                # Django upload failed
                 await context.bot.send_message(chat_id, "❌❌❌\n\nОшибка загрузки в Django")
+            else:
+                pochtoy_msg = (upload_response or {}).get('pochtoy_message')
+                if pochtoy_msg:
+                    msg = await send_message_ret(context.bot, chat_id, f"📡 Pochtoy:\n{pochtoy_msg}")
+                    if msg:
+                        reg.append(msg.message_id)
         except Exception as e:
             logger.error(f"process_photo_batch: django upload error: {e}")
             await context.bot.send_message(chat_id, "❌❌❌\n\nОшибка загрузки в Django")
         
-        logger.info("process_photo_batch: done")
+        duration = perf_counter() - batch_started
+        logger.info(
+            "process_photo_batch: done in %.2fs (openai_used=%s, photos=%d)",
+            duration,
+            "yes" if openai_used else "no",
+            len(photo_items),
+        )
+        return {
+            "duration": duration,
+            "openai_used": openai_used,
+            "photos": len(photo_items),
+            "corr": corr,
+        }
     except Exception as e:
         logger.error(f"process_photo_batch: error: {e}", exc_info=True)
         # Notify user about critical error
@@ -576,10 +639,16 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         message_id = update.message.message_id
         logger.info(f"handle_photo: chat={chat_id}, file_id={file_id[:20]}..., message_id={message_id}")
         tg_file = await context.bot.get_file(file_id)
-        logger.info(f"handle_photo: got tg_file")
+        logger.info("handle_photo: got tg_file")
+
+        buf = BytesIO()
+        await tg_file.download_to_memory(out=buf)
+        raw_bytes = buf.getvalue()
+        logger.info(f"handle_photo: downloaded {len(raw_bytes)} bytes")
         
-        # Add to buffer
-        is_first, photo_batch = photo_buffer.add(chat_id, file_id, tg_file, message_id)
+        # Add to buffer with cached bytes
+        photo_item = PhotoItem(file_id=file_id, message_id=message_id, file_bytes=raw_bytes)
+        is_first, photo_batch = photo_buffer.add(chat_id, photo_item)
         logger.info(f"handle_photo: added to buffer, is_first={is_first}, batch_size={len(photo_batch) if photo_batch else 0}")
         
         if is_first:
@@ -799,21 +868,6 @@ async def on_retry_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             barcodes_data = json.loads(barcodes_data_json)
             
             # Recreate photo items from queue
-            @dataclass
-            class MockPhotoItem:
-                file_id: str
-                message_id: int
-                file_obj: any
-            
-            # Create mock file class
-            class MockFile:
-                def __init__(self, image_bytes):
-                    self._bytes = image_bytes
-                
-                async def download_to_memory(self, out):
-                    out.write(self._bytes)
-            
-            # Recreate file objects from base64
             photo_items = []
             for photo_data in photos_data:
                 file_id = photo_data.get('file_id')
@@ -826,10 +880,10 @@ async def on_retry_batch(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 # Decode base64 to bytes
                 image_bytes = base64.b64decode(image_b64)
                 
-                item = MockPhotoItem(
-                    file_id=file_id,
-                    message_id=message_id,
-                    file_obj=MockFile(image_bytes)
+                item = PhotoItem(
+                    file_id=file_id or "",
+                    message_id=message_id or 0,
+                    file_bytes=image_bytes
                 )
                 photo_items.append(item)
             

@@ -1,0 +1,50 @@
+{
+  "label": "current",
+  "iterations": 5,
+  "avg_seconds": 0.5057176501999999,
+  "stdev_seconds": 0.007065850532673227,
+  "min_seconds": 0.49355562500000005,
+  "max_seconds": 0.512610209,
+  "photos": 6,
+  "images_used": [
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_heoqo5h2/generated_0.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_heoqo5h2/generated_1.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_heoqo5h2/generated_2.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_heoqo5h2/generated_3.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_heoqo5h2/generated_4.jpg",
+    "/var/folders/xz/g8s5rwv94rn1sj66nb0b1gx80000gn/T/shoesbot_bench_heoqo5h2/generated_5.jpg"
+  ],
+  "openai_runs": 0,
+  "results": [
+    {
+      "duration": 0.49355562500000005,
+      "openai_used": false,
+      "photos": 6,
+      "corr": "735e09cd"
+    },
+    {
+      "duration": 0.512610209,
+      "openai_used": false,
+      "photos": 6,
+      "corr": "73a9c50c"
+    },
+    {
+      "duration": 0.5122084999999998,
+      "openai_used": false,
+      "photos": 6,
+      "corr": "bc55fed4"
+    },
+    {
+      "duration": 0.5027266249999998,
+      "openai_used": false,
+      "photos": 6,
+      "corr": "18163beb"
+    },
+    {
+      "duration": 0.507487292,
+      "openai_used": false,
+      "photos": 6,
+      "corr": "08e2f599"
+    }
+  ]
+}

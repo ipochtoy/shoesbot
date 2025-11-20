@@ -107,6 +107,26 @@ class PhotoUploadQueue:
         logger.info(f"📦 Added to queue: {correlation_id} (ID: {upload_id})")
         return upload_id
     
+    def mark_in_progress(self, correlation_id: str) -> bool:
+        """Mark upload as currently being processed to avoid double sends."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE pending_uploads
+            SET last_retry_at = ?
+            WHERE correlation_id = ?
+            AND status = 'pending'
+        ''', (datetime.now().isoformat(), correlation_id))
+        
+        conn.commit()
+        updated = cursor.rowcount
+        conn.close()
+        
+        if updated:
+            logger.info(f"⏳ Upload in progress: {correlation_id}")
+        return bool(updated)
+    
     def mark_uploaded(self, correlation_id: str):
         """Mark upload as successfully completed."""
         conn = sqlite3.connect(self.db_path)
@@ -172,6 +192,7 @@ class PhotoUploadQueue:
             FROM pending_uploads
             WHERE status = 'pending'
             AND retry_count < ?
+            AND datetime(created_at) <= datetime('now', '-30 seconds')
             AND (
                 last_retry_at IS NULL 
                 OR datetime(last_retry_at) < datetime('now', '-' || (retry_count * 5) || ' minutes')
