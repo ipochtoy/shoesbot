@@ -1,4 +1,4 @@
-# ShoesBot Laravel
+# Warehouse Laravel
 
 Telegram bot for barcode scanning with direct Pochtoy integration.
 

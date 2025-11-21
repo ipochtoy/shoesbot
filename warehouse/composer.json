@@ -1,5 +1,5 @@
 {
-    "name": "shoesbot/laravel-telegram",
+    "name": "warehouse/telegram-bot",
     "description": "Telegram bot for barcode scanning with Pochtoy integration",
     "type": "project",
     "require": {
